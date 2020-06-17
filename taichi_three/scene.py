@@ -34,6 +34,40 @@ class SceneBase:
         ldir = [x / norm for x in ldir]
         self.light_dir[None] = ldir
 
+    @ti.func
+    def render_func(self, pos, normal, dir, light_dir):
+        color = ts.vec3(0.0)
+
+        if ti.static(self.opt.is_normal_map):
+            color = normal * 0.5 + 0.5
+
+        elif ti.static(self.opt.render_func is not None):
+            color = self.opt.render_func(
+                    pos, normal, dir, light_dir)
+
+        else:
+            shineness = self.opt.shineness
+            half_lambert = ts.dot(normal, light_dir) * 0.5 + 0.5
+            lambert = max(0, ts.dot(normal, light_dir))
+            blinn_phong = ts.dot(normal, ts.mix(light_dir, -dir, 0.5))
+            blinn_phong = pow(max(blinn_phong, 0), shineness)
+            refl_dir = ts.reflect(light_dir, normal)
+            phong = -ts.dot(normal, refl_dir)
+            phong = pow(max(phong, 0), shineness)
+
+            strength = 0.0
+            if ti.static(self.opt.lambert != 0.0):
+                strength += lambert * self.opt.lambert
+            if ti.static(self.opt.half_lambert != 0.0):
+                strength += half_lambert * self.opt.half_lambert
+            if ti.static(self.opt.blinn_phong != 0.0):
+                strength += blinn_phong * self.opt.blinn_phong
+            if ti.static(self.opt.phong != 0.0):
+                strength += phong * self.opt.phong
+            color = ts.vec3(strength)
+
+        return color
+
     @ti.kernel
     def render(self):
         for I in ti.grouped(self.img):
@@ -45,36 +79,7 @@ class SceneBase:
             pos, normal = self.trace(orig, dir)
             light_dir = self.light_dir[None]
 
-            color = ts.vec3(0.0)
-
-            if ti.static(self.opt.is_normal_map):
-                color = normal * 0.5 + 0.5
-
-            elif ti.static(self.opt.render_func is not None):
-                color = self.opt.render_func(
-                        pos, normal, dir, light_dir)
-
-            else:
-                shineness = self.opt.shineness
-                half_lambert = ts.dot(normal, light_dir) * 0.5 + 0.5
-                lambert = max(0, ts.dot(normal, light_dir))
-                blinn_phong = ts.dot(normal, ts.mix(light_dir, -dir, 0.5))
-                blinn_phong = pow(max(blinn_phong, 0), shineness)
-                refl_dir = ts.reflect(light_dir, normal)
-                phong = -ts.dot(normal, refl_dir)
-                phong = pow(max(phong, 0), shineness)
-
-                strength = 0.0
-                if ti.static(self.opt.lambert != 0.0):
-                    strength += lambert * self.opt.lambert
-                if ti.static(self.opt.half_lambert != 0.0):
-                    strength += half_lambert * self.opt.half_lambert
-                if ti.static(self.opt.blinn_phong != 0.0):
-                    strength += blinn_phong * self.opt.blinn_phong
-                if ti.static(self.opt.phong != 0.0):
-                    strength += phong * self.opt.phong
-                color = ts.vec3(strength)
-
+            color = self.render_func(pos, normal, dir, light_dir)
             self.img[I] = color
 
     def add_ball(self, pos, radius):
