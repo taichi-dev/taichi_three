@@ -6,7 +6,7 @@ ti.init(ti.opengl)
 
 n = 2
 
-r = t3.Render()
+r = t3.Scene()
 pos = ti.Vector(3, ti.f32, n)
 radius = ti.var(ti.f32, n)
 
