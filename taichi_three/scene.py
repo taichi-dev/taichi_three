@@ -7,11 +7,11 @@ from .objects import Ball
 class RenderOptions:
     def __init__(self, **kwargs):
         self.is_normal_map = False
-        self.lambert = 0.4
-        self.half_lambert = 0.4
-        self.blinn_phong = 0.4
+        self.lambert = 0.58
+        self.half_lambert = 0.04
+        self.blinn_phong = 0.28
         self.phong = 0.0
-        self.shineness = 12
+        self.shineness = 10
         self.__dict__.update(kwargs)
 
     @ti.func
@@ -42,6 +42,12 @@ class RenderOptions:
             color = normal * 0.5 + 0.5
 
         return color
+
+    @ti.func
+    def pre_process(self, color):
+        blue = ts.vec3(0.0, 0.01, 0.05)
+        orange = ts.vec3(1.19, 1.04, 0.98)
+        return ti.sqrt(ts.mix(blue, orange, color))
 
 
 @ti.data_oriented
@@ -74,6 +80,7 @@ class SceneBase:
             light_dir = self.light_dir[None]
 
             color = self.opt.render_func(pos, normal, dir, light_dir)
+            color = self.opt.pre_process(color)
             self.img[I] = color
 
     def add_ball(self, pos, radius):
