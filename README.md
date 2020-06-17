@@ -71,7 +71,7 @@ while gui.running:
 Example
 -------
 
-Running the following example code should give you an moving ball:
+Running the following example code should gives you an moving ball:
 ```py
 import taichi as ti
 import taichi_three as t3
