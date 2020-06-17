@@ -42,14 +42,16 @@ class Ball:
                 t = b + det
                 if t > EPS:
                     ret = t
-        return ret
+        return ret, ts.normalize(dir * ret - op)
 
     @ti.func
     def intersect(self, orig, dir):
-        ret = INF
+        ret, normal = INF, ts.vec3(0.0)
         for I in ti.grouped(ti.ndrange(*self.pos.shape())):
-            ret = min(ret, self.make_one(I)._intersect(orig, dir))
-        return ret
+            t, n = self.make_one(I)._intersect(orig, dir)
+            if t < ret:
+                ret, normal = t, n
+        return ret, normal
 
 
 @ti.data_oriented
@@ -68,7 +70,9 @@ class SceneBase:
             coor = ts.view(self.img, i, j)
             pos = ts.vec3(coor * 2.0 - 1.0, -1.0)
             dir = ts.vec3(0.0, 0.0, 1.0)
-            self.img[i, j] = self.trace(pos, dir)
+            normal = self.trace(pos, dir)
+            color = normal * 0.5 + 0.5
+            self.img[i, j] = color
 
     def add_ball(self, pos, radius):
         b = Ball(pos, radius)
@@ -79,16 +83,17 @@ class SceneBase:
 class Scene(SceneBase):
     @ti.func
     def intersect(self, orig, dir):
-        ret = INF
+        ret, normal = INF, ts.vec3(0.0)
         for b in ti.static(self.balls):
-            t = b.intersect(orig, dir)
-            ret = min(ret, t)
-        return ret
+            t, n = b.intersect(orig, dir)
+            if t < ret:
+                ret, normal = t, n
+        return ret, normal
 
     @ti.func
     def trace(self, pos, dir):
-        depth = self.intersect(pos, dir)
-        return ts.vec3(1 - depth)
+        depth, normal = self.intersect(pos, dir)
+        return normal
 
 
 @ti.data_oriented
@@ -109,12 +114,12 @@ class SceneSDF(SceneBase):
 
     @ti.func
     def trace(self, pos, dir):
-        hit = ts.vec3(0.0)
+        color = ts.vec3(0.0)
+        normal = ts.vec3(0.0)
         for s in range(100):
             t = self.calc_sdf(pos)
             if t <= 0:
-                n = ts.normalize(self.calc_grad(pos) - t)
-                hit = n * 0.5 + 0.5
+                normal = ts.normalize(self.calc_grad(pos) - t)
                 break
             pos += dir * t
-        return hit
+        return normal
