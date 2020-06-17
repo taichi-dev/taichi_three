@@ -12,6 +12,10 @@ radius = ti.var(ti.f32, n)
 
 r.add_ball(pos, radius)
 
+#r.light_dir[None] = (lambda __:(lambda ___:[_/___ for _ in __])(sum(_**2 for _ in __)))([0.5, 0.5, 0.5])
+r.set_light_dir([1, 2, -2])
+print(r.light_dir.at(None))
+
 gui = ti.GUI('Ball')
 while gui.running:
     gui.running = not gui.get_event(ti.GUI.ESCAPE)
