@@ -1,5 +1,8 @@
 project_name = 'taichi_three'
 from taichi_three.version import version, taichi_version, taiglsl_version
+version = '.'.join(map(str, version))
+taichi_version = '.'.join(map(str, taichi_version))
+taiglsl_version = '.'.join(map(str, taiglsl_version))
 description = 'A Taichi extension library helps you rendering 3D scenes'
 long_description = '''
 Taichi THREE
