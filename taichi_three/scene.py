@@ -4,6 +4,23 @@ from .common import EPS, INF
 from .objects import Ball
 
 
+class RenderOptions:
+    def __init__(self, **kwargs):
+        self.is_normal_map = False
+        self.lambert = 0.0
+        self.half_lambert = 0.5
+        self.blinn_phong = 0.5
+        self.phong = 0.0
+        self.shineness = 12
+        self.__dict__.update(kwargs)
+
+    def __hash__(self):
+        return hash(self.__dict__.values())
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+
 @ti.data_oriented
 class SceneBase:
     def __init__(self, res=(512, 512)):
@@ -23,8 +40,11 @@ class SceneBase:
         self.light_dir[None] = ldir
         normalize_ldir()
 
-    @ti.kernel
     def render(self):
+        self.render_opt(RenderOptions())
+
+    @ti.kernel
+    def render_opt(self, opt: ti.template()):
         for i, j in self.img:
             coor = ts.view(self.img, i, j)
             orig = ts.vec3(coor * 2.0 - 1.0, -1.0)
@@ -32,23 +52,28 @@ class SceneBase:
             pos, normal = self.trace(orig, dir)
             light_dir = self.light_dir[None]
 
-            shineness = 12
-            # Half-lambert:
+            shineness = opt.shineness
             half_lambert = ts.dot(normal, light_dir) * 0.5 + 0.5
-            # Lambert:
             lambert = max(0, ts.dot(normal, light_dir))
-            # Blinn-Phong:
             blinn_phong = ts.dot(normal, ts.mix(light_dir, -dir, 0.5))
             blinn_phong = pow(max(blinn_phong, 0), shineness)
-            # Phong:
             refl_dir = ts.reflect(light_dir, normal)
             phong = -ts.dot(normal, refl_dir)
             phong = pow(max(phong, 0), shineness)
 
-            strength = ts.mix(half_lambert, blinn_phong, 0.5)
+            strength = 0.0
+            if ti.static(opt.lambert != 0.0):
+                strength += lambert * opt.lambert
+            if ti.static(opt.half_lambert != 0.0):
+                strength += half_lambert * opt.half_lambert
+            if ti.static(opt.blinn_phong != 0.0):
+                strength += blinn_phong * opt.blinn_phong
+            if ti.static(opt.phong != 0.0):
+                strength += phong * opt.phong
             color = ts.vec3(strength)
-            # Normal map:
-            #color = normal * 0.5 + 0.5
+
+            if ti.static(opt.is_normal_map):
+                color = normal * 0.5 + 0.5
 
             self.img[i, j] = color
 
