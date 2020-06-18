@@ -12,7 +12,6 @@ cartoon_level = ti.var(ti.f32, ())
 
 scene.add_ball(pos, radius)
 scene.set_light_dir([1, 2, -2])
-scene.set_camera()
 
 @ti.func
 def my_render_func(pos, normal, dir, light_dir):

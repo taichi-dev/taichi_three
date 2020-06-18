@@ -53,7 +53,6 @@ radius = ti.var(ti.f32, n)
 
 scene.add_ball(pos, radius)      # pass the tensors directly, not pos[...]!
 scene.set_light_dir([1, 2, -2])  # scene will do normalization for you :)
-scene.set_camera([0, 0, -1])     # always set camera before rendering.
 ```
 
 ---
@@ -87,9 +86,8 @@ scene = t3.Scene()
 pos = ti.Vector(3, ti.f32, 1)
 radius = ti.var(ti.f32, 1)
 
-scene.add_ball(pos, radius)      # provide data tensor
-scene.set_light_dir([1, 2, -2])  # parallel light direction
-scene.set_camera([0, 0, -1])     # camera position, look towards Z+
+scene.add_ball(pos, radius)
+scene.set_light_dir([1, 2, -2])
 
 radius[0] = 0.5
 

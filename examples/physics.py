@@ -1,7 +1,7 @@
 import taichi as ti
 import taichi_glsl as ts
 import taichi_three as t3
-from math import cos, sin
+from math import cos, sin, tan, pi, tau
 from time import time
 ti.init(ti.opengl)
 
@@ -16,12 +16,9 @@ bound = ti.Vector(3, ti.f32, ())
 
 scene.add_ball(pos, radius)
 scene.set_light_dir([1, 1, -1])
-scene.set_camera()
 
 @ti.kernel
 def init():
-    bound[None] = ts.vec3(*scene.res, scene.res[0])
-    bound[None] /= scene.res[1]
     for i in pos:
         pos[i] = ts.randNDRange(ts.vec3(-1), ts.vec3(1))
         vel[i] = ts.randNDRange(ts.vec3(-1.1), ts.vec3(1.1))
@@ -51,9 +48,9 @@ def substep():
 
     for i in pos:
         for j in ti.static(range(3)):
-            if vel[i][j] < 0 and pos[i][j] < -bound[None][j] + radius[i]:
+            if vel[i][j] < 0 and pos[i][j] < -1 + radius[i]:
                 vel[i][j] *= -0.8
-            if vel[i][j] > 0 and pos[i][j] > bound[None][j] - radius[i]:
+            if vel[i][j] > 0 and pos[i][j] > 1 - radius[i]:
                 vel[i][j] *= -0.8
 
     for i in pos:
@@ -65,6 +62,7 @@ while gui.running:
     gui.running = not gui.get_event(ti.GUI.ESCAPE)
     for i in range(4):
         substep()
+    scene.camera.from_mouse(gui, dis=4)
     scene.render()
     gui.set_image(scene.img)
     gui.show()

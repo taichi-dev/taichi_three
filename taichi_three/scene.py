@@ -2,14 +2,15 @@ import taichi as ti
 import taichi_glsl as ts
 from .common import EPS, INF
 from .objects import Ball
+import math
 
 
-class RenderOptions:
+class Shader:
     def __init__(self, **kwargs):
         self.is_normal_map = False
         self.lambert = 0.58
         self.half_lambert = 0.04
-        self.blinn_phong = 0.28
+        self.blinn_phong = 0.3
         self.phong = 0.0
         self.shineness = 10
         self.__dict__.update(kwargs)
@@ -51,29 +52,23 @@ class RenderOptions:
 
 
 @ti.data_oriented
-class SceneBase:
-    def __init__(self, res=(512, 512)):
-        self.res = res
-        self.img = ti.Vector(3, ti.f32, self.res)
-        self.light_dir = ti.Vector(3, ti.f32, ())
-        self.camera = ti.Matrix(3, 3, ti.f32, ())
-        self.cam_pos = ti.Vector(3, ti.f32, ())
-        self.opt = RenderOptions()
-        self.balls = []
+class Camera:
+    ORTHO = 'Orthogonal'
+    TAN_FOV = 'Tangent Perspective'
+    COS_FOV = 'Cosine Perspective'
 
-    def trace(self, pos, dir):
-        raise NotImplementedError
+    def __init__(self):
+        self.trans = ti.Matrix(3, 3, ti.f32, ())
+        self.pos = ti.Vector(3, ti.f32, ())
+        self.type = self.TAN_FOV
+        self.fov = 25
+        self.is_set = False
 
-    def set_light_dir(self, ldir):
-        import math
-        norm = math.sqrt(sum(x**2 for x in ldir))
-        ldir = [x / norm for x in ldir]
-        self.light_dir[None] = ldir
+    def set(self, pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
+        self.is_set = True
 
-    def set_camera(self, pos=[0, 0, -2], lookat=[0, 0, 0], up=[0, 1, 0]):
-        import math
-        # fwd = lookat - pos
-        fwd = [lookat[i] - pos[i] for i in range(3)]
+        # fwd = target - pos
+        fwd = [target[i] - pos[i] for i in range(3)]
         # fwd = fwd.normalized()
         fwd_len = math.sqrt(sum(x**2 for x in fwd))
         fwd = [x / fwd_len for x in fwd]
@@ -93,23 +88,78 @@ class SceneBase:
              right[1] * fwd[0] - right[0] * fwd[1],
              ]
 
-        # camera = ti.Matrix.cols([right, up, fwd])
-        camera = [right, up, fwd]
-        camera = [[camera[i][j] for i in range(3)] for j in range(3)]
-        self.camera[None] = camera
-        self.cam_pos[None] = pos
+        # trans = ti.Matrix.cols([right, up, fwd])
+        trans = [right, up, fwd]
+        trans = [[trans[i][j] for i in range(3)] for j in range(3)]
+        self.trans[None] = trans
+        self.pos[None] = pos
+
+    def from_mouse(self, mpos, dis=2):
+        if isinstance(mpos, ti.GUI):
+            mpos = mpos.get_cursor_pos()
+
+        a, t = mpos
+        if a != 0 or t != 0:
+            a, t = a * math.tau - math.pi, t * math.pi - math.pi / 2
+        d = dis * math.cos(t)
+        self.set(pos=[d * math.sin(a), dis * math.sin(t), -d * math.cos(a)])
+
+    @ti.func
+    def trans_pos(self, pos):
+        return self.trans[None] @ pos + self.pos[None]
+
+    @ti.func
+    def trans_dir(self, pos):
+        return self.trans[None] @ pos
+
+    @ti.func
+    def generate(self, coor):
+        fov = ti.static(math.radians(self.fov))
+        tan_fov = ti.static(math.tan(fov))
+
+        orig = ts.vec3(0.0)
+        dir  = ts.vec3(0.0, 0.0, 1.0)
+
+        if ti.static(self.type == self.ORTHO):
+            orig = ts.vec3(coor, 0.0)
+        elif ti.static(self.type == self.TAN_FOV):
+            uv = coor * fov
+            dir = ts.normalize(ts.vec3(uv, 1))
+        elif ti.static(self.type == self.COS_FOV):
+            uv = coor * fov
+            dir = ts.vec3(ti.sin(uv), ti.cos(uv.norm()))
+
+        orig = self.trans_pos(orig)
+        dir = self.trans_dir(dir)
+
+        return orig, dir
+
+
+@ti.data_oriented
+class SceneBase:
+    def __init__(self, res=(512, 512)):
+        self.res = res
+        self.img = ti.Vector(3, ti.f32, self.res)
+        self.light_dir = ti.Vector(3, ti.f32, ())
+        self.camera = Camera()
+        self.opt = Shader()
+        self.balls = []
+
+    def trace(self, pos, dir):
+        raise NotImplementedError
+
+    def set_light_dir(self, ldir):
+        norm = math.sqrt(sum(x**2 for x in ldir))
+        ldir = [x / norm for x in ldir]
+        self.light_dir[None] = ldir
 
     @ti.kernel
-    def render(self):
+    def _render(self):
         for I in ti.grouped(self.img):
             scale = ti.static(2 / min(*self.img.shape()))
             coor = (I - ts.vec2(*self.img.shape()) / 2) * scale
 
-            orig = ts.vec3(coor, 0.0)
-            dir = ts.vec3(0.0, 0.0, 1.0)
-
-            orig = self.camera[None] @ orig + self.cam_pos[None]
-            dir = self.camera[None] @ dir
+            orig, dir = self.camera.generate(coor)
 
             pos, normal = self.trace(orig, dir)
             light_dir = self.light_dir[None]
@@ -117,6 +167,12 @@ class SceneBase:
             color = self.opt.render_func(pos, normal, dir, light_dir)
             color = self.opt.pre_process(color)
             self.img[I] = color
+
+    def render(self):
+        if not self.camera.is_set:
+            self.camera.set()
+
+        self._render()
 
     def add_ball(self, pos, radius):
         b = Ball(pos, radius)
