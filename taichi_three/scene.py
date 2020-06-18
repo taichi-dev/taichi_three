@@ -56,6 +56,8 @@ class SceneBase:
         self.res = res
         self.img = ti.Vector(3, ti.f32, self.res)
         self.light_dir = ti.Vector(3, ti.f32, ())
+        self.camera = ti.Matrix(3, 3, ti.f32, ())
+        self.cam_pos = ti.Vector(3, ti.f32, ())
         self.opt = RenderOptions()
         self.balls = []
 
@@ -68,14 +70,47 @@ class SceneBase:
         ldir = [x / norm for x in ldir]
         self.light_dir[None] = ldir
 
+    def set_camera(self, pos=[0, 0, -2], lookat=[0, 0, 0], up=[0, 1, 0]):
+        import math
+        # fwd = lookat - pos
+        fwd = [lookat[i] - pos[i] for i in range(3)]
+        # fwd = fwd.normalized()
+        fwd_len = math.sqrt(sum(x**2 for x in fwd))
+        fwd = [x / fwd_len for x in fwd]
+        # right = fwd.cross(up)
+        right = [
+                fwd[2] * up[1] - fwd[1] * up[2],
+                fwd[0] * up[2] - fwd[2] * up[0],
+                fwd[1] * up[0] - fwd[0] * up[1],
+                ]
+        # right = right.normalized()
+        right_len = math.sqrt(sum(x**2 for x in right))
+        right = [x / right_len for x in right]
+        # up = right.cross(fwd)
+        up = [
+             right[2] * fwd[1] - right[1] * fwd[2],
+             right[0] * fwd[2] - right[2] * fwd[0],
+             right[1] * fwd[0] - right[0] * fwd[1],
+             ]
+
+        # camera = ti.Matrix.cols([right, up, fwd])
+        camera = [right, up, fwd]
+        camera = [[camera[i][j] for i in range(3)] for j in range(3)]
+        self.camera[None] = camera
+        self.cam_pos[None] = pos
+
     @ti.kernel
     def render(self):
         for I in ti.grouped(self.img):
             scale = ti.static(2 / min(*self.img.shape()))
             coor = (I - ts.vec2(*self.img.shape()) / 2) * scale
 
-            orig = ts.vec3(coor, -1.0)
+            orig = ts.vec3(coor, 0.0)
             dir = ts.vec3(0.0, 0.0, 1.0)
+
+            orig = self.camera[None] @ orig + self.cam_pos[None]
+            dir = self.camera[None] @ dir
+
             pos, normal = self.trace(orig, dir)
             light_dir = self.light_dir[None]
 

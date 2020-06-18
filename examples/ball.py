@@ -9,6 +9,7 @@ pos = ti.Vector(3, ti.f32, 1)
 radius = ti.var(ti.f32, 1)
 
 scene.add_ball(pos, radius)
+scene.set_camera()
 
 radius[0] = 0.5
 gui = ti.GUI('Ball')

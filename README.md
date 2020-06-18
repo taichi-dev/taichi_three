@@ -4,6 +4,9 @@ Taichi THREE
 Taichi THREE is an extension library of the [Taichi Programming Language](https://github.com/taichi-dev/taichi), that helps rendering your 3D scenes into nice-looking 2D images to display in GUI.
 
 
+[Camera](https://github.com/taichi-dev/taichi_three/raw/master/examples/camera.png)
+
+
 Installation
 ------------
 
@@ -50,6 +53,7 @@ radius = ti.var(ti.f32, n)
 
 scene.add_ball(pos, radius)      # pass the tensors directly, not pos[...]!
 scene.set_light_dir([1, 2, -2])  # scene will do normalization for you :)
+scene.set_camera([0, 0, -1])     # always set camera before rendering.
 ```
 
 ---
@@ -83,14 +87,14 @@ scene = t3.Scene()
 pos = ti.Vector(3, ti.f32, 1)
 radius = ti.var(ti.f32, 1)
 
-scene.add_ball(pos, radius)
-scene.set_light_dir([1, 2, -2])
+scene.add_ball(pos, radius)      # provide data tensor
+scene.set_light_dir([1, 2, -2])  # parallel light direction
+scene.set_camera([0, 0, -1])     # camera position, look towards Z+
 
 radius[0] = 0.5
 
 gui = ti.GUI('Ball')
 while gui.running:
-    gui.running = not gui.get_event(ti.GUI.ESCAPE)
     pos[0] = [0.3 * sin(time()), 0.3 * cos(time()), 0]
     scene.render()
     gui.set_image(scene.img)

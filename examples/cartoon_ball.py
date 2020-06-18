@@ -12,6 +12,7 @@ cartoon_level = ti.var(ti.f32, ())
 
 scene.add_ball(pos, radius)
 scene.set_light_dir([1, 2, -2])
+scene.set_camera()
 
 @ti.func
 def my_render_func(pos, normal, dir, light_dir):
@@ -30,7 +31,7 @@ scene.opt.render_func = my_render_func
 radius[0] = 0.5
 gui = ti.GUI('Ball')
 while gui.running:
-    cartoon_level[None] = 2 + (sin(time() * 0.4) * 0.5 + 0.5) * 15
+    cartoon_level[None] = 2 + (sin(time() * 0.4) * 0.5 + 0.5) * 22
     gui.running = not gui.get_event(ti.GUI.ESCAPE)
     scene.render()
     gui.set_image(scene.img)

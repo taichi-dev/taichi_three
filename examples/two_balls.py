@@ -9,8 +9,8 @@ pos = ti.Vector(3, ti.f32, n)
 radius = ti.var(ti.f32, n)
 
 r.add_ball(pos, radius)
-r.set_light_dir([1, 2, -2])
-#r.opt.is_normal_map = True
+r.set_camera()
+r.opt.is_normal_map = True
 
 gui = ti.GUI('Ball', r.res)
 while gui.running:

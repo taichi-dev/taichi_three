@@ -8,17 +8,20 @@ ti.init(ti.opengl)
 N = 12
 dt = 0.01
 
-scene = t3.Scene((640, 480))
+scene = t3.Scene((640, 640))
 pos = ti.Vector(3, ti.f32, N)
 vel = ti.Vector(3, ti.f32, N)
 radius = ti.var(ti.f32, N)
+bound = ti.Vector(3, ti.f32, ())
 
 scene.add_ball(pos, radius)
 scene.set_light_dir([1, 1, -1])
-#scene.opt.is_normal_map = True
+scene.set_camera()
 
 @ti.kernel
 def init():
+    bound[None] = ts.vec3(*scene.res, scene.res[0])
+    bound[None] /= scene.res[1]
     for i in pos:
         pos[i] = ts.randNDRange(ts.vec3(-1), ts.vec3(1))
         vel[i] = ts.randNDRange(ts.vec3(-1.1), ts.vec3(1.1))
@@ -38,7 +41,7 @@ def interact(i, j):
 @ti.kernel
 def substep():
     for i in pos:
-        acc = ts.vec(0, 0, 1) # try (0, -1, 0)
+        acc = ts.vec(0, -1, 0)
         vel[i] += acc * dt
 
     for i in pos:
@@ -48,9 +51,9 @@ def substep():
 
     for i in pos:
         for j in ti.static(range(3)):
-            if vel[i][j] < 0 and pos[i][j] < -1 + radius[j]:
+            if vel[i][j] < 0 and pos[i][j] < -bound[None][j] + radius[i]:
                 vel[i][j] *= -0.8
-            if vel[i][j] > 0 and pos[i][j] > 1 - radius[j]:
+            if vel[i][j] > 0 and pos[i][j] > bound[None][j] - radius[i]:
                 vel[i][j] *= -0.8
 
     for i in pos:
