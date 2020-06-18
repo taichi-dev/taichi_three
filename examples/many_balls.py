@@ -25,52 +25,20 @@ def init():
         radius[i] = ts.randRange(0.1, 0.2)
 
 @ti.func
-def exchange(v1, m1, v2, m2, disp):
-    vel1 = v1.dot(disp)
-    vel2 = v2.dot(disp)
-
-    sm1 = ti.sqrt(m1)
-    sm2 = ti.sqrt(m2)
-    itsm = 1 / ti.sqrt(m1 + m2)
-
-    kero1 = vel1 * sm1
-    kero2 = vel2 * sm2
-
-    smd1 =  sm2 * itsm
-    smd2 = -sm1 * itsm
-
-    kos = 2 * (kero1 * smd1 + kero2 * smd2)
-    kero1 -= kos * smd1
-    kero2 -= kos * smd2
-
-    vel1 = kero1 / sm1
-    vel2 = kero2 / sm2
-
-    disp *= 0.8
-
-    v1 -= v1.dot(disp) * disp
-    v2 -= v2.dot(disp) * disp
-
-    v1 += vel1 * disp
-    v2 += vel2 * disp
-
-    return v1, v2
-
-@ti.func
 def interact(i, j):
     disp = pos[i] - pos[j]
     disv = vel[i] - vel[j]
-    if ts.length(disp) < radius[i] + radius[j] and disp.dot(disv) < 0:
+    if disp.norm_sqr() < (radius[i] + radius[j]) ** 2 and disp.dot(disv) < 0:
         mass_i = radius[i] ** 3
         mass_j = radius[j] ** 3
         disp = ts.normalize(disp)
-        v_i, v_j = exchange(vel[i], mass_i, vel[j], mass_j, disp)
-        vel[i], vel[j] = v_i, v_j
+        vel[i], vel[j] = ts.momentumExchange(
+                vel[i], vel[j], disp, mass_i, mass_j, 0.8)
 
 @ti.kernel
 def substep():
     for i in pos:
-        acc = ts.vec(0, -0, 1)
+        acc = ts.vec(0, 0, 1) # try (0, -1, 0)
         vel[i] += acc * dt
 
     for i in pos:
