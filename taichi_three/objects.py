@@ -51,3 +51,27 @@ class Ball:
         return ret, normal
 
 
+@ti.data_oriented
+class Triangle:
+    def __init__(self, a, b, c):
+        self.a = a
+        self.b = b
+        self.c = c
+
+    @ti.func
+    def make_one(self, I):
+        return Triangle(self.a[I], self.b[I], self.c[I])
+
+    @ti.func
+    def _render(self, scene):
+        I = scene.uncook_coor(self.a)
+        scene.img[int(I)] = ts.vec3(1.0, 0.0, 0.0)
+        I = scene.uncook_coor(self.b)
+        scene.img[int(I)] = ts.vec3(0.0, 1.0, 0.0)
+        I = scene.uncook_coor(self.c)
+        scene.img[int(I)] = ts.vec3(0.0, 0.0, 1.0)
+
+    @ti.func
+    def render(self, scene):
+        for I in ti.grouped(ti.ndrange(*self.a.shape())):
+            self.make_one(I)._render(scene)
