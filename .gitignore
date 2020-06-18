@@ -1,4 +1,5 @@
 /dist/
 /build/
 /*.egg-info/
+.dismiss_screen
 __pycache__

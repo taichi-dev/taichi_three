@@ -4,12 +4,14 @@ taichi_version = (0, 6, 10)
 
 print(f'[Tai3D] version {".".join(map(str, version))}')
 
-if 1:
-    print("===========================================================")
-    print("Thank you for choosing Taichi THREE!")
-    print("The package is work in progress and your feedback can be")
-    print("more than important to us :-)")
-    print("So if you encounter any problem, or you've some cool ideas,")
-    print("please let us know by opening an issue on GitHub:")
-    print("https://github.com/taichi-dev/taichi_three/issues")
-    print("===========================================================")
+try:(lambda o:(lambda p:o.exists(p)or open(p,'w').close()and 0)(o.join(o.dirname(o.abspath(__import__('taichi_three').__file__)),'.dismiss_screen')))(__import__('os').path)or print('''\
+===========================================================
+Thank you for choosing Taichi THREE!
+The package is work in progress and your feedback can be
+more than important to us :-)
+So if you encounter any problem, or you've some cool ideas,
+please let us know by opening an issue on GitHub:
+https://github.com/taichi-dev/taichi_three/issues
+===========================================================
+''',end='')
+except:pass
