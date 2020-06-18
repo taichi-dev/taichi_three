@@ -5,7 +5,7 @@ from math import cos, sin
 from time import time
 ti.init(ti.opengl)
 
-scene = t3.Scene()
+scene = t3.SceneRT()
 pos = ti.Vector(3, ti.f32, 1)
 radius = ti.var(ti.f32, 1)
 cartoon_level = ti.var(ti.f32, ())

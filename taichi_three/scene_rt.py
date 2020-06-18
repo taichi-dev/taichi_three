@@ -1,62 +1,9 @@
 import taichi as ti
 import taichi_glsl as ts
 from .common import EPS, INF
-from .objects import Ball, Triangle
-from .render import *
+from .objects import Ball
+from .scene import *
 import math
-
-
-@ti.data_oriented
-class SceneBase:
-    def __init__(self, res=None):
-        self.res = res or (512, 512)
-        self.img = ti.Vector(3, ti.f32, self.res)
-        self.light_dir = ti.Vector(3, ti.f32, ())
-        self.camera = Camera()
-        self.opt = Shader()
-
-    def set_light_dir(self, ldir):
-        norm = math.sqrt(sum(x**2 for x in ldir))
-        ldir = [x / norm for x in ldir]
-        self.light_dir[None] = ldir
-
-    @ti.func
-    def cook_coor(self, I):
-        scale = ti.static(2 / min(*self.img.shape()))
-        coor = (I - ts.vec2(*self.img.shape()) / 2) * scale
-        return coor
-
-    @ti.func
-    def uncook_coor(self, coor):
-        coor_xy = ts.shuffle(coor, 0, 1)
-        scale = ti.static(min(*self.img.shape()) / 2)
-        I = coor_xy * scale + ts.vec2(*self.img.shape()) / 2
-        return I
-
-    def _render(self):
-        raise NotImplementedError
-
-    def render(self):
-        if not self.camera.is_set:
-            self.camera.set()
-
-        self._render()
-
-
-@ti.data_oriented
-class SceneGE(SceneBase):
-    def __init__(self, res=None):
-        super(SceneGE, self).__init__(res)
-        self.triangles = []
-
-    @ti.kernel
-    def _render(self):
-        for tri in ti.static(self.triangles):
-            tri.render(self)
-
-    def add_triangle(self, a, b, c):
-        tri = Triangle(a, b, c)
-        self.triangles.append(tri)
 
 
 @ti.data_oriented
@@ -80,9 +27,9 @@ class SceneRTBase(SceneBase):
         return color
 
     @ti.kernel
-    def _render(self):
+    def do_render(self):
         for I in ti.grouped(self.img):
-            coor = self.cook_coor()
+            coor = self.cook_coor(I)
             color = self.color_at(coor)
             self.img[I] = color
 

@@ -4,7 +4,7 @@ import time, math
 ti.init(ti.opengl)
 
 n = 2
-r = t3.Scene((640, 480))
+r = t3.SceneRT((640, 480))
 pos = ti.Vector(3, ti.f32, n)
 radius = ti.var(ti.f32, n)
 

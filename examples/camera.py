@@ -3,7 +3,7 @@ import taichi_glsl as ts
 import taichi_three as t3
 ti.init(ti.opengl)
 
-scene = t3.Scene()
+scene = t3.SceneRT()
 pos = ti.Vector(3, ti.f32, 3)
 radius = ti.var(ti.f32, 3)
 
