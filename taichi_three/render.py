@@ -111,6 +111,14 @@ class Camera:
         return self.trans[None] @ pos
 
     @ti.func
+    def untrans_pos(self, pos):
+        return self.trans[None].inverse() @ (pos - self.pos[None])
+
+    @ti.func
+    def trans_dir(self, pos):
+        return self.trans[None].inverse() @ pos
+
+    @ti.func
     def generate(self, coor):
         fov = ti.static(math.radians(self.fov))
         tan_fov = ti.static(math.tan(fov))

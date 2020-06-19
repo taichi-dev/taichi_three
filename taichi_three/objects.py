@@ -89,16 +89,22 @@ class Line(ObjectGE):
 
     @ti.func
     def do_render(self, scene):
-        width = 1
-        A = scene.uncook_coor(self.a)
-        B = scene.uncook_coor(self.b)
-        C, D = min(A, B), max(A, B)
-        for X in ti.grouped(ti.ndrange((int(C.x - width), int(D.x + width)),
-                                       (int(C.y - width), int(D.y + width)))):
+        W = 1
+        A = scene.uncook_coor(scene.camera.untrans_pos(self.a))
+        B = scene.uncook_coor(scene.camera.untrans_pos(self.b))
+        C, D = int(ti.floor(min(A, B) - W)), int(ti.ceil(max(A, B) + W))
+        for X in ti.grouped(ti.ndrange((C.x, D.x), (C.y, D.y))):
             P = B - A
-            # https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
-            udf = abs(ts.cross(X, P) + ts.cross(B, A)) / ts.length(P)
-            scene.img[X] += ts.vec3(ts.smoothstep(udf, width, 0))
+            udf = (ts.cross(X, P) + ts.cross(B, A))**2 / P.norm_sqr()
+            XoP = ts.dot(X, P)
+            AoB = ts.dot(A, B)
+            if XoP > B.norm_sqr() - AoB:
+                udf = (B - X).norm_sqr()
+            elif XoP < AoB - A.norm_sqr():
+                    udf = (A - X).norm_sqr()
+            if udf < W**2:
+                t = ts.smoothstep(udf, W**2, 0)
+                ti.atomic_max(scene.img[X], ts.vec3(t))
 
 
 @ti.data_oriented
