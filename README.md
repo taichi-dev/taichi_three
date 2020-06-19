@@ -1,8 +1,8 @@
 Taichi THREE
 ============
 
-[![Downloads](https://pepy.tech/badge/taichi-glsl/month)](https://pepy.tech/project/taichi-glsl/month)
-[![Latest Release](https://img.shields.io/github/v/release/taichi-dev/taichi_glsl)](https://github.com/taichi-dev/taichi_glsl/releases)
+[![Downloads](https://pepy.tech/badge/taichi-three)](https://pepy.tech/project/taichi-three)
+[![Latest Release](https://img.shields.io/github/v/release/taichi-dev/taichi_three)](https://github.com/taichi-dev/taichi_three/releases)
 
 Taichi THREE is an extension library of the [Taichi Programming Language](https://github.com/taichi-dev/taichi), that helps rendering your 3D scenes into nice-looking 2D images to display in GUI.
 
