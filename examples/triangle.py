@@ -9,8 +9,8 @@ pos2 = ti.Vector(3, ti.f32)
 pos3 = ti.Vector(3, ti.f32)
 ti.root.dense(ti.i, 1).place(pos1, pos2, pos3)
 
-pos1[0] = [-0.5, +0.5, 0.0]
-pos2[0] = [+0.5, +0.5, 0.0]
+pos1[0] = [+0.0, +0.5, 0.0]
+pos2[0] = [+0.5, -0.5, 0.0]
 pos3[0] = [-0.5, -0.5, 0.0]
 
 scene.add_triangle(pos1, pos2, pos3)

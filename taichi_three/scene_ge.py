@@ -13,6 +13,8 @@ class SceneGE(SceneBase):
 
     @ti.kernel
     def do_render(self):
+        for I in ti.grouped(self.img):
+            self.img[I] = ts.vec3(0)
         for tri in ti.static(self.triangles):
             tri.render(self)
 

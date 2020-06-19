@@ -92,12 +92,13 @@ class Line(ObjectGE):
         width = 1
         A = scene.uncook_coor(self.a)
         B = scene.uncook_coor(self.b)
-        A, B = min(A, B), max(A, B)
-        BAN = ts.normalize(B - A)
-        for X in ti.grouped(ti.ndrange((A.x - width, B.x + width),
-                                       (A.y - width, B.y + width))):
-            udf = abs(ts.cross(X - A, BAN))
-            scene.img[int(X)] = ts.vec3(ts.smoothstep(udf, width, 0))
+        C, D = min(A, B), max(A, B)
+        for X in ti.grouped(ti.ndrange((int(C.x - width), int(D.x + width)),
+                                       (int(C.y - width), int(D.y + width)))):
+            P = B - A
+            # https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+            udf = abs(ts.cross(X, P) + ts.cross(B, A)) / ts.length(P)
+            scene.img[X] += ts.vec3(ts.smoothstep(udf, width, 0))
 
 
 @ti.data_oriented
@@ -113,6 +114,10 @@ class Triangle(ObjectGE):
 
     def to_lines(self):
         return Line(self.b, self.c), Line(self.c, self.a), Line(self.a, self.b)
+
+    @ti.func
+    def _tri_break(self):
+        a, b, c = ti.static(self.a, self.b, self.c)
 
     @ti.func
     def do_render(self, scene):
