@@ -30,7 +30,7 @@ def glQuad(A, B, C, D):
 def glCircle(center, dir1, dir2, N: ti.template()):
     for n in range(N):
         a = n * ts.math.tau / N
-        b = a + ts.math.tau / N
+        b = a - ts.math.tau / N
         p = center + dir1 * ti.cos(a) + dir2 * ti.sin(a)
         q = center + dir1 * ti.cos(b) + dir2 * ti.sin(b)
         glTri(p, center, q)
@@ -42,9 +42,9 @@ def glCylinder(center, polar, dir1, dir2, N: ti.template()):
         b = a + ts.math.tau / N
         p = center + dir1 * ti.cos(a) + dir2 * ti.sin(a)
         q = center + dir1 * ti.cos(b) + dir2 * ti.sin(b)
-        glQuad(p, q, p + polar, q + polar)
+        glQuad(p, q, q + polar, p + polar)
 
-    glCircle(center, dir1, dir2, N)
+    glCircle(center, dir2, dir1, N)
     glCircle(center + polar, dir1, dir2, N)
 
 @ti.func
@@ -60,9 +60,9 @@ def glSphere(center, polar, dir1, dir2, M: ti.template(), N: ti.template()):
         q1 = center + polar * h + r1 * ti.cos(b) + r2 * ti.sin(b)
         r, h = ti.cos(d), ti.sin(d)
         r1, r2 = r * dir1, r * dir2
-        p2 = center + polar * h + r1 * ti.cos(b) + r2 * ti.sin(b)
+        p2 = center + polar * h + r1 * ti.cos(a) + r2 * ti.sin(a)
         q2 = center + polar * h + r1 * ti.cos(b) + r2 * ti.sin(b)
-        glQuad(p1, q1, p2, q2)
+        glQuad(q1, p1, p2, q2)
 
 
 @ti.kernel
@@ -100,7 +100,7 @@ def initSphere():
              8, 16)
 
 
-initSphere()
+initCylinder()
 
 gui = ti.GUI('Mesh of Triangles', scene.res)
 while gui.running:

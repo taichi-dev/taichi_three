@@ -73,7 +73,15 @@ class ObjectGE(Object):
         for I in ti.grouped(ti.ndrange(*self.a.shape())):
             self.make_one(I).do_render(scene)
 
+    @ti.func
+    def render_stroke(self, scene):
+        for I in ti.grouped(ti.ndrange(*self.a.shape())):
+            self.make_one(I).do_render_stroke(scene)
+
     def do_render(self, scene):
+        raise NotImplementedError
+
+    def do_render_stroke(self, scene):
         raise NotImplementedError
 
 
@@ -92,8 +100,8 @@ class Line(ObjectGE):
         W = 1
         A = scene.uncook_coor(scene.camera.untrans_pos(self.a))
         B = scene.uncook_coor(scene.camera.untrans_pos(self.b))
-        C, D = int(ti.floor(min(A, B) - W)), int(ti.ceil(max(A, B) + W))
-        for X in ti.grouped(ti.ndrange((C.x, D.x), (C.y, D.y))):
+        M, N = int(ti.floor(min(A, B) - W)), int(ti.ceil(max(A, B) + W))
+        for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             P = B - A
             udf = (ts.cross(X, P) + ts.cross(B, A))**2 / P.norm_sqr()
             XoP = ts.dot(X, P)
@@ -104,7 +112,8 @@ class Line(ObjectGE):
                     udf = (A - X).norm_sqr()
             if udf < W**2:
                 t = ts.smoothstep(udf, W**2, 0)
-                ti.atomic_max(scene.img[X], ts.vec3(t))
+                ti.atomic_min(scene.img[X].y, 1 - t)
+                ti.atomic_max(scene.img[X].z, t)
 
 
 @ti.data_oriented
@@ -122,12 +131,32 @@ class Triangle(ObjectGE):
         return Line(self.b, self.c), Line(self.c, self.a), Line(self.a, self.b)
 
     @ti.func
-    def _tri_break(self):
-        a, b, c = ti.static(self.a, self.b, self.c)
-
-    @ti.func
-    def do_render(self, scene):
+    def do_render_stroke(self, scene):
         A, B, C = self.to_lines()
         A.do_render(scene)
         B.do_render(scene)
         C.do_render(scene)
+
+    @staticmethod
+    @ti.func
+    def _line_sdf(X, A, B):
+        P = B - A
+        t = ts.cross(X, P) + ts.cross(B, A)
+        return t / ts.length(P)
+
+    @ti.func
+    def do_render(self, scene):
+        W = 1
+        A = scene.uncook_coor(scene.camera.untrans_pos(self.a))
+        B = scene.uncook_coor(scene.camera.untrans_pos(self.b))
+        C = scene.uncook_coor(scene.camera.untrans_pos(self.c))
+        M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
+        for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
+            AB = self._line_sdf(X, A, B)
+            BC = self._line_sdf(X, B, C)
+            CA = self._line_sdf(X, C, A)
+            udf = max(0, max(AB, BC, CA))
+            if udf < W:
+                t = ts.smoothstep(udf, W, 0)
+                ti.atomic_max(scene.img[X].x, t)
+                ti.atomic_max(scene.img[X].y, t)
