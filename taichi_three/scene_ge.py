@@ -17,8 +17,6 @@ class SceneGE(SceneBase):
             self.img[I] = ts.vec3(0)
         for tri in ti.static(self.triangles):
             tri.render(self)
-        for tri in ti.static(self.triangles):
-            tri.render_stroke(self)
 
     def add_triangle(self, a, b, c):
         tri = Triangle(a, b, c)

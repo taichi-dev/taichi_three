@@ -115,7 +115,7 @@ class Camera:
         return self.trans[None].inverse() @ (pos - self.pos[None])
 
     @ti.func
-    def trans_dir(self, pos):
+    def untrans_dir(self, pos):
         return self.trans[None].inverse() @ pos
 
     @ti.func

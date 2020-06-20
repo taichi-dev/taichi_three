@@ -7,7 +7,7 @@ scene = t3.SceneGE()
 pos1 = ti.Vector(3, ti.f32)
 pos2 = ti.Vector(3, ti.f32)
 pos3 = ti.Vector(3, ti.f32)
-tris = ti.root.dynamic(ti.i, 1024)
+tris = ti.root.dynamic(ti.i, 2 ** 12)
 tris.place(pos1, pos2, pos3)
 tris_len = ti.var(ti.i32, ())
 
@@ -49,11 +49,11 @@ def glCylinder(center, polar, dir1, dir2, N: ti.template()):
 
 @ti.func
 def glSphere(center, polar, dir1, dir2, M: ti.template(), N: ti.template()):
-    for m, n in ti.ndrange((-M, M + 1), N):
+    for m, n in ti.ndrange((1 - M, M - 1), N):
         a = n * ts.math.tau / N
         b = a + ts.math.tau / N
         c = m * ts.math.pi / 2 / M
-        d = c - ts.math.pi / 2 / M
+        d = c + ts.math.pi / 2 / M
         r, h = ti.cos(c), ti.sin(c)
         r1, r2 = r * dir1, r * dir2
         p1 = center + polar * h + r1 * ti.cos(a) + r2 * ti.sin(a)
@@ -63,6 +63,21 @@ def glSphere(center, polar, dir1, dir2, M: ti.template(), N: ti.template()):
         p2 = center + polar * h + r1 * ti.cos(a) + r2 * ti.sin(a)
         q2 = center + polar * h + r1 * ti.cos(b) + r2 * ti.sin(b)
         glQuad(q1, p1, p2, q2)
+    r, h = ti.sin(ts.math.pi / 2 / M), ti.cos(ts.math.pi / 2 / M)
+    r1, r2 = r * dir1, r * dir2
+    cp1 = center + polar
+    cph = center + polar * h
+    cq1 = center - polar
+    cqh = center - polar * h
+    for n in range(N):
+        a = n * ts.math.tau / N
+        b = a - ts.math.tau / N
+        p = cph + r1 * ti.cos(a) + r2 * ti.sin(a)
+        q = cph + r1 * ti.cos(b) + r2 * ti.sin(b)
+        glTri(p, q, cp1)
+        p = cqh + r1 * ti.cos(a) + r2 * ti.sin(a)
+        q = cqh + r1 * ti.cos(b) + r2 * ti.sin(b)
+        glTri(q, p, cq1)
 
 
 @ti.kernel
@@ -97,10 +112,10 @@ def initSphere():
              ts.vec3(0.0, 0.0, 0.5),
              ts.vec3(0.5, 0.0, 0.0),
              ts.vec3(0.0, 0.5, 0.0),
-             8, 16)
+             16, 64)
 
 
-initCylinder()
+initSphere()
 
 gui = ti.GUI('Mesh of Triangles', scene.res)
 while gui.running:
