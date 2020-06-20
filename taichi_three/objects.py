@@ -138,13 +138,6 @@ class Triangle(ObjectGE):
         B.do_render(scene)
         C.do_render(scene)
 
-    @staticmethod
-    @ti.func
-    def _line_sdf(X, A, B):
-        P = B - A
-        t = ts.cross(X, P) + ts.cross(B, A)
-        return t / ts.length(P)
-
     @ti.func
     def do_render(self, scene):
         a = scene.camera.untrans_pos(self.a)
@@ -167,9 +160,12 @@ class Triangle(ObjectGE):
         AxC = ts.cross(A, C) * ilA_C
         normal = ts.normalize(ts.cross(a - c, a - b))
         light_dir = scene.camera.untrans_dir(scene.light_dir[None])
-        color = ts.vec3(ts.dot(normal, light_dir) * 0.5 + 0.5)
+        pos = (a + b + c) * (1 / 3)
+        dir = ts.vec3(0.0)
+        color = scene.opt.render_func(pos, normal, dir, light_dir)
+        color = scene.opt.pre_process(color)
 
-        W = 1
+        W = 0.4
         M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             AB = ts.cross(X, B_A) + BxA
