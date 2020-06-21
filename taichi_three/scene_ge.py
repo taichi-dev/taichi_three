@@ -1,6 +1,6 @@
 import taichi as ti
 import taichi_glsl as ts
-from .objects import Triangle
+from .object_ge import Triangle
 from .scene import *
 import math
 

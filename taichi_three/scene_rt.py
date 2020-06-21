@@ -1,7 +1,7 @@
 import taichi as ti
 import taichi_glsl as ts
 from .common import EPS, INF
-from .objects import Ball
+from .object_rt import Ball
 from .scene import *
 import math
 
