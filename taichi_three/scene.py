@@ -4,13 +4,14 @@ from .render import *
 
 
 @ti.data_oriented
-class SceneBase:
+class Scene:
     def __init__(self, res=None):
         self.res = res or (512, 512)
-        self.img = ti.Vector(3, ti.f32, self.res)
-        self.light_dir = ti.Vector(3, ti.f32, ())
+        self.img = ti.Vector.var(3, ti.f32, self.res)
+        self.light_dir = ti.Vector.var(3, ti.f32, ())
         self.camera = Camera()
         self.opt = Shader()
+        self.models = []
 
     def set_light_dir(self, ldir):
         norm = math.sqrt(sum(x**2 for x in ldir))
@@ -30,15 +31,13 @@ class SceneBase:
         I = coor_xy * scale + ts.vec2(*self.img.shape()) / 2
         return I
 
-    def do_render(self):
-        raise NotImplementedError
+    def add_model(self, model):
+        model.scene = self
+        self.models.append(model)
 
     def render(self):
         if not self.camera.is_set:
             self.camera.set()
 
-        self.do_render()
-
-
-from .scene_rt import *
-from .scene_ge import *
+        for model in self.models:
+            model.render()

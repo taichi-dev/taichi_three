@@ -4,25 +4,26 @@ import taichi_three as t3
 import numpy as np
 
 
-model = t3.readobj('examples/torus.obj') / 2
+obj = t3.readobj('examples/torus.obj', scale=0.5)
 
-N = model.shape[0]
+n_faces = obj['f'].shape[0]
+n_vertices = obj['v'].shape[0]
 
 
 ti.init(ti.cpu)
 
-scene = t3.SceneGE()
-pos1 = ti.Vector(3, ti.f32)
-pos2 = ti.Vector(3, ti.f32)
-pos3 = ti.Vector(3, ti.f32)
-ti.root.dense(ti.i, N).place(pos1, pos2, pos3)
+scene = t3.Scene()
 
+model = t3.Model()
+v_pos = ti.Vector.var(3, ti.f32, n_vertices)
+f_idx = ti.Vector.var(3, ti.i32, n_faces)
+v_pos.from_numpy(obj['v'])
+f_idx.from_numpy(obj['f'])
+model.add_geometry(t3.Face(f_idx))
+model.set_vertices(t3.Vertex(v_pos))
 
-scene.add_triangle(pos1, pos2, pos3)
+scene.add_model(model)
 scene.set_light_dir([0.4, -1.5, -1.8])
-pos1.from_numpy(model[:, 0])
-pos2.from_numpy(model[:, 1])
-pos3.from_numpy(model[:, 2])
 
 
 gui = ti.GUI('Loading Model', scene.res)

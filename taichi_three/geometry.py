@@ -4,34 +4,52 @@ from .common import TaichiClass
 
 
 @ti.data_oriented
-class ObjectGE:
+class Geometry(TaichiClass):
     @ti.func
-    def render(self, scene):
-        for I in ti.grouped(ti.ndrange(*self.a.shape())):
-            self.make_one(I).do_render(scene)
+    def render(self):
+        for I in ti.grouped(ti.ndrange(*self.loop_range().shape())):
+            self.subscript(I).do_render()
 
-    def do_render(self, scene):
-        raise NotImplementedError
+    def subscript(self, I):
+        ret = self._subscript(I)
+        try:
+            ret.model = self.model
+        except AttributeError:
+            pass
+        return ret
 
-    def do_render_stroke(self, scene):
+    def do_render(self):
         raise NotImplementedError
 
 
 @ti.data_oriented
-class Line(ObjectGE):
-    def __init__(self, a, b):
-        self.a = a
-        self.b = b
+class Vertex(Geometry):
+    @property
+    def pos(self):
+        return self.entries[0]
+
+
+@ti.data_oriented
+class Line(Geometry):
+    @property
+    def idx(self):
+        return self.entries[0]
+
+    @classmethod
+    def _var(cls):
+        return ti.Vector.var(2, ti.i32)
 
     @ti.func
-    def make_one(self, I):
-        return Line(self.a[I], self.b[I])
+    def vertex(self, i: ti.template()):
+        model = self.model
+        return model.vertices[self.idx[i]]
 
     @ti.func
-    def do_render(self, scene):
+    def do_render(self):
+        scene = self.model.scene
         W = 1
-        A = scene.uncook_coor(scene.camera.untrans_pos(self.a))
-        B = scene.uncook_coor(scene.camera.untrans_pos(self.b))
+        A = scene.uncook_coor(scene.camera.untrans_pos(self.vertex(0).pos))
+        B = scene.uncook_coor(scene.camera.untrans_pos(self.vertex(1).pos))
         M, N = int(ti.floor(min(A, B) - W)), int(ti.ceil(max(A, B) + W))
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             P = B - A
@@ -50,21 +68,22 @@ class Line(ObjectGE):
 
 
 @ti.data_oriented
-class Triangle(ObjectGE):
-    def __init__(self, a, b, c):
-        self.a = a
-        self.b = b
-        self.c = c
+class Face(Geometry):
+    @property
+    def idx(self):
+        return self.entries[0]
 
     @ti.func
-    def make_one(self, I):
-        return Triangle(self.a[I], self.b[I], self.c[I])
+    def vertex(self, i: ti.template()):
+        model = self.model
+        return model.vertices[self.idx[i]]
 
     @ti.func
-    def do_render(self, scene):
-        a = scene.camera.untrans_pos(self.a)
-        b = scene.camera.untrans_pos(self.b)
-        c = scene.camera.untrans_pos(self.c)
+    def do_render(self):
+        scene = self.model.scene
+        a = scene.camera.untrans_pos(self.vertex(0).pos)
+        b = scene.camera.untrans_pos(self.vertex(1).pos)
+        c = scene.camera.untrans_pos(self.vertex(2).pos)
         A = scene.uncook_coor(a)
         B = scene.uncook_coor(b)
         C = scene.uncook_coor(c)
