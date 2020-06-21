@@ -78,7 +78,9 @@ class Face(Geometry):
 
     @classmethod
     def _var(cls, shape=None):
-        return ti.Vector.var(3, ti.i32, shape)
+        ret = []
+        ret.append(ti.Vector.var(3, ti.i32, shape))
+        return ret
 
     @ti.func
     def vertex(self, i: ti.template()):
@@ -108,20 +110,30 @@ class Face(Geometry):
         AxC = ts.cross(A, C) * ilA_C
         normal = ts.normalize(ts.cross(a - c, a - b))
         light_dir = scene.camera.untrans_dir(scene.light_dir[None])
-        pos = (a + b + c) * (1 / 3)
-        dir = ts.vec3(0.0)
-        color = scene.opt.render_func(pos, normal, dir, light_dir)
+        pos = (a + b + c) / 3
+        color = scene.opt.render_func(pos, normal, ts.vec3(0.0), light_dir)
         color = scene.opt.pre_process(color)
 
-        W = 0.4
+        Ak = 1 / (ts.cross(A, C_B) + CxB)
+        Bk = 1 / (ts.cross(B, A_C) + AxC)
+        Ck = 1 / (ts.cross(C, B_A) + BxA)
+
+        W = 1
+        ZW = ts.distance(a, b) * 0.2
         M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             AB = ts.cross(X, B_A) + BxA
             BC = ts.cross(X, C_B) + CxB
             CA = ts.cross(X, A_C) + AxC
             udf = max(AB, BC, CA)
-            if udf < 0:
-                scene.img[X] = color
-            elif udf < W:
-                t = ts.smoothstep(udf, W, 0)
-                ti.atomic_max(scene.img[X], t * color)
+            if udf < W:
+                zindex = (Ak * a.z * BC + Bk * b.z * CA + Ck * c.z * AB)
+                if udf < 0:
+                    zstep = zindex - ti.atomic_max(scene.zbuf[X], zindex)
+                    if zstep >= 0:
+                        scene.img[X] = color
+                else:
+                    zstep = zindex - scene.zbuf[X]
+                    if zstep >= 0:
+                        t = ts.smoothstep(udf, W, 0)
+                        ti.atomic_max(scene.img[X], t * color)

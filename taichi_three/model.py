@@ -21,11 +21,9 @@ class Model:
         self.set_vertices(vertex)
         self.add_geometry(face)
 
-    @ti.kernel
+    @ti.func
     def render(self):
         scene = self.scene
-        for I in ti.grouped(scene.img):
-            scene.img[I] = ts.vec3(0)
         if ti.static(len(self.geo_list)):
             for geo in ti.static(self.geo_list):
                 geo.render()

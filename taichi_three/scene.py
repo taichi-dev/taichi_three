@@ -8,6 +8,7 @@ class Scene:
     def __init__(self, res=None):
         self.res = res or (512, 512)
         self.img = ti.Vector.var(3, ti.f32, self.res)
+        self.zbuf = ti.var(ti.f32, self.res)
         self.light_dir = ti.Vector.var(3, ti.f32, ())
         self.camera = Camera()
         self.opt = Shader()
@@ -37,6 +38,13 @@ class Scene:
     def render(self):
         if not self.camera.is_set:
             self.camera.set()
+        self._render()
 
-        for model in self.models:
-            model.render()
+    @ti.kernel
+    def _render(self):
+        for I in ti.grouped(self.img):
+            self.img[I] = ts.vec3(0.0)
+            self.zbuf[I] = 0.0
+        if ti.static(len(self.models)):
+            for model in ti.static(self.models):
+                model.render()
