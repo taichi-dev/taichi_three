@@ -1,10 +1,9 @@
 import taichi as ti
 import taichi_glsl as ts
-from .common import TaichiClass
 
 
 @ti.data_oriented
-class Geometry(TaichiClass):
+class Geometry(ts.TaichiClass):
     @ti.func
     def render(self):
         for I in ti.grouped(ti.ndrange(*self.loop_range().shape())):
@@ -28,6 +27,10 @@ class Vertex(Geometry):
     def pos(self):
         return self.entries[0]
 
+    @classmethod
+    def _var(cls, shape=None):
+        return ti.Vector.var(3, ti.f32, shape)
+
 
 @ti.data_oriented
 class Line(Geometry):
@@ -36,8 +39,8 @@ class Line(Geometry):
         return self.entries[0]
 
     @classmethod
-    def _var(cls):
-        return ti.Vector.var(2, ti.i32)
+    def _var(cls, shape=None):
+        return ti.Vector.var(2, ti.i32, shape)
 
     @ti.func
     def vertex(self, i: ti.template()):
@@ -72,6 +75,10 @@ class Face(Geometry):
     @property
     def idx(self):
         return self.entries[0]
+
+    @classmethod
+    def _var(cls, shape=None):
+        return ti.Vector.var(3, ti.i32, shape)
 
     @ti.func
     def vertex(self, i: ti.template()):

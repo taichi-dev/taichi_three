@@ -26,9 +26,8 @@ class Scene:
 
     @ti.func
     def uncook_coor(self, coor):
-        coor_xy = ts.shuffle(coor, 0, 1)
         scale = ti.static(min(*self.img.shape()) / 2)
-        I = coor_xy * scale + ts.vec2(*self.img.shape()) / 2
+        I = coor.xy * scale + ts.vec2(*self.img.shape()) / 2
         return I
 
     def add_model(self, model):

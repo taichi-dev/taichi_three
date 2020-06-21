@@ -6,9 +6,20 @@ import math
 
 @ti.data_oriented
 class Model:
-    def __init__(self, res=None):
+    def __init__(self, obj=None):
         self.geo_list = []
         self.vertices = []
+        if obj is not None:
+            self.from_obj(obj)
+
+    def from_obj(self, obj):
+        import taichi_three as t3
+        vertex = t3.Vertex.var(obj['v'].shape[0])
+        face = t3.Face.var(obj['f'].shape[0])
+        vertex.pos.from_numpy(obj['v'])
+        face.idx.from_numpy(obj['f'])
+        self.set_vertices(vertex)
+        self.add_geometry(face)
 
     @ti.kernel
     def render(self):
