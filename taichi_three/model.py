@@ -11,12 +11,12 @@ class Model(AutoInit):
     def __init__(self, obj=None):
         self.geo_list = []
         self.vertices = []
-        self.W2L = Affine.var(())
+        self.L2W = Affine.var(())
         if obj is not None:
             self.from_obj(obj)
 
     def _init(self):
-        self.W2L.init()
+        self.L2W.init()
 
     def from_obj(self, obj):
         vertex = Vertex.var(obj['v'].shape[0])

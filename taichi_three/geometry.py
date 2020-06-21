@@ -89,9 +89,10 @@ class Face(Geometry):
     def do_render(self):
         model = self.model
         scene = model.scene
-        a = model.W2L @ scene.camera.untrans_pos(self.vertex(0).pos)
-        b = model.W2L @ scene.camera.untrans_pos(self.vertex(1).pos)
-        c = model.W2L @ scene.camera.untrans_pos(self.vertex(2).pos)
+        L2W = model.L2W
+        a = scene.camera.untrans_pos(L2W @ self.vertex(0).pos)
+        b = scene.camera.untrans_pos(L2W @ self.vertex(1).pos)
+        c = scene.camera.untrans_pos(L2W @ self.vertex(2).pos)
         A = scene.uncook_coor(a)
         B = scene.uncook_coor(b)
         C = scene.uncook_coor(c)
