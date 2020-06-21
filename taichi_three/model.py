@@ -1,21 +1,26 @@
 import taichi as ti
 import taichi_glsl as ts
 from .geometry import *
+from .transform import *
+from .common import *
 import math
 
 
 @ti.data_oriented
-class Model:
+class Model(AutoInit):
     def __init__(self, obj=None):
         self.geo_list = []
         self.vertices = []
+        self.W2L = Affine.var(())
         if obj is not None:
             self.from_obj(obj)
 
+    def _init(self):
+        self.W2L.init()
+
     def from_obj(self, obj):
-        import taichi_three as t3
-        vertex = t3.Vertex.var(obj['v'].shape[0])
-        face = t3.Face.var(obj['f'].shape[0])
+        vertex = Vertex.var(obj['v'].shape[0])
+        face = Face.var(obj['f'].shape[0])
         vertex.pos.from_numpy(obj['v'])
         face.idx.from_numpy(obj['f'])
         self.set_vertices(vertex)

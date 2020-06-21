@@ -1,56 +1,43 @@
 import taichi as ti
 import taichi_glsl as ts
-import taichi_three as t3
+from .common import *
 import math
-
-class Shader:
-    def __init__(self, **kwargs):
-        self.is_normal_map = False
-        self.lambert = 0.58
-        self.half_lambert = 0.04
-        self.blinn_phong = 0.3
-        self.phong = 0.0
-        self.shineness = 10
-        self.__dict__.update(kwargs)
-
-    @ti.func
-    def render_func(self, pos, normal, dir, light_dir):
-        color = ts.vec3(0.0)
-
-        shineness = self.shineness
-        half_lambert = ts.dot(normal, light_dir) * 0.5 + 0.5
-        lambert = max(0, ts.dot(normal, light_dir))
-        blinn_phong = ts.dot(normal, ts.mix(light_dir, -dir, 0.5))
-        blinn_phong = pow(max(blinn_phong, 0), shineness)
-        refl_dir = ts.reflect(light_dir, normal)
-        phong = -ts.dot(normal, refl_dir)
-        phong = pow(max(phong, 0), shineness)
-
-        strength = 0.0
-        if ti.static(self.lambert != 0.0):
-            strength += lambert * self.lambert
-        if ti.static(self.half_lambert != 0.0):
-            strength += half_lambert * self.half_lambert
-        if ti.static(self.blinn_phong != 0.0):
-            strength += blinn_phong * self.blinn_phong
-        if ti.static(self.phong != 0.0):
-            strength += phong * self.phong
-        color = ts.vec3(strength)
-
-        if ti.static(self.is_normal_map):
-            color = normal * 0.5 + 0.5
-
-        return color
-
-    @ti.func
-    def pre_process(self, color):
-        blue = ts.vec3(0.00, 0.01, 0.05)
-        orange = ts.vec3(1.19, 1.04, 0.98)
-        return ti.sqrt(ts.mix(blue, orange, color))
 
 
 @ti.data_oriented
-class Camera:
+class Affine(ts.TaichiClass, AutoInit):
+    @property
+    def matrix(self):
+        return self.entries[0]
+
+    @property
+    def offset(self):
+        return self.entries[1]
+
+    @classmethod
+    def _var(cls, shape=None):
+        return ti.Matrix(3, 3, ti.f32, shape), ti.Vector.var(3, ti.f32, shape)
+
+    @ti.func
+    def loadIdentity(self):
+        self.matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        self.offset = [0, 0, 0]
+
+    @ti.kernel
+    def _init(self):
+        self.loadIdentity()
+
+    @ti.func
+    def __matmul__(self, other):
+        return self.matrix @ other + self.offset
+
+    @ti.func
+    def inverse(self, other):
+        return Affine(self.matrix.inverse(), -self.offset)
+
+
+@ti.data_oriented
+class Camera(AutoInit):
     ORTHO = 'Orthogonal'
     TAN_FOV = 'Tangent Perspective'
     COS_FOV = 'Cosine Perspective'
@@ -60,11 +47,8 @@ class Camera:
         self.pos = ti.Vector(3, ti.f32, ())
         self.type = self.TAN_FOV
         self.fov = 25
-        self.is_set = False
 
     def set(self, pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
-        self.is_set = True
-
         # fwd = target - pos
         fwd = [target[i] - pos[i] for i in range(3)]
         # fwd = fwd.normalized()
@@ -91,6 +75,9 @@ class Camera:
         trans = [[trans[i][j] for i in range(3)] for j in range(3)]
         self.trans[None] = trans
         self.pos[None] = pos
+
+    def _init(self):
+        self.set()
 
     def from_mouse(self, mpos, dis=2):
         if isinstance(mpos, ti.GUI):

@@ -78,9 +78,7 @@ class Face(Geometry):
 
     @classmethod
     def _var(cls, shape=None):
-        ret = []
-        ret.append(ti.Vector.var(3, ti.i32, shape))
-        return ret
+        return ti.Vector.var(3, ti.i32, shape)
 
     @ti.func
     def vertex(self, i: ti.template()):
@@ -89,10 +87,11 @@ class Face(Geometry):
 
     @ti.func
     def do_render(self):
-        scene = self.model.scene
-        a = scene.camera.untrans_pos(self.vertex(0).pos)
-        b = scene.camera.untrans_pos(self.vertex(1).pos)
-        c = scene.camera.untrans_pos(self.vertex(2).pos)
+        model = self.model
+        scene = model.scene
+        a = model.W2L @ scene.camera.untrans_pos(self.vertex(0).pos)
+        b = model.W2L @ scene.camera.untrans_pos(self.vertex(1).pos)
+        c = model.W2L @ scene.camera.untrans_pos(self.vertex(2).pos)
         A = scene.uncook_coor(a)
         B = scene.uncook_coor(b)
         C = scene.uncook_coor(c)
