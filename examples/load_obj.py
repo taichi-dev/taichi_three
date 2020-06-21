@@ -4,7 +4,7 @@ import taichi_three as t3
 import numpy as np
 
 
-model = t3.readobj('examples/test.obj') / 2
+model = t3.readobj('examples/torus.obj') / 2
 
 N = model.shape[0]
 
