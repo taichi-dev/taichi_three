@@ -1,25 +1,41 @@
 import taichi as ti
 import taichi_glsl as ts
 import taichi_three as t3
-ti.init(ti.cpu)
+ti.init(ti.opengl, kernel_profiler=True)
 
-scene = t3.SceneGE()
-pos1 = ti.Vector(3, ti.f32)
-pos2 = ti.Vector(3, ti.f32)
-pos3 = ti.Vector(3, ti.f32)
-tris = ti.root.dynamic(ti.i, 2 ** 12)
-tris.place(pos1, pos2, pos3)
-tris_len = ti.var(ti.i32, ())
+scene = t3.Scene()
+model = t3.Model()
+scene.add_model(model)
 
-scene.add_triangle(pos1, pos2, pos3)
-scene.set_light_dir([1, 1, -1])
+N = 2 ** 12
+faces = t3.Face.var()
+vertices = t3.Vertex.var()
+ti.root.dense(ti.i, N * 3).place(vertices)
+ti.root.dense(ti.i, N).place(faces)
+vertices_len = ti.var(ti.i32, ())
+faces_len = ti.var(ti.i32, ())
+
+model.set_vertices(vertices)
+model.add_geometry(faces)
+
+@ti.func
+def glVertex(pos):
+    l = ti.atomic_add(vertices_len[None], 1)
+    vertices.pos[l] = pos
+    return l
+
+@ti.func
+def glFace(idx):
+    l = ti.atomic_add(faces_len[None], 1)
+    faces.idx[l] = idx
+    return l
 
 @ti.func
 def glTri(A, B, C):
-    l = ti.atomic_add(tris_len[None], 1)
-    pos1[l] = A
-    pos2[l] = B
-    pos3[l] = C
+    i = glVertex(A)
+    j = glVertex(B)
+    k = glVertex(C)
+    glFace(ts.vec3(i, j, k))
 
 @ti.func
 def glQuad(A, B, C, D):
@@ -109,7 +125,7 @@ def initCylinder():
 @ti.kernel
 def initSphere():
     glSphere(ts.vec3(0.0, 0.0, 0.0),
-             ts.vec3(0.0, 0.0, 0.5),
+             ts.vec3(0.0, 0.0, 0.6),
              ts.vec3(0.5, 0.0, 0.0),
              ts.vec3(0.0, 0.5, 0.0),
              16, 64)
@@ -117,10 +133,13 @@ def initSphere():
 
 initSphere()
 
+scene.set_light_dir([1, 1, -1])
 gui = ti.GUI('Mesh of Triangles', scene.res)
 while gui.running:
     gui.running = not gui.get_event(ti.GUI.ESCAPE)
-    scene.camera.from_mouse(gui)
+    model.L2W.from_mouse(gui)
     scene.render()
     gui.set_image(scene.img)
     gui.show()
+
+ti.kernel_profiler_print()
