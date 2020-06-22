@@ -11,7 +11,7 @@ radius = ti.var(ti.f32, 1)
 scene.add_ball(pos, radius)
 
 radius[0] = 0.5
-gui = ti.GUI('Ball')
+gui = ti.GUI('Ray Tracing Ball')
 while gui.running:
     gui.running = not gui.get_event(ti.GUI.ESCAPE)
     scene.set_light_dir([sin(time() * 2) * sin(time() * 0.6),

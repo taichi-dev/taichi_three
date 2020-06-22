@@ -16,7 +16,7 @@ radius[2] = 0.2
 pos[1] = [-0.3, 0.3, 0]
 pos[2] = [+0.3, 0.3, 0]
 
-gui = ti.GUI('Camera')
+gui = ti.GUI('Mickey')
 while gui.running:
     gui.running = not gui.get_event(ti.GUI.ESCAPE)
     scene.camera.from_mouse(gui)
