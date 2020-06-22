@@ -61,8 +61,7 @@ class Affine(ts.TaichiClass, AutoInit):
 
         # trans = ti.Matrix.cols([right, up, fwd])
         trans = [right, up, fwd]
-        print(trans)
-        #trans = [[trans[i][j] for i in range(3)] for j in range(3)]
+        trans = [[trans[i][j] for i in range(3)] for j in range(3)]
         self.matrix[None] = trans
 
     def from_mouse(self, mpos):

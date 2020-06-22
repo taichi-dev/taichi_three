@@ -1,12 +1,15 @@
 import taichi as ti
 import taichi_glsl as ts
-from .common import EPS, INF, TaichiClass
 from .scene import *
 import math
 
 
+EPS = 1e-3
+INF = 1e3
+
+
 @ti.data_oriented
-class ObjectRT(TaichiClass):
+class ObjectRT(ts.TaichiClass):
     @ti.func
     def calc_sdf(self, p):
         ret = INF
@@ -63,7 +66,7 @@ class Ball(ObjectRT):
 
 
 @ti.data_oriented
-class SceneRTBase(SceneBase):
+class SceneRTBase(Scene):
     def __init__(self, res=None):
         super(SceneRTBase, self).__init__(res)
         self.balls = []
@@ -83,7 +86,7 @@ class SceneRTBase(SceneBase):
         return color
 
     @ti.kernel
-    def do_render(self):
+    def _render(self):
         for I in ti.grouped(self.img):
             coor = self.cook_coor(I)
             color = self.color_at(coor)
