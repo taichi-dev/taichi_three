@@ -1,18 +1,15 @@
 import taichi as ti
 import taichi_glsl as ts
 import taichi_three as t3
-from math import cos, sin, tan, pi, tau
-from time import time
 ti.init(ti.opengl)
 
 N = 12
 dt = 0.01
 
-scene = t3.Scene((640, 640))
+scene = t3.SceneRT((640, 640))
 pos = ti.Vector(3, ti.f32, N)
 vel = ti.Vector(3, ti.f32, N)
 radius = ti.var(ti.f32, N)
-bound = ti.Vector(3, ti.f32, ())
 
 scene.add_ball(pos, radius)
 scene.set_light_dir([1, 1, -1])
@@ -57,7 +54,7 @@ def substep():
         pos[i] += vel[i] * dt
 
 init()
-gui = ti.GUI('Ball', scene.res)
+gui = ti.GUI('Balls', scene.res)
 while gui.running:
     gui.running = not gui.get_event(ti.GUI.ESCAPE)
     for i in range(4):

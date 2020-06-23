@@ -3,3 +3,4 @@
 /*.egg-info/
 .dismiss_screen
 __pycache__
+/tags
