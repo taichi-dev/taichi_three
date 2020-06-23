@@ -1,29 +1,5 @@
 import numpy as np
 
-def _crossProduct(a, b):
-    x, y, z = a
-    u, v, w = b
-    return y * w - z * v, z * u - w * x, x * v - y * u
-
-def _dotProduct(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x * u + y * v + z * w
-
-def _vectorAdd(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x + u, y + v, z + w
-
-def _vectorSub(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x - u, y - v, z - w
-
-def _vectorMul(a, k):
-    x, y, z = a
-    return x * k, y * k, z * k
-
 
 def readobj(path, direct=False, scale=None):
     vertices = []

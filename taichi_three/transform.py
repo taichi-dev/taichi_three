@@ -4,6 +4,53 @@ from .common import *
 import math
 
 
+def crossProduct(a, b):
+    x, y, z = a
+    u, v, w = b
+    return y * w - z * v, z * u - w * x, x * v - y * u
+
+def dotProduct(a, b):
+    x, y, z = a
+    u, v, w = b
+    return x * u + y * v + z * w
+
+def vectorAdd(a, b):
+    x, y, z = a
+    u, v, w = b
+    return x + u, y + v, z + w
+
+def vectorSub(a, b):
+    x, y, z = a
+    u, v, w = b
+    return x - u, y - v, z - w
+
+def vectorMul(a, k):
+    x, y, z = a
+    return x * k, y * k, z * k
+
+
+def rotationX(angle):
+    return [
+            [1,               0,                0],
+            [0, math.cos(angle), -math.sin(angle)],
+            [0, math.sin(angle),  math.cos(angle)],
+           ]
+
+def rotationY(angle):
+    return [
+            [ math.cos(angle), 0, math.sin(angle)],
+            [               0, 1,               0],
+            [-math.sin(angle), 0, math.cos(angle)],
+           ]
+
+def rotationZ(angle):
+    return [
+            [math.cos(angle), -math.sin(angle), 0],
+            [math.sin(angle),  math.cos(angle), 0],
+            [              0,                0, 1],
+           ]
+
+
 @ti.data_oriented
 class Affine(ts.TaichiClass, AutoInit):
     @property

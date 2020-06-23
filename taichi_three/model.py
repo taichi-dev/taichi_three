@@ -12,19 +12,18 @@ class Model(AutoInit):
         self.geo_list = []
         self.vertices = []
         self.L2W = Affine.var(())
+        self.obj = obj
         if obj is not None:
-            self.from_obj(obj)
+            vertex = Vertex.var(obj['v'].shape[0])
+            face = Face.var(obj['f'].shape[0])
+            self.set_vertices(vertex)
+            self.add_geometry(face)
 
     def _init(self):
         self.L2W.init()
-
-    def from_obj(self, obj):
-        vertex = Vertex.var(obj['v'].shape[0])
-        face = Face.var(obj['f'].shape[0])
-        vertex.pos.from_numpy(obj['v'])
-        face.idx.from_numpy(obj['f'])
-        self.set_vertices(vertex)
-        self.add_geometry(face)
+        if self.obj is not None:
+            self.vertices.pos.from_numpy(self.obj['v'])
+            self.geo_list[0].idx.from_numpy(self.obj['f'])
 
     @ti.func
     def render(self):
