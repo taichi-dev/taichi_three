@@ -12,7 +12,7 @@ scene.add_model(monkey)
 scene.add_model(torus)
 
 scene.set_light_dir([0.4, -1.5, -1.8])
-gui = ti.GUI('Transform Models', scene.res)
+gui = ti.GUI('Transform', scene.res)
 frame = 0
 while gui.running:
     gui.running = not gui.get_event(ti.GUI.ESCAPE)

@@ -54,7 +54,7 @@ def substep():
         pos[i] += vel[i] * dt
 
 init()
-gui = ti.GUI('Ball', scene.res)
+gui = ti.GUI('Balls', scene.res)
 while gui.running:
     gui.running = not gui.get_event(ti.GUI.ESCAPE)
     for i in range(4):
