@@ -44,6 +44,7 @@ scene = t3.Scene()
 NOTE: scene creation should be put before any kernel invocation or host access,
 i.e. before materialization, so that `Scene.__init__` could define its internal
 tensors without an error.
+
 TL;DR: Put this line as forward as possible! Ideally right below `ti.init()`.
 
 ---
