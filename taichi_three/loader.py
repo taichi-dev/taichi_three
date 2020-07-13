@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def readobj(path, direct=False, scale=None):
+def readobj(path, scale=None, direct=False):
     vertices = []
     vertexNormals = []
     faces = []

@@ -4,31 +4,6 @@ from .common import *
 import math
 
 
-def crossProduct(a, b):
-    x, y, z = a
-    u, v, w = b
-    return y * w - z * v, z * u - w * x, x * v - y * u
-
-def dotProduct(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x * u + y * v + z * w
-
-def vectorAdd(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x + u, y + v, z + w
-
-def vectorSub(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x - u, y - v, z - w
-
-def vectorMul(a, k):
-    x, y, z = a
-    return x * k, y * k, z * k
-
-
 def rotationX(angle):
     return [
             [1,               0,                0],
