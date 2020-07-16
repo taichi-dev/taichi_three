@@ -8,7 +8,8 @@ Taichi THREE is an extension library of the [Taichi Programming Language](https:
 This project is based on [Taichi Three](https://github.com/taichi-dev/taichi_three), and could render 3D objects with texture.
 
 
-![Example](https://github.com/DSaurus/taichi_three/raw/master/assets/test_result.png)
+![Example](https://raw.githubusercontent.com/DSaurus/taichi_three/master/assets/test_result.jpg)
+
 
 
 Installation
