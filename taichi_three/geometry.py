@@ -27,23 +27,17 @@ class Vertex(Geometry):
     def pos(self):
         return self.entries[0]
 
-    @classmethod
-    def _var(cls, shape=None):
-        return ti.Vector.var(3, ti.f32, shape)
-
-
-class VertexTex(Geometry):
-    @property
-    def pos(self):
-        return self.entries[0]
-
     @property
     def tex(self):
         return self.entries[1]
 
     @classmethod
-    def _var(cls, shape=None):
-        return ti.Vector.var(3, ti.f32, shape), ti.Vector.var(2, ti.f32, shape)
+    def _var(cls, shape=None, tex=False):
+        ret = []
+        ret.append(ti.Vector.var(3, ti.f32, shape))
+        if tex:
+            ret.append(ti.Vector.var(2, ti.f32, shape))
+        return ret
 
 
 @ti.data_oriented

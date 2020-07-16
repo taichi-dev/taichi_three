@@ -1,8 +1,9 @@
 import numpy as np
 
 
-def readobj(path, scale=None, direct=False):
+def readobj(path, scale=None, has_texture=False, direct=False):
     vertices = []
+    textures = []
     vertexNormals = []
     faces = []
     with open(path, 'r') as myfile:
@@ -10,36 +11,39 @@ def readobj(path, scale=None, direct=False):
         # cache vertices
 
         for line in data:
-            if line.startswith('v '):
-                splitted = line.split()
-                vertex = [float(splitted[1]),
-                          float(splitted[2]),
-                          float(splitted[3])
-                          ]
-                vertices.append(vertex)
-            if line.startswith('vn '):
-                splitted = line.split()
-                normal = [float(splitted[1]),
-                          float(splitted[2]),
-                          float(splitted[3])
-                          ]
-                vertexNormals.append(normal)
+            try:
+                type, coors = line.split(maxsplit=1)
+                coors = [float(_) for _ in coors.split()]
+            except ValueError:
+                continue
+
+            if type == 'v':
+                vertices.append(coors)
+            elif type == 'vt':
+                textures.append(coors)
+            elif type == 'vn':
+                vertexNormals.append(coors)
 
         # cache faces
         # DONT merge this 'for loop'
         # must initialize vertices for faces to work
         for line in data:
+            try:
+                type, idxs = line.split(maxsplit=1)
+                idxs = idxs.split()
+            except ValueError:
+                continue
+
             # line looks like 'f 5/1/1 1/2/1 4/3/1'
             # or 'f 314/380/494 382/400/494 388/550/494 506/551/494' for quads
-            if line.startswith('f '):
-                splitted = line.split()
+            if type == 'f':
                 faceVertices = []
 
-                for i in range(1, len(splitted)):
+                for i in range(len(idxs)):
                     # splitted[i] should look like '5/1/1'
                     # for vertex/vertex UV coords/vertex Normal  (indexes number in the list)
                     # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
-                    index = int((splitted[i].split('/'))[0]) - 1
+                    index = int((idxs[i].split('/'))[0]) - 1
                     if direct:
                         faceVertices.append(vertices[index])
                     else:
@@ -62,5 +66,10 @@ def readobj(path, scale=None, direct=False):
     else:
         ret['v'] = vertices.astype(np.float32) * scale
         ret['f'] = faces.astype(np.int32)
+
+    if has_texture:
+        textures = np.array(textures)
+
+        ret['vt'] = textures.astype(np.int32)
 
     return ret
