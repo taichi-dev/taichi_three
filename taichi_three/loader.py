@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def readobj(path, scale=None, has_texture=False):
+def readobj(path, scale=None):
     vertices = []
     textures = []
     faces = []
@@ -56,8 +56,7 @@ def readobj(path, scale=None, has_texture=False):
     ret['v'] = vertices.astype(np.float32) * scale
     ret['f'] = faces.astype(np.int32)
 
-    if has_texture:
-        textures = np.array(textures)
-        ret['vt'] = textures.astype(np.float32)
+    textures = np.array(textures)
+    ret['vt'] = textures.astype(np.float32)
 
     return ret
