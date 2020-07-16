@@ -138,6 +138,5 @@ class Face(Geometry):
 
                 if zindex >= ti.atomic_max(scene.zbuf[X], zindex):
                     texCoor = va.tex * Ak * BC + vb.tex * Bk * CA + vc.tex * Ck * AB
-                    #texCoor = ts.vec(1.0, 1.0)
 
                     scene.img[X] = color * self.model.texSample(texCoor)

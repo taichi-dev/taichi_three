@@ -32,7 +32,6 @@ class Model(AutoInit):
             self.vertices.pos.from_numpy(self.todo_obj['v'])
             self.geo_list[0].idx.from_numpy(self.todo_obj['f'])
         if self.todo_tex is not None:
-            print(self.todo_obj['vt'])
             self.vertices.tex.from_numpy(self.todo_obj['vt'])
             self.texture.from_numpy(self.todo_tex.astype(np.float32) / 255)
 
@@ -53,8 +52,7 @@ class Model(AutoInit):
 
     @ti.func
     def texSample(self, coor):
-        return ts.vec(coor, 0.0)
-        #return ts.bilerp(self.texture, coor * ts.vec(*self.texture.shape))
+        return ts.bilerp(self.texture, coor * ts.vec(*self.texture.shape))
 
     def set_texture(self, text):
         self.texture = text
