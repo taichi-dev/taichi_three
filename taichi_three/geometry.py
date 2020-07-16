@@ -31,6 +31,16 @@ class Vertex(Geometry):
     def _var(cls, shape=None):
         return ti.Vector.var(3, ti.f32, shape)
 
+@ti.data_oriented
+class VertexTex(Geometry):
+    @property
+    def pos(self):
+        return self.entries[0]
+
+    @classmethod
+    def _var(cls, shape=None):
+        return ti.Vector.var(2, ti.f32, shape)
+
 
 @ti.data_oriented
 class Line(Geometry):
@@ -78,12 +88,26 @@ class Face(Geometry):
 
     @classmethod
     def _var(cls, shape=None):
-        return ti.Vector.var(3, ti.i32, shape)
+        return ti.Vector.var(6, ti.i32, shape)
 
     @ti.func
     def vertex(self, i: ti.template()):
         model = self.model
-        return model.vertices[self.idx[i]]
+        return model.vertices[self.idx[i*2]]
+
+    @ti.func
+    def texture_pos(self, i: ti.template()):
+        model = self.model
+        return model.vertex_tex[self.idx[i*2+1]]
+
+    @ti.func
+    def texture(self, x: ti.template(), y: ti.template()):
+        model = self.model
+        X = ti.max(0, ti.min(1, x))
+        Y = ti.max(0, ti.min(1, y))
+        X = X * model.texture.shape[1]
+        Y = Y * model.texture.shape[0]
+        return model.texture[Y, X, :]
 
     @ti.func
     def do_render(self):
@@ -93,6 +117,11 @@ class Face(Geometry):
         a = scene.camera.untrans_pos(L2W @ self.vertex(0).pos)
         b = scene.camera.untrans_pos(L2W @ self.vertex(1).pos)
         c = scene.camera.untrans_pos(L2W @ self.vertex(2).pos)
+
+        t_a = self.texture_pos(0).pos
+        t_b = self.texture_pos(1).pos
+        t_c = self.texture_pos(2).pos
+
         A = scene.uncook_coor(a)
         B = scene.uncook_coor(b)
         C = scene.uncook_coor(c)
@@ -112,7 +141,7 @@ class Face(Geometry):
         light_dir = scene.camera.untrans_dir(scene.light_dir[None])
         pos = (a + b + c) / 3
         color = scene.opt.render_func(pos, normal, ts.vec3(0.0), light_dir)
-        color = scene.opt.pre_process(color)
+        # color = scene.opt.pre_process(color)
 
         Ak = 1 / (ts.cross(A, C_B) + CxB)
         Bk = 1 / (ts.cross(B, A_C) + AxC)
@@ -122,18 +151,24 @@ class Face(Geometry):
         ZW = ts.distance(a, b) * 0.2
         M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
+            if X.x < 0 or X.x >= scene.res[0] or X.y < 0 or X.y >= scene.res[1]:
+                continue
             AB = ts.cross(X, B_A) + BxA
             BC = ts.cross(X, C_B) + CxB
             CA = ts.cross(X, A_C) + AxC
             udf = max(AB, BC, CA)
             if udf < W:
-                zindex = (Ak * a.z * BC + Bk * b.z * CA + Ck * c.z * AB)
-                if udf < 0:
-                    zstep = zindex - ti.atomic_max(scene.zbuf[X], zindex)
-                    if zstep >= 0:
-                        scene.img[X] = color
-                else:
-                    zstep = zindex - scene.zbuf[X]
-                    if zstep >= 0:
-                        t = ts.smoothstep(udf, W, 0)
-                        ti.atomic_max(scene.img[X], t * color)
+                w_A = max(1e-6, Ak*BC)
+                w_B = max(1e-6, Bk*CA)
+                w_C = max(1e-6, Ck*AB)
+                w_sum = w_A + w_B + w_C
+                zindex = (w_A * a.z + w_B * b.z + w_C * c.z) / w_sum
+                xindex = (w_A * t_a.x + w_B * t_b.x + w_C * t_c.x) / w_sum
+                yindex = (w_A * t_a.y + w_B * t_b.y + w_C * t_c.y) / w_sum
+                xindex = xindex * self.model.texture.shape[1]
+                yindex = yindex * self.model.texture.shape[0]
+                tex_color = self.model.texture[self.model.texture.shape[0] - int(yindex), int(xindex)]
+                new_color = tex_color * (ts.vec3(scene.opt.diffuse) + color)
+                zstep = zindex - ti.atomic_max(scene.zbuf[X], zindex)
+                if zstep >= 0:
+                    scene.img[X] = new_color

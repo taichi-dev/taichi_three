@@ -1,0 +1,14 @@
+#
+# Wavefront material file
+# Converted by Meshlab Group
+#
+
+newmtl material_0
+Ka  1.0 1.0 1.0
+Kd  1.0 1.0 1.0
+Ks  0.0 0.0 0.0
+d  1.0
+illum 0
+Ns 0.000000
+map_Kd 131411539899871-full.jpg
+

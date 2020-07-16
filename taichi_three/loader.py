@@ -1,9 +1,10 @@
 import numpy as np
+import cv2
 
-
-def readobj(path, direct=False, scale=None):
+def readobj(path, img_path, direct=False, scale=None):
     vertices = []
     vertexNormals = []
+    texturePos = []
     faces = []
     with open(path, 'r') as myfile:
         data = myfile.readlines()
@@ -24,6 +25,12 @@ def readobj(path, direct=False, scale=None):
                           float(splitted[3])
                           ]
                 vertexNormals.append(normal)
+            if line.startswith('vt '):
+                splitted = line.split()
+                texture_pos = [float(splitted[1]),
+                          float(splitted[2])
+                          ]
+                texturePos.append(texture_pos)
 
         # cache faces
         # DONT merge this 'for loop'
@@ -44,6 +51,11 @@ def readobj(path, direct=False, scale=None):
                         faceVertices.append(vertices[index])
                     else:
                         faceVertices.append(index)
+                    index = int((splitted[i].split('/'))[1]) - 1
+                    if direct:
+                        faceVertices.append(vertices[index])
+                    else:
+                        faceVertices.append(index)
 
                 if len(faceVertices) == 4:
                     faces.append([
@@ -55,6 +67,7 @@ def readobj(path, direct=False, scale=None):
 
     faces = np.array(faces)
     vertices = np.array(vertices)
+    texturePos = np.array(texturePos)
 
     ret = {}
     if direct:
@@ -62,5 +75,12 @@ def readobj(path, direct=False, scale=None):
     else:
         ret['v'] = vertices.astype(np.float32) * scale
         ret['f'] = faces.astype(np.int32)
+    ret['vt'] = texturePos.astype(np.float32)
+
+    img = cv2.imread(img_path)
+    img = img[:, :, ::-1]
+    img = np.array(img, dtype=np.float32)
+    img /= 255
+    ret['texture'] = img
 
     return ret
