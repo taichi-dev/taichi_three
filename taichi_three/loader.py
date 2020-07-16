@@ -1,15 +1,14 @@
 import numpy as np
 
 
-def readobj(path, scale=None, has_texture=False, direct=False):
+def readobj(path, scale=None, has_texture=False):
     vertices = []
     textures = []
-    vertexNormals = []
     faces = []
     with open(path, 'r') as myfile:
         data = myfile.readlines()
-        # cache vertices
 
+        # cache vertices
         for line in data:
             try:
                 type, coors = line.split(maxsplit=1)
@@ -21,8 +20,6 @@ def readobj(path, scale=None, has_texture=False, direct=False):
                 vertices.append(coors)
             elif type == 'vt':
                 textures.append(coors)
-            elif type == 'vn':
-                vertexNormals.append(coors)
 
         # cache faces
         # DONT merge this 'for loop'
@@ -44,32 +41,23 @@ def readobj(path, scale=None, has_texture=False, direct=False):
                     # for vertex/vertex UV coords/vertex Normal  (indexes number in the list)
                     # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
                     index = int((idxs[i].split('/'))[0]) - 1
-                    if direct:
-                        faceVertices.append(vertices[index])
-                    else:
-                        faceVertices.append(index)
+                    faceVertices.append(index)
 
                 if len(faceVertices) == 4:
-                    faces.append([
-                        faceVertices[0], faceVertices[1], faceVertices[2]])
-                    faces.append([
-                        faceVertices[2], faceVertices[3], faceVertices[0]])
+                    faces.append([faceVertices[0], faceVertices[1], faceVertices[2]])
+                    faces.append([faceVertices[2], faceVertices[3], faceVertices[0]])
                 else:
                     faces.append(faceVertices)
 
+    ret = {}
+
     faces = np.array(faces)
     vertices = np.array(vertices)
-
-    ret = {}
-    if direct:
-        ret['f'] = faces.astype(np.float32) * scale
-    else:
-        ret['v'] = vertices.astype(np.float32) * scale
-        ret['f'] = faces.astype(np.int32)
+    ret['v'] = vertices.astype(np.float32) * scale
+    ret['f'] = faces.astype(np.int32)
 
     if has_texture:
         textures = np.array(textures)
-
-        ret['vt'] = textures.astype(np.int32)
+        ret['vt'] = textures.astype(np.float32)
 
     return ret

@@ -5,7 +5,8 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-model = t3.Model(t3.readobj('assets/monkey.obj', scale=0.6))
+model = t3.Model(t3.readobj('assets/cube.obj', scale=0.6, has_texture=True),
+                 ti.imread('assets/a.png'))
 scene.add_model(model)
 
 scene.set_light_dir([0.4, -1.5, -1.8])

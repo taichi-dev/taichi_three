@@ -21,7 +21,6 @@ class Geometry(ts.TaichiClass):
         raise NotImplementedError
 
 
-@ti.data_oriented
 class Vertex(Geometry):
     @property
     def pos(self):
@@ -32,15 +31,14 @@ class Vertex(Geometry):
         return self.entries[1]
 
     @classmethod
-    def _var(cls, shape=None, tex=False):
+    def _var(cls, shape=None, has_tex=False):
         ret = []
         ret.append(ti.Vector.var(3, ti.f32, shape))
-        if tex:
+        if has_tex:
             ret.append(ti.Vector.var(2, ti.f32, shape))
         return ret
 
 
-@ti.data_oriented
 class Line(Geometry):
     @property
     def idx(self):
@@ -78,7 +76,6 @@ class Line(Geometry):
                 ti.atomic_min(scene.img[X], ts.vec3(t))
 
 
-@ti.data_oriented
 class Face(Geometry):
     @property
     def idx(self):
@@ -98,9 +95,10 @@ class Face(Geometry):
         model = self.model
         scene = model.scene
         L2W = model.L2W
-        a = scene.camera.untrans_pos(L2W @ self.vertex(0).pos)
-        b = scene.camera.untrans_pos(L2W @ self.vertex(1).pos)
-        c = scene.camera.untrans_pos(L2W @ self.vertex(2).pos)
+        va, vb, vc = self.vertex(0), self.vertex(1), self.vertex(2)
+        a = scene.camera.untrans_pos(L2W @ va.pos)
+        b = scene.camera.untrans_pos(L2W @ vb.pos)
+        c = scene.camera.untrans_pos(L2W @ vc.pos)
         A = scene.uncook_coor(a)
         B = scene.uncook_coor(b)
         C = scene.uncook_coor(c)
@@ -139,4 +137,7 @@ class Face(Geometry):
                 #zindex = center_pos.z
 
                 if zindex >= ti.atomic_max(scene.zbuf[X], zindex):
-                    scene.img[X] = color
+                    texCoor = va.tex * Ak * BC + vb.tex * Bk * CA + vc.tex * Ck * AB
+                    #texCoor = ts.vec(1.0, 1.0)
+
+                    scene.img[X] = color * self.model.texSample(texCoor)
