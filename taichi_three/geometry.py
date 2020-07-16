@@ -32,6 +32,20 @@ class Vertex(Geometry):
         return ti.Vector.var(3, ti.f32, shape)
 
 
+class VertexTex(Geometry):
+    @property
+    def pos(self):
+        return self.entries[0]
+
+    @property
+    def tex(self):
+        return self.entries[1]
+
+    @classmethod
+    def _var(cls, shape=None):
+        return ti.Vector.var(3, ti.f32, shape), ti.Vector.var(2, ti.f32, shape)
+
+
 @ti.data_oriented
 class Line(Geometry):
     @property
@@ -110,8 +124,9 @@ class Face(Geometry):
         AxC = ts.cross(A, C) * ilA_C
         normal = ts.normalize(ts.cross(a - c, a - b))
         light_dir = scene.camera.untrans_dir(scene.light_dir[None])
-        pos = (a + b + c) / 3
-        color = scene.opt.render_func(pos, normal, ts.vec3(0.0), light_dir)
+        center_pos = (a + b + c) / 3
+
+        color = scene.opt.render_func(center_pos, normal, ts.vec3(0.0), light_dir)
         color = scene.opt.pre_process(color)
 
         Ak = 1 / (ts.cross(A, C_B) + CxB)
@@ -119,13 +134,15 @@ class Face(Geometry):
         Ck = 1 / (ts.cross(C, B_A) + BxA)
 
         W = 1
-        M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
+        M = int(ti.floor(min(A, B, C) - W))
+        N = int(ti.ceil(max(A, B, C) + W))
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             AB = ts.cross(X, B_A) + BxA
             BC = ts.cross(X, C_B) + CxB
             CA = ts.cross(X, A_C) + AxC
             if AB <= 0 and BC <= 0 and CA <= 0:
-                zindex = pos.z#(Ak * a.z * BC + Bk * b.z * CA + Ck * c.z * AB)
-                zstep = zindex - ti.atomic_max(scene.zbuf[X], zindex)
-                if zstep >= 0:
+                zindex = a.z * Ak * BC + b.z * Bk * CA + c.z * Ck * AB
+                #zindex = center_pos.z
+
+                if zindex >= ti.atomic_max(scene.zbuf[X], zindex):
                     scene.img[X] = color
