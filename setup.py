@@ -28,8 +28,8 @@ import setuptools
 setuptools.setup(
     name=project_name,
     version=version,
-    author='彭于斌',
-    author_email='1931127624@qq.com',
+    author='彭于斌 DSaurus',
+    author_email='1931127624@qq.com jia1saurus@gmail.com',
     description=description,
     long_description=long_description,
     classifiers=classifiers,

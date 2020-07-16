@@ -1,14 +1,12 @@
 import taichi as ti
 import taichi_three as t3
-import numpy as np
-import matplotlib.pyplot as plt
 
-ti.init(ti.cpu)
+ti.init(ti.cuda)
+scene = t3.Scene((1024, 1024))
 
 model = t3.Model(t3.readobj('assets/test.obj', 'assets/test.jpg', scale=0.55))
 model.init()
 
-scene = t3.Scene((1024, 1024))
 scene.opt.diffuse = 0.4
 scene.camera.set([0, 0.5, -1], [0, 1, 0], [0, 1, 0])
 scene.add_model(model)
