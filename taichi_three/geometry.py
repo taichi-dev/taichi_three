@@ -30,6 +30,10 @@ class Vertex(Geometry):
     def tex(self):
         return self.entries[1]
 
+    @property
+    def has_tex(self):
+        return len(self.entries) >= 1
+
     @classmethod
     def _var(cls, shape=None, has_tex=False):
         ret = []
@@ -134,9 +138,11 @@ class Face(Geometry):
             CA = ts.cross(X, A_C) + AxC
             if AB <= 0 and BC <= 0 and CA <= 0:
                 zindex = a.z * Ak * BC + b.z * Bk * CA + c.z * Ck * AB
-                #zindex = center_pos.z
 
                 if zindex >= ti.atomic_max(scene.zbuf[X], zindex):
-                    texCoor = va.tex * Ak * BC + vb.tex * Bk * CA + vc.tex * Ck * AB
+                    clr = color
+                    if ti.static(self.model.texture is not None):
+                        texCoor = va.tex * Ak * BC + vb.tex * Bk * CA + vc.tex * Ck * AB
+                        clr *= self.model.texSample(texCoor)
 
-                    scene.img[X] = color * self.model.texSample(texCoor)
+                    scene.img[X] = clr
