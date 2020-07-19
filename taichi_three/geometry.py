@@ -32,7 +32,7 @@ class Vertex(Geometry):
 
     @property
     def has_tex(self):
-        return len(self.entries) >= 1
+        return len(self.entries) > 1
 
     @classmethod
     def _var(cls, shape=None, has_tex=False):
