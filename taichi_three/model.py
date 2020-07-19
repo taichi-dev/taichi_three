@@ -9,54 +9,51 @@ import math
 
 @ti.data_oriented
 class Model(AutoInit):
-    def __init__(self, obj=None, tex=None):
-        self.geo_list = []
-        self.vertices = []
+    def __init__(self, f_n=None, vi_n=None, vt_n=None, vn_n=None, obj=None):
         self.L2W = Affine.var(())
-        self.texture = None
-        self.todo_obj = obj
-        self.todo_tex = tex
-        self.vertex_texture_flag = (tex is not None)
-        self.face_texture_flag = (tex is not None) and (obj['ft'] is not None)
+
+        self.faces = None
+        self.vi = None
+        self.vt = None
+        self.vn = None
+
         if obj is not None:
-            vertex = Vertex.var(obj['v'].shape[0], has_tex=self.vertex_texture_flag)
-            face = Face.var(obj['f'].shape[0], has_tex=self.face_texture_flag)
-            self.set_vertices(vertex)
-            self.add_geometry(face)
-        if tex is not None:
-            assert tex.shape[2] == 3, "texture must be RGB"
-            texture = ti.Vector.var(3, ti.f32, tex.shape[:2])
-            self.set_texture(texture)
+            f_n = obj['f'].shape
+            vi_n = obj['vi'].shape
+            vt_n = obj['vt'].shape
+            vn_n = obj['vn'].shape
+
+        if f_n is not None:
+            self.faces = ti.Vector.var(2, ti.i32, f_n)
+        if vi_n is not None:
+            self.vi = ti.Vector.var(2, ti.f32, vi_n)
+        if vt_n is not None:
+            self.vt = ti.Vector.var(1, ti.f32, vt_n)
+        if vn_n is not None:
+            self.vn = ti.Vector.var(2, ti.f32, vn_n)
+
+        if obj is not None:
+            self.init_obj = obj
+
+    def from_obj(self, obj):
+        self.faces.from_numpy(obj['f'])
+        self.vi.from_numpy(obj['vi'])
+        self.vt.from_numpy(obj['vt'])
+        self.vn.from_numpy(obj['vn'])
 
     def _init(self):
         self.L2W.init()
-        if self.todo_obj is not None:
-            self.vertices.pos.from_numpy(self.todo_obj['v'])
-            self.geo_list[0].idx.from_numpy(self.todo_obj['f'])
-            if self.face_texture_flag:
-                self.geo_list[0].tx_idx.from_numpy(self.todo_obj['ft'])
-        if self.todo_tex is not None:
-            self.texture.from_numpy(self.todo_tex.astype(np.float32) / 255)
-            self.vertices.tex.from_numpy(self.todo_obj['vt'])
+        if hasattr(self, 'init_obj'):
+            self.from_object(self.init_obj)
 
     @ti.func
     def render(self):
-        scene = self.scene
-        if ti.static(len(self.geo_list)):
-            for geo in ti.static(self.geo_list):
-                geo.render()
+        self.geo.render()
 
-    def add_geometry(self, geom):
-        geom.model = self
-        self.geo_list.append(geom)
-
-    def set_vertices(self, vert):
-        vert.model = self
-        self.vertices = vert
+    def set_geometry(geo):
+        geo.model = self
+        self.geo = geo
 
     @ti.func
     def texSample(self, coor):
         return ts.bilerp(self.texture, coor * ts.vec(*self.texture.shape))
-
-    def set_texture(self, text):
-        self.texture = text

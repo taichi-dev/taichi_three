@@ -21,28 +21,6 @@ class Geometry(ts.TaichiClass):
         raise NotImplementedError
 
 
-class Vertex(Geometry):
-    @property
-    def pos(self):
-        return self.entries[0]
-
-    @property
-    def tex(self):
-        return self.entries[1]
-
-    @property
-    def has_tex(self):
-        return len(self.entries) >= 2
-
-    @classmethod
-    def _var(cls, shape=None, has_tex=False):
-        ret = []
-        ret.append(ti.Vector.var(3, ti.f32, shape))
-        if has_tex:
-            ret.append(ti.Vector.var(2, ti.f32, shape))
-        return ret
-
-
 class Line(Geometry):
     @property
     def idx(self):
@@ -80,18 +58,18 @@ class Line(Geometry):
                 ti.atomic_min(scene.img[X], ts.vec3(t))
 
 
-class Face(Geometry):
+class Triangle(Geometry):
     @property
-    def idx(self):
+    def fi(self):
         return self.entries[0]
 
     @property
-    def tx_idx(self):
+    def ft(self):
         return self.entries[1]
-    
+
     @property
-    def has_tex(self):
-        return len(self.entries) >= 2
+    def fn(self):
+        return self.entries[2]
 
     @classmethod
     def _var(cls, shape=None, has_tex=False):
@@ -105,7 +83,7 @@ class Face(Geometry):
     def vertex(self, i: ti.template()):
         model = self.model
         return model.vertices[self.idx[i]]
-    
+
     @ti.func
     def texture_pos(self, i : ti.template()):
         model = self.model
@@ -159,12 +137,7 @@ class Face(Geometry):
                 if zindex >= ti.atomic_max(scene.zbuf[X], zindex):
                     clr = color
                     if ti.static(self.model.texture is not None):
-                        if ti.static(self.model.face_texture_flag):
-                            tx_a, tx_b, tx_c = self.texture_pos(0), self.texture_pos(1), self.texture_pos(2)
-                            texCoor = tx_a * Ak * BC + tx_b * Bk * CA + tx_c * Ck * AB
-                            clr *= self.model.texSample(texCoor)
-                        else:
-                            texCoor = va.tex * Ak * BC + vb.tex * Bk * CA + vc.tex * Ck * AB
-                            clr *= self.model.texSample(texCoor)
+                        texcor = va.tex * Ak * BC + vb.tex * Bk * CA + vc.tex * Ck * AB
+                        clr *= self.model.texSample(texcor)
 
                     scene.img[X] = clr
