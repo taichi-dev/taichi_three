@@ -29,6 +29,13 @@ class Model(AutoInit):
         if tex is not None:
             tex_n = tex.shape[:2]
 
+        if vi_n is None:
+            vi_n = 1
+        if vt_n is None:
+            vt_n = 1
+        if vn_n is None:
+            vn_n = 1
+
         if f_n is not None:
             self.faces = ti.Matrix.var(3, 3, ti.i32, f_n)
         if vi_n is not None:

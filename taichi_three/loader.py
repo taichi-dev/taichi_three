@@ -67,6 +67,4 @@ def readobj(path, scale=None):
     ret['vt'] = np.array(vt).astype(np.float32)
     ret['vn'] = np.array(vn).astype(np.float32)
     ret['f'] = np.array(faces).astype(np.int32)
-
-    print(ret['f'])
     return ret

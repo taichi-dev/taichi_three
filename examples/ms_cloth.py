@@ -56,16 +56,9 @@ def substep():
 ### Rendering GUI
 
 scene = t3.Scene()
-model = t3.Model()
+model = t3.Model(f_n=(N - 1)**2 * 2, vi_n=N**2, vt_n=N**2,
+                 tex=ti.imread('assets/cloth.jpg'))
 scene.add_model(model)
-
-faces = t3.Face.var(N**2 * 2)
-vertices = t3.Vertex.var(N**2, has_tex=True)
-np_texture = ti.imread('assets/cloth.jpg')
-texture = ti.Vector.var(3, ti.f32, np_texture.shape[:2])
-model.set_vertices(vertices)
-model.set_texture(texture)
-model.add_geometry(faces)
 
 
 @ti.kernel
@@ -80,23 +73,22 @@ def init_display():
         i.x -= 1
         d = i.dot(tl.vec(N, 1))
         i.y -= 1
-        faces[a * 2 + 0].idx = tl.vec(a, c, b)
-        faces[a * 2 + 1].idx = tl.vec(a, d, c)
+        model.faces[a * 2 + 0] = tl.mat([a, c, b], [a, c, b], [0, 0, 0]).transpose()
+        model.faces[a * 2 + 1] = tl.mat([a, d, c], [a, d, c], [0, 0, 0]).transpose()
     for i in ti.grouped(x):
         j = i.dot(tl.vec(N, 1))
-        vertices[j].tex = tl.D.yx + i.xY / N
+        model.vt[j] = tl.D.yx + i.xY / N
 
 
 @ti.kernel
 def update_display():
     for i in ti.grouped(x):
         j = i.dot(tl.vec(N, 1))
-        vertices[j].pos = x[i]
+        model.vi[j] = x[i]
 
 
 init()
 init_display()
-texture.from_numpy(np_texture.astype(np.float32) / 255)
 scene.set_light_dir([0.4, -1.5, -1.8])
 
 with ti.GUI('Mass Spring') as gui:
