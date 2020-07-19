@@ -32,7 +32,7 @@ class Vertex(Geometry):
 
     @property
     def has_tex(self):
-        return len(self.entries) >= 1
+        return len(self.entries) >= 2
 
     @classmethod
     def _var(cls, shape=None, has_tex=False):
@@ -85,14 +85,31 @@ class Face(Geometry):
     def idx(self):
         return self.entries[0]
 
+    @property
+    def tx_idx(self):
+        return self.entries[1]
+    
+    @property
+    def has_tex(self):
+        return len(self.entries) >= 2
+
     @classmethod
-    def _var(cls, shape=None):
-        return ti.Vector.var(3, ti.i32, shape)
+    def _var(cls, shape=None, has_tex=False):
+        ret = []
+        ret.append(ti.Vector.var(3, ti.i32, shape))
+        if has_tex:
+            ret.append(ti.Vector.var(3, ti.i32, shape))
+        return ret
 
     @ti.func
     def vertex(self, i: ti.template()):
         model = self.model
         return model.vertices[self.idx[i]]
+    
+    @ti.func
+    def texture_pos(self, i : ti.template()):
+        model = self.model
+        return model.vertices[self.tx_idx[i]].tex
 
     @ti.func
     def do_render(self):
@@ -142,7 +159,12 @@ class Face(Geometry):
                 if zindex >= ti.atomic_max(scene.zbuf[X], zindex):
                     clr = color
                     if ti.static(self.model.texture is not None):
-                        texCoor = va.tex * Ak * BC + vb.tex * Bk * CA + vc.tex * Ck * AB
-                        clr *= self.model.texSample(texCoor)
+                        if ti.static(self.model.face_texture_flag):
+                            tx_a, tx_b, tx_c = self.texture_pos(0), self.texture_pos(1), self.texture_pos(2)
+                            texCoor = tx_a * Ak * BC + tx_b * Bk * CA + tx_c * Ck * AB
+                            clr *= self.model.texSample(texCoor)
+                        else:
+                            texCoor = va.tex * Ak * BC + vb.tex * Bk * CA + vc.tex * Ck * AB
+                            clr *= self.model.texSample(texCoor)
 
                     scene.img[X] = clr

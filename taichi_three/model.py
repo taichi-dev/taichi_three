@@ -16,9 +16,11 @@ class Model(AutoInit):
         self.texture = None
         self.todo_obj = obj
         self.todo_tex = tex
+        self.vertex_texture_flag = (tex is not None)
+        self.face_texture_flag = (tex is not None) and (obj['ft'] is not None)
         if obj is not None:
-            vertex = Vertex.var(obj['v'].shape[0], has_tex=tex is not None)
-            face = Face.var(obj['f'].shape[0])
+            vertex = Vertex.var(obj['v'].shape[0], has_tex=self.vertex_texture_flag)
+            face = Face.var(obj['f'].shape[0], has_tex=self.face_texture_flag)
             self.set_vertices(vertex)
             self.add_geometry(face)
         if tex is not None:
@@ -31,9 +33,11 @@ class Model(AutoInit):
         if self.todo_obj is not None:
             self.vertices.pos.from_numpy(self.todo_obj['v'])
             self.geo_list[0].idx.from_numpy(self.todo_obj['f'])
+            if self.face_texture_flag:
+                self.geo_list[0].tx_idx.from_numpy(self.todo_obj['ft'])
         if self.todo_tex is not None:
-            self.vertices.tex.from_numpy(self.todo_obj['vt'])
             self.texture.from_numpy(self.todo_tex.astype(np.float32) / 255)
+            self.vertices.tex.from_numpy(self.todo_obj['vt'])
 
     @ti.func
     def render(self):

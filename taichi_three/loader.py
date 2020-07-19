@@ -5,6 +5,7 @@ def readobj(path, scale=None):
     vertices = []
     textures = []
     faces = []
+    faces_texture = []
     with open(path, 'r') as myfile:
         data = myfile.readlines()
 
@@ -35,6 +36,7 @@ def readobj(path, scale=None):
             # or 'f 314/380/494 382/400/494 388/550/494 506/551/494' for quads
             if type == 'f':
                 faceVertices = []
+                faceVerticesTexture = []
 
                 for i in range(len(idxs)):
                     # splitted[i] should look like '5/1/1'
@@ -42,12 +44,22 @@ def readobj(path, scale=None):
                     # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
                     index = int((idxs[i].split('/'))[0]) - 1
                     faceVertices.append(index)
+                    if idxs[i].split('/').__len__() > 1:
+                        texture_index = int((idxs[i].split('/'))[1]) - 1
+                        faceVerticesTexture.append(texture_index)
 
                 if len(faceVertices) == 4:
                     faces.append([faceVertices[0], faceVertices[1], faceVertices[2]])
                     faces.append([faceVertices[2], faceVertices[3], faceVertices[0]])
                 else:
                     faces.append(faceVertices)
+                
+                if faceVerticesTexture.__len__() != 0:
+                    if len(faceVertices) == 4:
+                        faces_texture.append([faceVerticesTexture[0], faceVerticesTexture[1], faceVerticesTexture[2]])
+                        faces_texture.append([faceVerticesTexture[2], faceVerticesTexture[3], faceVerticesTexture[0]])
+                    else:
+                        faces_texture.append(faceVerticesTexture)
 
     ret = {}
 
@@ -55,6 +67,10 @@ def readobj(path, scale=None):
     vertices = np.array(vertices)
     ret['v'] = vertices.astype(np.float32) * scale
     ret['f'] = faces.astype(np.int32)
+    
+    if faces_texture.__len__() != 0:
+        faces_texture = np.array(faces_texture)
+        ret['ft'] = faces_texture.astype(np.int32)
 
     textures = np.array(textures)
     ret['vt'] = textures.astype(np.float32)
