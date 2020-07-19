@@ -6,8 +6,8 @@ import math, time
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-monkey = t3.Model(t3.readobj('assets/monkey.obj', scale=0.4))
-torus = t3.Model(t3.readobj('assets/torus.obj', scale=0.6))
+monkey = t3.Model(obj=t3.readobj('assets/monkey.obj', scale=0.4))
+torus = t3.Model(obj=t3.readobj('assets/torus.obj', scale=0.6))
 scene.add_model(monkey)
 scene.add_model(torus)
 

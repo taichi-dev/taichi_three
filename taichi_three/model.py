@@ -9,7 +9,7 @@ import math
 
 @ti.data_oriented
 class Model(AutoInit):
-    def __init__(self, f_n=None,
+    def __init__(self, f_n=None, f_m=None,
             vi_n=None, vt_n=None, vn_n=None, tex_n=None,
             obj=None, tex=None):
         self.L2W = Affine.var(())
@@ -29,6 +29,13 @@ class Model(AutoInit):
         if tex is not None:
             tex_n = tex.shape[:2]
 
+        if f_m is None:
+            f_m = 1
+            if vt_n is not None:
+                f_m = 2
+            if vn_n is not None:
+                f_m = 3
+
         if vi_n is None:
             vi_n = 1
         if vt_n is None:
@@ -37,7 +44,7 @@ class Model(AutoInit):
             vn_n = 1
 
         if f_n is not None:
-            self.faces = ti.Matrix.var(3, 3, ti.i32, f_n)
+            self.faces = ti.Matrix.var(3, f_m, ti.i32, f_n)
         if vi_n is not None:
             self.vi = ti.Vector.var(3, ti.f32, vi_n)
         if vt_n is not None:
