@@ -21,18 +21,28 @@ class Geometry(ts.TaichiClass):
         raise NotImplementedError
 
 
-@ti.data_oriented
 class Vertex(Geometry):
     @property
     def pos(self):
         return self.entries[0]
 
+    @property
+    def tex(self):
+        return self.entries[1]
+
+    @property
+    def has_tex(self):
+        return len(self.entries) >= 1
+
     @classmethod
-    def _var(cls, shape=None):
-        return ti.Vector.var(3, ti.f32, shape)
+    def _var(cls, shape=None, has_tex=False):
+        ret = []
+        ret.append(ti.Vector.var(3, ti.f32, shape))
+        if has_tex:
+            ret.append(ti.Vector.var(2, ti.f32, shape))
+        return ret
 
 
-@ti.data_oriented
 class Line(Geometry):
     @property
     def idx(self):
@@ -70,7 +80,6 @@ class Line(Geometry):
                 ti.atomic_min(scene.img[X], ts.vec3(t))
 
 
-@ti.data_oriented
 class Face(Geometry):
     @property
     def idx(self):
@@ -90,9 +99,10 @@ class Face(Geometry):
         model = self.model
         scene = model.scene
         L2W = model.L2W
-        a = scene.camera.untrans_pos(L2W @ self.vertex(0).pos)
-        b = scene.camera.untrans_pos(L2W @ self.vertex(1).pos)
-        c = scene.camera.untrans_pos(L2W @ self.vertex(2).pos)
+        va, vb, vc = self.vertex(0), self.vertex(1), self.vertex(2)
+        a = scene.camera.untrans_pos(L2W @ va.pos)
+        b = scene.camera.untrans_pos(L2W @ vb.pos)
+        c = scene.camera.untrans_pos(L2W @ vc.pos)
         A = scene.uncook_coor(a)
         B = scene.uncook_coor(b)
         C = scene.uncook_coor(c)
@@ -110,8 +120,9 @@ class Face(Geometry):
         AxC = ts.cross(A, C) * ilA_C
         normal = ts.normalize(ts.cross(a - c, a - b))
         light_dir = scene.camera.untrans_dir(scene.light_dir[None])
-        pos = (a + b + c) / 3
-        color = scene.opt.render_func(pos, normal, ts.vec3(0.0), light_dir)
+        center_pos = (a + b + c) / 3
+
+        color = scene.opt.render_func(center_pos, normal, ts.vec3(0.0), light_dir)
         color = scene.opt.pre_process(color)
 
         Ak = 1 / (ts.cross(A, C_B) + CxB)
@@ -119,13 +130,19 @@ class Face(Geometry):
         Ck = 1 / (ts.cross(C, B_A) + BxA)
 
         W = 1
-        M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
+        M = int(ti.floor(min(A, B, C) - W))
+        N = int(ti.ceil(max(A, B, C) + W))
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             AB = ts.cross(X, B_A) + BxA
             BC = ts.cross(X, C_B) + CxB
             CA = ts.cross(X, A_C) + AxC
             if AB <= 0 and BC <= 0 and CA <= 0:
-                zindex = pos.z#(Ak * a.z * BC + Bk * b.z * CA + Ck * c.z * AB)
-                zstep = zindex - ti.atomic_max(scene.zbuf[X], zindex)
-                if zstep >= 0:
-                    scene.img[X] = color
+                zindex = a.z * Ak * BC + b.z * Bk * CA + c.z * Ck * AB
+
+                if zindex >= ti.atomic_max(scene.zbuf[X], zindex):
+                    clr = color
+                    if ti.static(self.model.texture is not None):
+                        texCoor = va.tex * Ak * BC + vb.tex * Bk * CA + vc.tex * Ck * AB
+                        clr *= self.model.texSample(texCoor)
+
+                    scene.img[X] = clr

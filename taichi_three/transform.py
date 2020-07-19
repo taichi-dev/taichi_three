@@ -55,10 +55,8 @@ class Affine(ts.TaichiClass, AutoInit):
 
     @ti.func
     def inverse(self):
+        # TODO: incorrect:
         return Affine(self.matrix.inverse(), -self.offset)
-
-    def variable(self):
-        return Affine(self.matrix.variable(), self.offset.variable())
 
     def loadOrtho(self, fwd=[0, 0, 1], up=[0, 1, 0]):
         # fwd = target - pos
