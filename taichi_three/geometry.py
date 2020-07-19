@@ -6,9 +6,9 @@ import taichi_glsl as ts
 def render_triangle(model, face):
     scene = model.scene
     L2W = model.L2W
-    ia, ib, ic = model.vi[face[0, 0]], model.vi[face[0, 1]], model.vi[face[0, 2]]
-    ta, tb, tc = model.vt[face[1, 0]], model.vt[face[1, 1]], model.vt[face[1, 2]]
-    na, nb, nc = model.vn[face[2, 0]], model.vn[face[2, 1]], model.vn[face[2, 2]]
+    ia, ib, ic = model.vi[face[0, 0]], model.vi[face[1, 0]], model.vi[face[2, 0]]
+    ta, tb, tc = model.vt[face[0, 1]], model.vt[face[1, 1]], model.vt[face[2, 1]]
+    na, nb, nc = model.vn[face[0, 2]], model.vn[face[1, 2]], model.vn[face[2, 2]]
     a = scene.camera.untrans_pos(L2W @ ia)
     b = scene.camera.untrans_pos(L2W @ ib)
     c = scene.camera.untrans_pos(L2W @ ic)

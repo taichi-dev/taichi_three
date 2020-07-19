@@ -52,7 +52,7 @@ def readobj(path, scale=None):
         # a field should look like '5/1/1'
         # for vertex/vertex UV coords/vertex Normal  (indexes number in the list)
         # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
-        indices = [[int(_) for _ in field.split('/')] for field in fields]
+        indices = [[int(_) - 1 for _ in field.split('/')] for field in fields]
 
         if len(indices) == 4:
             faces.append([indices[0], indices[1], indices[2]])
@@ -67,4 +67,6 @@ def readobj(path, scale=None):
     ret['vt'] = np.array(vt).astype(np.float32)
     ret['vn'] = np.array(vn).astype(np.float32)
     ret['f'] = np.array(faces).astype(np.int32)
+
+    print(ret['f'])
     return ret
