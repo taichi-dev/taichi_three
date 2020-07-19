@@ -5,7 +5,7 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-model = t3.Model(obj=t3.readobj('assets/torus.obj', scale=0.6),
+model = t3.Model(obj=t3.readobj('assets/cube.obj', scale=0.6),
                  tex=ti.imread('assets/cloth.jpg'))
 scene.add_model(model)
 
