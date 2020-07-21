@@ -147,7 +147,7 @@ class Camera(AutoInit):
         self.set()
         self.set_intrinsic()
 
-    def from_mouse(self, mpos, dis=3):
+    def from_mouse(self, mpos, dis=2):
         if isinstance(mpos, ti.GUI):
             mpos = mpos.get_cursor_pos()
 

@@ -38,7 +38,7 @@ class Scene(AutoInit):
 
     def _init(self):
         self.camera.init()
-        self.camera.set_intrinsic(self.res[0], self.res[1], self.res[0] / 2, self.res[1] / 2)
+        self.camera.set_intrinsic(self.res[0] / 2, self.res[1] / 2, self.res[0] / 2, self.res[1] / 2)
         for model in self.models:
             model.init()
 
