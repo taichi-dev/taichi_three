@@ -101,12 +101,19 @@ class Camera(AutoInit):
     TAN_FOV = 'Tangent Perspective'
     COS_FOV = 'Cosine Perspective'
 
-    def __init__(self):
+    def __init__(self, res=None, fx = None, fy = None, cx=None, cy = None):
+        self.res = res or (512, 512)
+        self.img = ti.Vector.var(3, ti.f32, self.res)
+        self.zbuf = ti.var(ti.f32, self.res)
         self.trans = ti.Matrix(3, 3, ti.f32, ())
         self.pos = ti.Vector(3, ti.f32, ())
         self.intrinsic = ti.Matrix(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
         self.fov = 25
+        self.fx = fx or self.res[0] // 2
+        self.fy = fy or self.res[1] // 2
+        self.cx = cx or self.res[0] // 2
+        self.cy = cy or self.res[1] // 2
 
     def set(self, pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
         # fwd = target - pos
@@ -135,17 +142,14 @@ class Camera(AutoInit):
         trans = [[trans[i][j] for i in range(3)] for j in range(3)]
         self.trans[None] = trans
         self.pos[None] = pos
-    
-    def set_intrinsic(self, fx = 1, fy = 1, cx = 0, cy = 0):
-        self.intrinsic[None][0, 0] = fx
-        self.intrinsic[None][0, 2] = cx
-        self.intrinsic[None][1, 1] = fy
-        self.intrinsic[None][1, 2] = cy
+        self.intrinsic[None][0, 0] = self.fx
+        self.intrinsic[None][0, 2] = self.cx
+        self.intrinsic[None][1, 1] = self.fy
+        self.intrinsic[None][1, 2] = self.cy
         self.intrinsic[None][2, 2] = 1.0
 
     def _init(self):
         self.set()
-        self.set_intrinsic()
 
     def from_mouse(self, mpos, dis=2):
         if isinstance(mpos, ti.GUI):

@@ -7,11 +7,8 @@ from .shading import *
 @ti.data_oriented
 class Scene(AutoInit):
     def __init__(self, res=None):
-        self.res = res or (512, 512)
-        self.img = ti.Vector.var(3, ti.f32, self.res)
-        self.zbuf = ti.var(ti.f32, self.res)
         self.light_dir = ti.Vector.var(3, ti.f32, ())
-        self.camera = Camera()
+        self.cameras = []
         self.opt = Shading()
         self.models = []
 
@@ -37,8 +34,8 @@ class Scene(AutoInit):
         self.models.append(model)
 
     def _init(self):
-        self.camera.init()
-        self.camera.set_intrinsic(self.res[0] / 2, self.res[1] / 2, self.res[0] / 2, self.res[1] / 2)
+        for camera in self.cameras:
+            camera.init()
         for model in self.models:
             model.init()
 
