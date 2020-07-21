@@ -104,6 +104,7 @@ class Camera(AutoInit):
     def __init__(self):
         self.trans = ti.Matrix(3, 3, ti.f32, ())
         self.pos = ti.Vector(3, ti.f32, ())
+        self.intrinsic = ti.Matrix(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
         self.fov = 25
 
@@ -134,11 +135,19 @@ class Camera(AutoInit):
         trans = [[trans[i][j] for i in range(3)] for j in range(3)]
         self.trans[None] = trans
         self.pos[None] = pos
+    
+    def set_intrinsic(self, fx = 1, fy = 1, cx = 0, cy = 0):
+        self.intrinsic[None][0, 0] = fx
+        self.intrinsic[None][0, 2] = cx
+        self.intrinsic[None][1, 1] = fy
+        self.intrinsic[None][1, 2] = cy
+        self.intrinsic[None][2, 2] = 1.0
 
     def _init(self):
         self.set()
+        self.set_intrinsic()
 
-    def from_mouse(self, mpos, dis=2):
+    def from_mouse(self, mpos, dis=3):
         if isinstance(mpos, ti.GUI):
             mpos = mpos.get_cursor_pos()
 
@@ -146,7 +155,7 @@ class Camera(AutoInit):
         if a != 0 or t != 0:
             a, t = a * math.tau - math.pi, t * math.pi - math.pi / 2
         d = dis * math.cos(t)
-        self.set(pos=[d * math.sin(a), dis * math.sin(t), -d * math.cos(a)])
+        self.set(pos=[d * math.sin(a), dis * math.sin(t), d * math.cos(a)])
 
     @ti.func
     def trans_pos(self, pos):
@@ -163,6 +172,19 @@ class Camera(AutoInit):
     @ti.func
     def untrans_dir(self, pos):
         return self.trans[None].inverse() @ pos
+    
+    @ti.func
+    def uncook(self, pos):
+        if ti.static(self.type == self.ORTHO):
+            pos[0] *= self.intrinsic[None][0, 0] 
+            pos[1] *= self.intrinsic[None][1, 1]
+            pos[0] += self.intrinsic[None][0, 2]
+            pos[1] += self.intrinsic[None][1, 2]
+        else:
+            pos = self.intrinsic[None] @ pos
+            pos[0] /= pos[2]
+            pos[1] /= pos[2]
+        return ts.vec2(pos[0], pos[1])
 
     @ti.func
     def generate(self, coor):

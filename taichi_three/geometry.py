@@ -14,9 +14,9 @@ def render_triangle(model, face):
     a = scene.camera.untrans_pos(L2W @ ia)
     b = scene.camera.untrans_pos(L2W @ ib)
     c = scene.camera.untrans_pos(L2W @ ic)
-    A = scene.uncook_coor(a)
-    B = scene.uncook_coor(b)
-    C = scene.uncook_coor(c)
+    A = scene.camera.uncook(a)
+    B = scene.camera.uncook(b)
+    C = scene.camera.uncook(c)
     B_A = B - A
     C_B = C - B
     A_C = A - C
@@ -47,9 +47,8 @@ def render_triangle(model, face):
         AB = ts.cross(X, B_A) + BxA
         BC = ts.cross(X, C_B) + CxB
         CA = ts.cross(X, A_C) + AxC
-        if AB <= 0 and BC <= 0 and CA <= 0:
-            zindex = a.z * Ak * BC + b.z * Bk * CA + c.z * Ck * AB
-
+        if AB >= 0 and BC >= 0 and CA >= 0:
+            zindex = 1.0 / (a.z * Ak * BC + b.z * Bk * CA + c.z * Ck * AB)
             if zindex >= ti.atomic_max(scene.zbuf[X], zindex):
                 clr = color
                 coor = ta * Ak * BC + tb * Bk * CA + tc * Ck * AB
