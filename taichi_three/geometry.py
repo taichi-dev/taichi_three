@@ -48,11 +48,17 @@ def render_triangle(model, face):
             AB = ts.cross(X, B_A) + BxA
             BC = ts.cross(X, C_B) + CxB
             CA = ts.cross(X, A_C) + AxC
+            if X.x < 0 or X.x >= camera.res[0] or X.y < 0 or X.y >= camera.res[1]:
+                continue
             if AB >= 0 and BC >= 0 and CA >= 0:
-                zindex = 1.0 / (a.z * Ak * BC + b.z * Bk * CA + c.z * Ck * AB)
+                w_A = max(Ak * BC, 1e-6)
+                w_B = max(Bk * CA, 1e-6)
+                w_C = max(Ck * AB, 1e-6)
+                w_sum = w_A + w_B + w_C
+                zindex = 1.0 /  ( (a.z * w_A + b.z * w_B + c.z * w_C) / w_sum)
                 if zindex >= ti.atomic_max(camera.zbuf[X], zindex):
                     clr = color
-                    coor = ta * Ak * BC + tb * Bk * CA + tc * Ck * AB
+                    coor = (ta * w_A + tb * w_B + tc * w_C) / w_sum
                     clr = clr * model.texSample(coor)
 
                     camera.img[X] = clr

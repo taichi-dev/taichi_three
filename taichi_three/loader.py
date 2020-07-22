@@ -62,6 +62,15 @@ def readobj(path, scale=None):
         else:
             assert False, len(indices)
 
+    if vi.__len__() == 0:
+        vi.append([0, 0, 0])
+    if vt.__len__() == 0:
+        vt.append([0, 0])
+    if vn.__len__() == 0:
+        vn.append([0, 0, 0])
+    if faces.__len__() == 0:
+        faces.append([0, 0, 0])
+
     ret = {}
     ret['vi'] = np.array(vi).astype(np.float32) * scale
     ret['vt'] = np.array(vt).astype(np.float32)
