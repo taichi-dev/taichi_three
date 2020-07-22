@@ -33,6 +33,10 @@ class Scene(AutoInit):
         model.scene = self
         self.models.append(model)
 
+    def add_camera(self, camera):
+        camera.scene = self
+        self.cameras.append(camera)
+
     def _init(self):
         for camera in self.cameras:
             camera.init()
@@ -45,9 +49,9 @@ class Scene(AutoInit):
 
     @ti.kernel
     def _render(self):
-        for I in ti.grouped(self.img):
-            self.img[I] = ts.vec3(0.0)
-            self.zbuf[I] = 0.0
+        if ti.static(len(self.cameras)):
+            for camera in ti.static(self.cameras):
+                camera.clear_buffer()
         if ti.static(len(self.models)):
             for model in ti.static(self.models):
                 model.render()
