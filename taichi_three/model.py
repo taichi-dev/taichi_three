@@ -73,9 +73,9 @@ class Model(AutoInit):
             self.tex.from_numpy(self.init_tex.astype(np.float32) / 255)
 
     @ti.func
-    def render(self):
+    def render(self, camera):
         for i in ti.grouped(self.faces):
-            render_triangle(self, self.faces[i])
+            render_triangle(self, camera, self.faces[i])
 
     @ti.func
     def texSample(self, coor):

@@ -52,9 +52,9 @@ class Scene(AutoInit):
         if ti.static(len(self.cameras)):
             for camera in ti.static(self.cameras):
                 camera.clear_buffer()
-        if ti.static(len(self.models)):
-            for model in ti.static(self.models):
-                model.render()
+                if ti.static(len(self.models)):
+                    for model in ti.static(self.models):
+                        model.render(camera)
 
     # backward-compat:
     def add_ball(self, *args, **kwargs):
