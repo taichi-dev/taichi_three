@@ -21,10 +21,10 @@ class Model(AutoInit):
         self.tex = None
 
         if obj is not None:
-            f_n = obj['f'].shape[0]
-            vi_n = obj['vi'].shape[0]
-            vt_n = obj['vt'].shape[0]
-            vn_n = obj['vn'].shape[0]
+            f_n = None if obj['f'] is None else obj['f'].shape[0]
+            vi_n = None if obj['vi'] is None else obj['vi'].shape[0]
+            vt_n = None if obj['vt'] is None else obj['vt'].shape[0]
+            vn_n = None if obj['vn'] is None else obj['vn'].shape[0]
 
         if tex is not None:
             tex_n = tex.shape[:2]
@@ -60,10 +60,14 @@ class Model(AutoInit):
             self.init_tex = tex
 
     def from_obj(self, obj):
-        self.faces.from_numpy(obj['f'])
-        self.vi.from_numpy(obj['vi'])
-        self.vt.from_numpy(obj['vt'])
-        self.vn.from_numpy(obj['vn'])
+        if obj['f'] is not None:
+            self.faces.from_numpy(obj['f'])
+        if obj['vi'] is not None:
+            self.vi.from_numpy(obj['vi'])
+        if obj['vt'] is not None:
+            self.vt.from_numpy(obj['vt'])
+        if obj['vn'] is not None:
+            self.vn.from_numpy(obj['vn'])
 
     def _init(self):
         self.L2W.init()
