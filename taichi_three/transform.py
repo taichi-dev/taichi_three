@@ -178,7 +178,8 @@ class Camera(AutoInit):
         if a != 0 or t != 0:
             a, t = a * math.tau - math.pi, t * math.pi - math.pi / 2
         d = dis * math.cos(t)
-        self.set(pos=[d * math.sin(a), dis * math.sin(t), d * math.cos(a)])
+        self.set(pos=[d * math.sin(a), dis * math.sin(t), - d * math.cos(a)])
+        self._init()
 
     @ti.func
     def trans_pos(self, pos):

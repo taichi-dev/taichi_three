@@ -11,13 +11,16 @@ torus = t3.Model(obj=t3.readobj('assets/torus.obj', scale=0.6))
 scene.add_model(monkey)
 scene.add_model(torus)
 
-scene.set_light_dir([0.4, -1.5, -1.8])
-gui = ti.GUI('Transform', scene.res)
+camera = t3.Camera()
+scene.add_camera(camera)
+
+scene.set_light_dir([0.4, -1.5, 1.8])
+gui = ti.GUI('Transform', camera.res)
 while gui.running:
     gui.running = not gui.get_event(ti.GUI.ESCAPE)
-    scene.camera.from_mouse(gui)
+    camera.from_mouse(gui)
     monkey.L2W.matrix[None] = t3.rotationZ(angle=time.time())
     torus .L2W.offset[None] = [0, math.cos(time.time()) * 0.5, 0]
     scene.render()
-    gui.set_image(scene.img)
+    gui.set_image(camera.img)
     gui.show()
