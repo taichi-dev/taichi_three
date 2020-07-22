@@ -103,7 +103,6 @@ class Camera(AutoInit):
 
     def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None):
         self.res = res or (512, 512)
-        print(self.res)
         self.img = ti.Vector.var(3, ti.f32, self.res)
         self.zbuf = ti.var(ti.f32, self.res)
         self.trans = ti.Matrix(3, 3, ti.f32, ())
@@ -119,6 +118,13 @@ class Camera(AutoInit):
         self.trans_np = None
         self.pos_np = None
         self.set()
+        self.is_init = False
+
+    def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
+        self.fx = fx or self.fx
+        self.fy = fy or self.fy
+        self.cx = cx or self.cx
+        self.cy = cy or self.cy
 
     def set(self, pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
         # fwd = target - pos
@@ -156,6 +162,7 @@ class Camera(AutoInit):
         self.intrinsic[None][1, 1] = self.fy
         self.intrinsic[None][1, 2] = self.cy
         self.intrinsic[None][2, 2] = 1.0
+        self.is_init = True
 
     @ti.func
     def clear_buffer(self):
@@ -201,6 +208,31 @@ class Camera(AutoInit):
             pos[0] /= pos[2]
             pos[1] /= pos[2]
         return ts.vec2(pos[0], pos[1])
+
+    def export_intrinsic(self):
+        import numpy as np
+        intrinsic = np.zeros((3, 3))
+        intrinsic[0, 0] = self.fx
+        intrinsic[1, 1] = self.fy
+        intrinsic[0, 2] = self.cx
+        intrinsic[1, 2] = self.cy
+        intrinsic[2, 2] = 1
+        return intrinsic
+
+    def export_extrinsic(self):
+        import numpy as np
+        trans = np.array(self.trans_np)
+        pos = np.array(self.pos_np)
+        extrinsic = np.zeros((3, 4))
+
+        trans = np.transpose(trans)
+        for i in range(3):
+            for j in range(3):
+                extrinsic[i][j] = trans[i, j]
+        pos = -trans @ pos
+        for i in range(3):
+            extrinsic[i][3] = pos[i]
+        return extrinsic
 
     @ti.func
     def generate(self, coor):
