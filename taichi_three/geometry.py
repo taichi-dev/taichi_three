@@ -54,7 +54,7 @@ def render_triangle(model, camera, face):
             w_B = max(Bk * CA, 1e-6)
             w_C = max(Ck * AB, 1e-6)
             w_sum = w_A + w_B + w_C
-            zindex = 1.0 /  ( (a.z * w_A + b.z * w_B + c.z * w_C) / w_sum)
+            zindex = w_sum / (a.z * w_A + b.z * w_B + c.z * w_C)
             if zindex >= ti.atomic_max(camera.zbuf[X], zindex):
                 clr = color
                 coor = (ta * w_A + tb * w_B + tc * w_C) / w_sum
