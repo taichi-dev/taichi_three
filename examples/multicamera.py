@@ -21,13 +21,13 @@ scene.add_camera(camera2)
 print(camera2.export_intrinsic())
 print(camera2.export_extrinsic())
 
-scene.set_light_dir([0.4, -1.5, 1.8])
+scene.set_light_dir([0.4, -1.5, -0.8])
 gui = ti.GUI('Model', camera.res)
 gui2 = ti.GUI('Model2', camera2.res)
 
-while gui.running:
+while gui.running and gui2.running:
     gui.running = not gui.get_event(ti.GUI.ESCAPE)
-    #scene.camera.from_mouse(gui)
+    gui2.running = not gui2.get_event(ti.GUI.ESCAPE)
     model.L2W.from_mouse(gui)
     scene.render()
     gui.set_image(camera.img)

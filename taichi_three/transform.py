@@ -118,7 +118,6 @@ class Camera(AutoInit):
         self.trans_np = None
         self.pos_np = None
         self.set()
-        self.is_init = False
 
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
         self.fx = fx or self.fx
@@ -162,7 +161,6 @@ class Camera(AutoInit):
         self.intrinsic[None][1, 1] = self.fy
         self.intrinsic[None][1, 2] = self.cy
         self.intrinsic[None][2, 2] = 1.0
-        self.is_init = True
 
     @ti.func
     def clear_buffer(self):
@@ -178,7 +176,7 @@ class Camera(AutoInit):
         if a != 0 or t != 0:
             a, t = a * math.tau - math.pi, t * math.pi - math.pi / 2
         d = dis * math.cos(t)
-        self.set(pos=[d * math.sin(a), dis * math.sin(t), - d * math.cos(a)])
+        self.set(pos=[d * math.sin(a), dis * math.sin(t), -d * math.cos(a)])
         self._init()
 
     @ti.func

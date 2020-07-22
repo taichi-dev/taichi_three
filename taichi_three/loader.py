@@ -12,7 +12,7 @@ def _append(faces, indices):
         assert False, len(indices)
 
 
-def readobj(path, scale=None):
+def readobj(path, scale=1):
     vi = []
     vt = []
     vn = []
@@ -62,13 +62,13 @@ def readobj(path, scale=None):
         else:
             assert False, len(indices)
 
-    if vi.__len__() == 0:
+    if len(vi) == 0:
         vi.append([0, 0, 0])
-    if vt.__len__() == 0:
+    if len(vt) == 0:
         vt.append([0, 0])
-    if vn.__len__() == 0:
+    if len(vn) == 0:
         vn.append([0, 0, 0])
-    if faces.__len__() == 0:
+    if len(faces) == 0:
         faces.append([0, 0, 0])
 
     ret = {}

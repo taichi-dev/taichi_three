@@ -12,6 +12,7 @@ scene.add_model(monkey)
 scene.add_model(torus)
 
 camera = t3.Camera()
+camera.type = camera.ORTHO
 scene.add_camera(camera)
 
 scene.set_light_dir([0.4, -1.5, 1.8])
