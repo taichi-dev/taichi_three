@@ -21,7 +21,8 @@ scene.add_camera(camera2)
 print(camera2.export_intrinsic())
 print(camera2.export_extrinsic())
 
-scene.set_light_dir([0.4, -1.5, -0.8])
+light = t3.Light([0.4, -1.5, -0.8])
+scene.add_light(light)
 gui = ti.GUI('Model', camera.res)
 gui2 = ti.GUI('Model2', camera2.res)
 
