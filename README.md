@@ -58,7 +58,7 @@ scene.add_model(model)
 
 If you want to add texture, read the texture image and feed it into `model`:
 
-```
+```py
 texture = ti.imread('assets/cloth.jpg')
 model = t3.Model(t3.readobj('assets/monkey.obj', scale=0.6), tex=texture)
 ```
