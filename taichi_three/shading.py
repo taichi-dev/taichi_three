@@ -1,5 +1,6 @@
 import taichi as ti
 import taichi_glsl as ts
+from .transform import *
 import math
 
 class Shading:
@@ -13,8 +14,10 @@ class Shading:
         self.__dict__.update(kwargs)
 
     @ti.func
-    def render_func(self, pos, normal, dir, light_dir):
+    def render_func(self, pos, normal, dir, light, camera):
         color = ts.vec3(0.0)
+        light_dir = light.dir[None]
+        light_dir = camera.untrans_dir(light_dir)
 
         shineness = self.shineness
         half_lambert = ts.dot(normal, light_dir) * 0.5 + 0.5
@@ -39,7 +42,7 @@ class Shading:
         if ti.static(self.is_normal_map):
             color = normal * 0.5 + 0.5
 
-        return color
+        return color * light.color[None]
 
     @ti.func
     def pre_process(self, color):

@@ -2,12 +2,13 @@ import taichi as ti
 import taichi_glsl as ts
 from .transform import *
 from .shading import *
+from .light import *
 
 
 @ti.data_oriented
 class Scene(AutoInit):
-    def __init__(self, res=None):
-        self.light_dir = ti.Vector.var(3, ti.f32, ())
+    def __init__(self):
+        self.lights = []
         self.cameras = []
         self.opt = Shading()
         self.models = []
@@ -37,7 +38,13 @@ class Scene(AutoInit):
         camera.scene = self
         self.cameras.append(camera)
 
+    def add_light(self, light):
+        light.scene = self
+        self.lights.append(light)
+
     def _init(self):
+        for light in self.lights:
+            light.init()
         for camera in self.cameras:
             camera.init()
         for model in self.models:

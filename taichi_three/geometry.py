@@ -30,11 +30,12 @@ def render_triangle(model, camera, face):
     CxB = ts.cross(C, B) * ilC_B
     AxC = ts.cross(A, C) * ilA_C
     normal = ts.normalize(ts.cross(a - c, a - b))
-    light_dir = camera.untrans_dir(scene.light_dir[None])
+    color = ts.vec3(0.0)
     center_pos = (a + b + c) / 3
 
-    color = scene.opt.render_func(center_pos, normal, ts.vec3(0.0), light_dir)
-    color = scene.opt.pre_process(color)
+    for light in ti.static(scene.lights):
+        light_color = scene.opt.render_func(center_pos, normal, ts.vec3(0.0), light, camera)
+        color += light_color
 
     Ak = 1 / (ts.cross(A, C_B) + CxB)
     Bk = 1 / (ts.cross(B, A_C) + AxC)
@@ -43,21 +44,22 @@ def render_triangle(model, camera, face):
     W = 1
     M = int(ti.floor(min(A, B, C) - W))
     N = int(ti.ceil(max(A, B, C) + W))
-    for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
-        AB = ts.cross(X, B_A) + BxA
-        BC = ts.cross(X, C_B) + CxB
-        CA = ts.cross(X, A_C) + AxC
-        if X.x < 0 or X.x >= camera.res[0] or X.y < 0 or X.y >= camera.res[1]:
-            continue
-        if AB >= 0 and BC >= 0 and CA >= 0:
-            w_A = max(Ak * BC, 1e-6)
-            w_B = max(Bk * CA, 1e-6)
-            w_C = max(Ck * AB, 1e-6)
-            w_sum = w_A + w_B + w_C
-            zindex = w_sum / (a.z * w_A + b.z * w_B + c.z * w_C)
-            if zindex >= ti.atomic_max(camera.zbuf[X], zindex):
-                clr = color
-                coor = (ta * w_A + tb * w_B + tc * w_C) / w_sum
-                clr = clr * model.texSample(coor)
 
-                camera.img[X] = clr
+    min_z = min(a.z, b.z, c.z)
+    if min_z > 0.5:
+        for X in ti.grouped(ti.ndrange((max(0, M.x), min(camera.res[0], N.x)), (max(0, M.y), min(camera.res[1], N.y)))):
+            AB = ts.cross(X, B_A) + BxA
+            BC = ts.cross(X, C_B) + CxB
+            CA = ts.cross(X, A_C) + AxC
+            if AB >= 0 and BC >= 0 and CA >= 0:
+                w_A = max(Ak * BC, 1e-6)
+                w_B = max(Bk * CA, 1e-6)
+                w_C = max(Ck * AB, 1e-6)
+                w_sum = w_A + w_B + w_C
+                zindex = 1.0 /  ( (a.z * w_A + b.z * w_B + c.z * w_C) / w_sum)
+                if zindex >= ti.atomic_max(camera.zbuf[X], zindex):
+                    clr = color
+                    coor = (ta * w_A + tb * w_B + tc * w_C) / w_sum
+                    clr = clr * model.texSample(coor)
+
+                    camera.img[X] = clr
