@@ -13,11 +13,12 @@ Taichi THREE is an extension library of the [Taichi Programming Language](https:
 Installation
 ------------
 
-Install Taichi THREE with `pip`:
+Install Taichi THREE Dev:
 
 ```bash
 # Python 3.6/3.7/3.8 (64-bit)
-pip install taichi_three
+pip install taichi taichi_glsl
+python setup.py build install
 ```
 
 This should also install its dependencies `taichi` and `taichi_glsl` as well.
