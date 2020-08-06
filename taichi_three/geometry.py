@@ -49,15 +49,36 @@ def render_triangle(model, camera, face):
         CA = ts.cross(X, A_C) + AxC
         if X.x < 0 or X.x >= camera.res[0] or X.y < 0 or X.y >= camera.res[1]:
             continue
-        if AB >= 0 and BC >= 0 and CA >= 0:
-            w_A = max(Ak * BC, 1e-6)
-            w_B = max(Bk * CA, 1e-6)
-            w_C = max(Ck * AB, 1e-6)
-            w_sum = w_A + w_B + w_C
-            zindex = w_sum / (a.z * w_A + b.z * w_B + c.z * w_C)
-            if zindex >= ti.atomic_max(camera.zbuf[X], zindex):
-                clr = color
-                coor = (ta * w_A + tb * w_B + tc * w_C) / w_sum
-                clr = clr * model.texSample(coor)
+        if not (AB >= 0 and BC >= 0 and CA >= 0):
+            continue
 
-                camera.img[X] = clr
+        w_A = max(Ak * BC, 1e-6)
+        w_B = max(Bk * CA, 1e-6)
+        w_C = max(Ck * AB, 1e-6)
+        w_sum = w_A + w_B + w_C
+        zindex = w_sum / (a.z * w_A + b.z * w_B + c.z * w_C)
+        if zindex >= ti.atomic_max(camera.zbuf[X], zindex):
+            clr = color
+            coor = (ta * w_A + tb * w_B + tc * w_C) / w_sum
+            clr = clr * model.texSample(coor)
+
+            camera.img[X] = clr
+
+
+@ti.func
+def render_particle(model, camera, vertex, radius):
+    scene = model.scene
+    L2W = model.L2W
+    a = camera.untrans_pos(L2W @ vertex)
+    A = camera.uncook(a)
+
+    M = int(ti.floor(A - radius))
+    N = int(ti.ceil(A + radius))
+
+    for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
+        if X.x < 0 or X.x >= camera.res[0] or X.y < 0 or X.y >= camera.res[1]:
+            continue
+        if (X - A).norm_sqr() > radius**2:
+            continue
+
+        camera.img[X] = ts.vec3(1)

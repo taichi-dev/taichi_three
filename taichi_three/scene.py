@@ -6,7 +6,7 @@ from .shading import *
 
 @ti.data_oriented
 class Scene(AutoInit):
-    def __init__(self, res=None):
+    def __init__(self):
         self.light_dir = ti.Vector.var(3, ti.f32, ())
         self.cameras = []
         self.opt = Shading()
@@ -55,10 +55,3 @@ class Scene(AutoInit):
                 if ti.static(len(self.models)):
                     for model in ti.static(self.models):
                         model.render(camera)
-
-    # backward-compat:
-    def add_ball(self, *args, **kwargs):
-        raise NotImplementedError('''
-Sorry, the old ray tracing ``t3.Scene`` has been renamed to ``t3.SceneRT``.
-Now ``t3.Scene`` represents for mesh grid rendering scene.
-''')

@@ -1,10 +1,9 @@
 import taichi as ti
 import taichi_glsl as tl
 import taichi_three as t3
-
 import numpy as np
-import math
-ti.init(ti.gpu)
+
+ti.init(ti.opengl)
 
 ### Parameters
 
@@ -22,8 +21,6 @@ dt = 5e-4
 
 x = ti.Vector(3, ti.f32, NN)
 v = ti.Vector(3, ti.f32, NN)
-b = ti.Vector(3, ti.f32, NN)
-F = ti.Vector(3, ti.f32, NN)
 
 
 @ti.kernel
@@ -36,19 +33,6 @@ links = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)]
 links = [tl.vec(*_) for _ in links]
 
 
-@ti.func
-def ballBoundReflect(pos, vel, center, radius, anti_fall=0, anti_depth=0.1):
-    ret = vel
-    above = tl.distance(pos, center) - radius
-    if above <= 0:
-        normal = tl.normalize(pos - center)
-        NoV = tl.dot(vel, normal)
-        if ti.static(anti_fall):
-            NoV -= anti_fall * tl.smoothstep(above, 0, -anti_depth)
-        if NoV < 0:
-            ret -= NoV * normal
-    return ret
-
 @ti.kernel
 def substep():
     for i in ti.grouped(x):
@@ -60,9 +44,9 @@ def substep():
         v[i] += stiffness * acc * dt
     for i in ti.grouped(x):
         v[i].y -= gravity * dt
-        v[i] = ballBoundReflect(x[i], v[i], tl.vec(+0.0, +0.2, -0.0), 0.4, 6)
+        v[i] = tl.ballBoundReflect(x[i], v[i], tl.vec(+0.0, +0.2, -0.0), 0.4, 6)
     for i in ti.grouped(x):
-        v[i] *= math.exp(-damping * dt)
+        v[i] *= ti.exp(-damping * dt)
         x[i] += dt * v[i]
 
 
