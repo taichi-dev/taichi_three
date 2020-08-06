@@ -36,6 +36,19 @@ links = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)]
 links = [tl.vec(*_) for _ in links]
 
 
+@ti.func
+def ballBoundReflect(pos, vel, center, radius, anti_fall=0, anti_depth=0.1):
+    ret = vel
+    above = tl.distance(pos, center) - radius
+    if above <= 0:
+        normal = tl.normalize(pos - center)
+        NoV = tl.dot(vel, normal)
+        if ti.static(anti_fall):
+            NoV -= anti_fall * tl.smoothstep(above, 0, -anti_depth)
+        if NoV < 0:
+            ret -= NoV * normal
+    return ret
+
 @ti.kernel
 def substep():
     for i in ti.grouped(x):
@@ -47,7 +60,7 @@ def substep():
         v[i] += stiffness * acc * dt
     for i in ti.grouped(x):
         v[i].y -= gravity * dt
-        v[i] = tl.ballBoundReflect(x[i], v[i], tl.vec(+0.0, +0.2, -0.0), 0.4, 6)
+        v[i] = ballBoundReflect(x[i], v[i], tl.vec(+0.0, +0.2, -0.0), 0.4, 6)
     for i in ti.grouped(x):
         v[i] *= math.exp(-damping * dt)
         x[i] += dt * v[i]
@@ -56,16 +69,12 @@ def substep():
 ### Rendering GUI
 
 scene = t3.Scene()
-model = t3.Model()
+model = t3.Model(f_n=(N - 1)**2 * 2, vi_n=N**2, vt_n=N**2, f_m=1,
+                 tex=ti.imread('assets/cloth.jpg'))
 scene.add_model(model)
-
-faces = t3.Face.var(N**2 * 2)
-vertices = t3.Vertex.var(N**2, has_tex=True)
-np_texture = ti.imread('assets/cloth.jpg')
-texture = ti.Vector.var(3, ti.f32, np_texture.shape[:2])
-model.set_vertices(vertices)
-model.set_texture(texture)
-model.add_geometry(faces)
+camera = t3.Camera()
+scene.add_camera(camera)
+camera.type = camera.ORTHO
 
 
 @ti.kernel
@@ -80,24 +89,23 @@ def init_display():
         i.x -= 1
         d = i.dot(tl.vec(N, 1))
         i.y -= 1
-        faces[a * 2 + 0].idx = tl.vec(a, c, b)
-        faces[a * 2 + 1].idx = tl.vec(a, d, c)
+        model.faces[a * 2 + 0] = [a, c, b]
+        model.faces[a * 2 + 1] = [a, d, c]
     for i in ti.grouped(x):
         j = i.dot(tl.vec(N, 1))
-        vertices[j].tex = tl.D.yx + i.xY / N
+        model.vt[j] = tl.D.yx + i.xY / N
 
 
 @ti.kernel
 def update_display():
     for i in ti.grouped(x):
         j = i.dot(tl.vec(N, 1))
-        vertices[j].pos = x[i]
+        model.vi[j] = x[i]
 
 
 init()
 init_display()
-texture.from_numpy(np_texture.astype(np.float32) / 255)
-scene.set_light_dir([0.4, -1.5, -1.8])
+scene.set_light_dir([0.4, -1.5, 1.8])
 
 with ti.GUI('Mass Spring') as gui:
     while gui.running and not gui.get_event(gui.ESCAPE):
@@ -107,8 +115,8 @@ with ti.GUI('Mass Spring') as gui:
             update_display()
 
         mx, my = gui.get_cursor_pos()
-        scene.camera.from_mouse((mx, my * 0.5 + 1e-3))
+        camera.from_mouse((mx, my))
 
         scene.render()
-        gui.set_image(scene.img)
+        gui.set_image(camera.img)
         gui.show()
