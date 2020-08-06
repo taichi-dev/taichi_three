@@ -1,6 +1,6 @@
-version = (0, 0, 2)
+version = (0, 0, 4)
 taiglsl_version = (0, 0, 5)
-taichi_version = (0, 6, 12)
+taichi_version = (0, 6, 24)
 
 print(f'[Tai3D] version {".".join(map(str, version))}')
 

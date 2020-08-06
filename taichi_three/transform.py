@@ -113,13 +113,15 @@ class Affine(ts.TaichiClass, AutoInit):
 
     def from_mouse(self, mpos):
         if isinstance(mpos, ti.GUI):
-            mpos = mpos.get_cursor_pos()
-
+            if mpos.is_pressed(ti.GUI.LMB):
+                mpos = mpos.get_cursor_pos()
+            else:
+                mpos = (0, 0)
         a, t = mpos
         if a != 0 or t != 0:
             a, t = a * math.tau - math.pi, t * math.pi - math.pi / 2
-        c = math.cos(t)
-        self.loadOrtho(fwd=[c * math.sin(a), math.sin(t), c * math.cos(a)])
+            c = math.cos(t)
+            self.loadOrtho(fwd=[c * math.sin(a), math.sin(t), c * math.cos(a)])
 
 
 @ti.data_oriented
@@ -128,13 +130,20 @@ class Camera(AutoInit):
     TAN_FOV = 'Tangent Perspective'
     COS_FOV = 'Cosine Perspective'
 
-    def __init__(self):
+    def __init__(self, pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
         self.trans = ti.Matrix(3, 3, ti.f32, ())
         self.pos = ti.Vector(3, ti.f32, ())
         self.type = self.TAN_FOV
         self.fov = 25
+        # python scope camera transformations
+        self.pos_py = pos
+        self.target_py = target
+        self.up_py = up
 
-    def set(self, pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
+    def set(self, pos=None, target=None, up=None):
+        pos = self.pos_py if pos is None else pos
+        target = self.target_py if target is None else target
+        up = self.up_py if up is None else up
         # fwd = target - pos
         fwd = [target[i] - pos[i] for i in range(3)]
         # fwd = fwd.normalized()
@@ -167,13 +176,15 @@ class Camera(AutoInit):
 
     def from_mouse(self, mpos, dis=2):
         if isinstance(mpos, ti.GUI):
-            mpos = mpos.get_cursor_pos()
-
+            if mpos.is_pressed(ti.GUI.LMB):
+                mpos = mpos.get_cursor_pos()
+            else:
+                mpos = (0, 0)
         a, t = mpos
         if a != 0 or t != 0:
             a, t = a * math.tau - math.pi, t * math.pi - math.pi / 2
-        d = dis * math.cos(t)
-        self.set(pos=[d * math.sin(a), dis * math.sin(t), -d * math.cos(a)])
+            d = dis * math.cos(t)
+            self.set(pos=[d * math.sin(a), dis * math.sin(t), -d * math.cos(a)])
 
     @ti.func
     def trans_pos(self, pos):
