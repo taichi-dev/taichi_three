@@ -3,4 +3,6 @@
 /*.egg-info/
 .dismiss_screen
 __pycache__
+/GNUmakefile
+/.*_localrc
 /tags

@@ -119,21 +119,13 @@ class Face(Geometry):
         Ck = 1 / (ts.cross(C, B_A) + BxA)
 
         W = 1
-        ZW = ts.distance(a, b) * 0.2
         M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             AB = ts.cross(X, B_A) + BxA
             BC = ts.cross(X, C_B) + CxB
             CA = ts.cross(X, A_C) + AxC
-            udf = max(AB, BC, CA)
-            if udf < W:
-                zindex = (Ak * a.z * BC + Bk * b.z * CA + Ck * c.z * AB)
-                if udf < 0:
-                    zstep = zindex - ti.atomic_max(scene.zbuf[X], zindex)
-                    if zstep >= 0:
-                        scene.img[X] = color
-                else:
-                    zstep = zindex - scene.zbuf[X]
-                    if zstep >= 0:
-                        t = ts.smoothstep(udf, W, 0)
-                        ti.atomic_max(scene.img[X], t * color)
+            if AB <= 0 and BC <= 0 and CA <= 0:
+                zindex = pos.z#(Ak * a.z * BC + Bk * b.z * CA + Ck * c.z * AB)
+                zstep = zindex - ti.atomic_max(scene.zbuf[X], zindex)
+                if zstep >= 0:
+                    scene.img[X] = color
