@@ -7,12 +7,15 @@ N = 12
 dt = 0.01
 
 scene = t3.SceneRT((640, 640))
+scene.camera = t3.Camera(pos=[0, 2, -5], target=[0, 0, 0], up=[0, 1, 0])
+
 pos = ti.Vector(3, ti.f32, N)
 vel = ti.Vector(3, ti.f32, N)
 radius = ti.var(ti.f32, N)
 
 scene.add_ball(pos, radius)
 scene.set_light_dir([1, 1, -1])
+
 
 @ti.kernel
 def init():
@@ -56,10 +59,11 @@ def substep():
 init()
 gui = ti.GUI('Balls', scene.res)
 while gui.running:
-    gui.running = not gui.get_event(ti.GUI.ESCAPE)
+    gui.get_event()
+    gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     for i in range(4):
         substep()
-    scene.camera.from_mouse(gui, dis=4)
+    scene.camera.from_mouse(gui)
     scene.render()
     gui.set_image(scene.img)
     gui.show()

@@ -14,7 +14,8 @@ scene.add_model(torus)
 scene.set_light_dir([0.4, -1.5, -1.8])
 gui = ti.GUI('Transform', scene.res)
 while gui.running:
-    gui.running = not gui.get_event(ti.GUI.ESCAPE)
+    gui.get_event()
+    gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     scene.camera.from_mouse(gui)
     monkey.L2W.matrix[None] = t3.rotationZ(angle=time.time())
     torus .L2W.offset[None] = [0, math.cos(time.time()) * 0.5, 0]

@@ -32,7 +32,8 @@ pos[2] = [+0.3, 0.3, 0]
 
 gui = ti.GUI('Mickey')
 while gui.running:
-    gui.running = not gui.get_event(ti.GUI.ESCAPE)
+    gui.get_event()
+    gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     scene.camera.from_mouse(gui)
     scene.render()
     gui.set_image(scene.img)
