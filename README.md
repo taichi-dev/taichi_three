@@ -10,6 +10,20 @@ Taichi THREE is an extension library of the [Taichi Programming Language](https:
 ![Example](https://github.com/taichi-dev/taichi_three/raw/master/assets/monkey.png)
 
 
+New in 0.0.4
+------------
+**Full camera control:** use `scene.camera.from_mouse(gui)` after a `gui.get_event()` call (without arguments) to control the camera with the mouse.
+* Drag with the left mouse button pressed to orbit the camera.
+* Drag with the right mouse button or use the wheel to zoom in and out.
+* Drag with the middle mouse buttom to pan the camera.
+
+**Improved rasterized scene (`Scene()`) implementation:** 
+* Supports free camera movements (still need a proper projection matrix implementation)
+* Backface culling
+* Triangle rasterization through barycentric coordinates for vertex interpolation
+
+
+
 Installation
 ------------
 
