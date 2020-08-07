@@ -8,7 +8,7 @@ pos = ti.Vector(3, ti.f32, 3)
 radius = ti.var(ti.f32, 3)
 
 scene.add_ball(pos, radius)
-scene.set_light_dir([2, 1, -2])
+scene.set_light_dir([2, -1, 2])
 
 @ti.func
 def my_render_func(pos, normal, dir, light_dir):

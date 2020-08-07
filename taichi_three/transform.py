@@ -143,6 +143,11 @@ class Camera(AutoInit):
         # mouse position for camera control
         self.mpos = (0, 0)
 
+    '''
+    NOTE: taichi_three uses a LEFT HANDED coordinate system.
+    that is, the +Z axis points FROM the camera TOWARDS the scene,
+    with X, Y being device coordinates
+    '''
     def set(self, pos=None, target=None, up=None):
         pos = self.pos_py if pos is None else pos
         target = self.target_py if target is None else target
@@ -233,7 +238,8 @@ class Camera(AutoInit):
     
     def zoom(self, z):
         newpos = [(1 + z) * self.pos_py[i] - z * self.target_py[i] for i in range(3)]
-        self.set(pos=newpos)
+        newtarget = [z * self.pos_py[i] + (1 - z) * self.target_py[i] for i in range(3)]
+        self.set(pos=newpos, target=newtarget)
 
     def pan(self, delta, sensitivity=3):
         ds, dt = delta

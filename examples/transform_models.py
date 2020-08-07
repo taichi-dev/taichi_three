@@ -11,7 +11,7 @@ torus = t3.Model(t3.readobj('assets/torus.obj', scale=0.6))
 scene.add_model(monkey)
 scene.add_model(torus)
 
-scene.set_light_dir([0.4, -1.5, -1.8])
+scene.set_light_dir([0.4, -1.5, 1.8])
 gui = ti.GUI('Transform', scene.res)
 while gui.running:
     gui.get_event()

@@ -1,3 +1,4 @@
+import math
 import taichi as ti
 import taichi_glsl as ts
 
@@ -90,42 +91,53 @@ class Face(Geometry):
         model = self.model
         scene = model.scene
         L2W = model.L2W
+        # object to world
         a = scene.camera.untrans_pos(L2W @ self.vertex(0).pos)
         b = scene.camera.untrans_pos(L2W @ self.vertex(1).pos)
         c = scene.camera.untrans_pos(L2W @ self.vertex(2).pos)
-        A = scene.uncook_coor(a)
-        B = scene.uncook_coor(b)
-        C = scene.uncook_coor(c)
-        B_A = B - A
-        C_B = C - B
-        A_C = A - C
-        ilB_A = 1 / ts.length(B_A)
-        ilC_B = 1 / ts.length(C_B)
-        ilA_C = 1 / ts.length(A_C)
-        B_A *= ilB_A
-        C_B *= ilC_B
-        A_C *= ilA_C
-        BxA = ts.cross(B, A) * ilB_A
-        CxB = ts.cross(C, B) * ilC_B
-        AxC = ts.cross(A, C) * ilA_C
-        normal = ts.normalize(ts.cross(a - c, a - b))
-        light_dir = scene.camera.untrans_dir(scene.light_dir[None])
+        # NOTE: the normal computation indicates that 
+        # a front-facing face should be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW​);
+        # this is to be compatible with obj model loading.
+        normal = ts.normalize(ts.cross(a - b, a - c))
         pos = (a + b + c) / 3
-        color = scene.opt.render_func(pos, normal, ts.vec3(0.0), light_dir)
-        color = scene.opt.pre_process(color)
+        # backface culling
+        if (ts.dot(pos, normal) <= 0):
+            # shading
+            light_dir = scene.camera.untrans_dir(scene.light_dir[None])
+            color = scene.opt.render_func(pos, normal, ts.vec3(0.0), light_dir)
+            color = scene.opt.pre_process(color)
+            # screen projection
+            # dirty workaround for projection
+            # the proper implementation is through projection matrix
+            fov = ti.static(ti.tan(scene.camera.fov * math.pi / 180))
+            #print(pos, normal)  
+            a.xy /= a.z * fov
+            b.xy /= b.z * fov
+            c.xy /= c.z * fov
 
-        Ak = 1 / (ts.cross(A, C_B) + CxB)
-        Bk = 1 / (ts.cross(B, A_C) + AxC)
-        Ck = 1 / (ts.cross(C, B_A) + BxA)
-
-        W = 1
-        M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
-        for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
-            AB = ts.cross(X, B_A) + BxA
-            BC = ts.cross(X, C_B) + CxB
-            CA = ts.cross(X, A_C) + AxC
-            if AB <= 0 and BC <= 0 and CA <= 0:
-                zindex = pos.z#(Ak * a.z * BC + Bk * b.z * CA + Ck * c.z * AB)
-                zstep = zindex - ti.atomic_max(scene.zbuf[X], zindex)
-                if zstep >= 0:
-                    scene.img[X] = color
+            A = scene.uncook_coor(a)
+            B = scene.uncook_coor(b)
+            C = scene.uncook_coor(c)
+            B_A = B - A
+            C_B = C - B
+            A_C = A - C
+            
+            W = 1
+            # screen space bounding box
+            M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
+            M.x, N.x = min(max(M.x, 0), scene.img.shape[0]), min(max(N.x, 0), scene.img.shape[1])
+            M.y, N.y = min(max(M.y, 0), scene.img.shape[0]), min(max(N.y, 0), scene.img.shape[1])
+            scr_norm = ts.cross(A_C, B_A)
+            for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
+                # barycentric coordinates
+                X_A = X - A
+                u_c = ts.cross(B_A, X_A) / scr_norm
+                u_b = ts.cross(A_C, X_A) / scr_norm
+                u_a = 1. - u_c - u_b
+                # draw
+                if u_a >= 0 and u_b >= 0 and u_c >= 0\
+                        and 0 < X[0] < scene.img.shape[0] and 0 < X[1] < scene.img.shape[1]:
+                    zindex = a.z * u_a + b.z * u_b + c.z * u_c
+                    zstep = zindex - ti.atomic_min(scene.zbuf[X], zindex)
+                    if zstep <= 0:
+                        scene.img[X] = color

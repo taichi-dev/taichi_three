@@ -16,7 +16,7 @@ faces.idx.from_numpy(np.array([[0, 1, 2], [0, 2, 1]])) # both cull faces
 model.set_vertices(vertices)
 model.add_geometry(faces)
 
-scene.set_light_dir([0.4, -1.5, -1.8])
+scene.set_light_dir([0.4, -1.5, 1.8])
 gui = ti.GUI('Triangle', scene.res)
 while gui.running:
     gui.get_event()

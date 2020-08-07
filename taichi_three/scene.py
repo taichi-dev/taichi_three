@@ -6,6 +6,8 @@ from .shading import *
 
 @ti.data_oriented
 class Scene(AutoInit):
+
+    
     def __init__(self, res=None):
         self.res = res or (512, 512)
         self.img = ti.Vector.var(3, ti.f32, self.res)
@@ -16,8 +18,11 @@ class Scene(AutoInit):
         self.models = []
 
     def set_light_dir(self, ldir):
+        # changes light direction input to the direction
+        # from the light towards the object
+        # to be consistent with future light types
         norm = math.sqrt(sum(x**2 for x in ldir))
-        ldir = [x / norm for x in ldir]
+        ldir = [-x / norm for x in ldir]
         self.light_dir[None] = ldir
 
     @ti.func
@@ -49,7 +54,7 @@ class Scene(AutoInit):
     def _render(self):
         for I in ti.grouped(self.img):
             self.img[I] = ts.vec3(0.0)
-            self.zbuf[I] = 0.0
+            self.zbuf[I] = 100.0
         if ti.static(len(self.models)):
             for model in ti.static(self.models):
                 model.render()

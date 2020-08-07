@@ -14,7 +14,7 @@ vel = ti.Vector(3, ti.f32, N)
 radius = ti.var(ti.f32, N)
 
 scene.add_ball(pos, radius)
-scene.set_light_dir([1, 1, -1])
+scene.set_light_dir([1, -1, 1])
 
 
 @ti.kernel

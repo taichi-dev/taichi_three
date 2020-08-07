@@ -52,6 +52,8 @@ def glCircle(center, dir1, dir2, N: ti.template()):
         b = a - ts.math.tau / N
         p = center + dir1 * ti.cos(a) + dir2 * ti.sin(a)
         q = center + dir1 * ti.cos(b) + dir2 * ti.sin(b)
+        # make the face double-sided
+        glTri(q, center, p)
         glTri(p, center, q)
 
 @ti.func
@@ -81,7 +83,7 @@ def glSphere(center, polar, dir1, dir2, M: ti.template(), N: ti.template()):
         r1, r2 = r * dir1, r * dir2
         p2 = center + polar * h + r1 * ti.cos(a) + r2 * ti.sin(a)
         q2 = center + polar * h + r1 * ti.cos(b) + r2 * ti.sin(b)
-        glQuad(q1, p1, p2, q2)
+        glQuad(p1, q1, q2, p2)
     r, h = ti.sin(ts.math.pi / 2 / M), ti.cos(ts.math.pi / 2 / M)
     r1, r2 = r * dir1, r * dir2
     cp1 = center + polar
@@ -93,19 +95,19 @@ def glSphere(center, polar, dir1, dir2, M: ti.template(), N: ti.template()):
         b = a - ts.math.tau / N
         p = cph + r1 * ti.cos(a) + r2 * ti.sin(a)
         q = cph + r1 * ti.cos(b) + r2 * ti.sin(b)
-        glTri(p, q, cp1)
+        glTri(q, p, cp1)
         p = cqh + r1 * ti.cos(a) + r2 * ti.sin(a)
         q = cqh + r1 * ti.cos(b) + r2 * ti.sin(b)
-        glTri(q, p, cq1)
+        glTri(p, q, cq1)
 
 
 @ti.kernel
 def initQuad():
     glQuad(
             ts.vec3(-0.5, -0.5, 0.0),
-            ts.vec3(+0.5, -0.5, 0.0),
+            ts.vec3(-0.5, +0.5, 0.0),
             ts.vec3(+0.5, +0.5, 0.0),
-            ts.vec3(-0.5, +0.5, 0.0))
+            ts.vec3(+0.5, -0.5, 0.0))
 
 
 @ti.kernel
@@ -136,12 +138,12 @@ def initSphere():
 
 initSphere()
 
-scene.set_light_dir([1, 1, -1])
+scene.set_light_dir([1, -1, 1])
 gui = ti.GUI('Mesh of Triangles', scene.res)
 while gui.running:
     gui.get_event()
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
-    model.L2W.from_mouse(gui)
+    scene.camera.from_mouse(gui)
     scene.render()
     gui.set_image(scene.img)
     gui.show()
