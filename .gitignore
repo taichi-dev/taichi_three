@@ -6,3 +6,5 @@ __pycache__
 /GNUmakefile
 /.*_localrc
 /tags
+/.idea
+/*.ipynb

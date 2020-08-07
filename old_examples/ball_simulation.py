@@ -6,19 +6,12 @@ ti.init(ti.opengl)
 N = 12
 dt = 0.01
 
-scene = t3.Scene()
-model = t3.ScatterModel(radius=5)
-scene.add_model(model)
-camera = t3.Camera()
-scene.add_camera(camera)
-#camera.type = camera.ORTHO
-
+scene = t3.SceneRT((640, 640))
 pos = ti.Vector(3, ti.f32, N)
 vel = ti.Vector(3, ti.f32, N)
 radius = ti.var(ti.f32, N)
 
-model.particles = pos
-
+scene.add_ball(pos, radius)
 scene.set_light_dir([1, 1, -1])
 
 @ti.kernel
@@ -61,13 +54,12 @@ def substep():
         pos[i] += vel[i] * dt
 
 init()
-gui = ti.GUI('Balls', camera.res)
+gui = ti.GUI('Balls', scene.res)
 while gui.running:
-    gui.get_event()
-    gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
+    gui.running = not gui.get_event(ti.GUI.ESCAPE)
     for i in range(4):
         substep()
-    camera.from_mouse(gui)
+    scene.camera.from_mouse(gui, dis=4)
     scene.render()
-    gui.set_image(camera.img)
+    gui.set_image(scene.img)
     gui.show()

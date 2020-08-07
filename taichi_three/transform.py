@@ -4,31 +4,6 @@ from .common import *
 import math
 
 
-def crossProduct(a, b):
-    x, y, z = a
-    u, v, w = b
-    return y * w - z * v, z * u - w * x, x * v - y * u
-
-def dotProduct(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x * u + y * v + z * w
-
-def vectorAdd(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x + u, y + v, z + w
-
-def vectorSub(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x - u, y - v, z - w
-
-def vectorMul(a, k):
-    x, y, z = a
-    return x * k, y * k, z * k
-
-
 def rotationX(angle):
     return [
             [1,               0,                0],
@@ -80,10 +55,8 @@ class Affine(ts.TaichiClass, AutoInit):
 
     @ti.func
     def inverse(self):
+        # TODO: incorrect:
         return Affine(self.matrix.inverse(), -self.offset)
-
-    def variable(self):
-        return Affine(self.matrix.variable(), self.offset.variable())
 
     def loadOrtho(self, fwd=[0, 0, 1], up=[0, 1, 0]):
         # fwd = target - pos
@@ -130,29 +103,46 @@ class Camera(AutoInit):
     TAN_FOV = 'Tangent Perspective'
     COS_FOV = 'Cosine Perspective'
 
-    def __init__(self, pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
+    def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None,
+            pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
+        self.res = res or (512, 512)
+        self.img = ti.Vector.var(3, ti.f32, self.res)
+        self.zbuf = ti.var(ti.f32, self.res)
         self.trans = ti.Matrix(3, 3, ti.f32, ())
         self.pos = ti.Vector(3, ti.f32, ())
         self.target = ti.Vector(3, ti.f32, ())
+        self.intrinsic = ti.Matrix(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
         self.fov = 25
+
+        self.fx = fx or self.res[0] // 2
+        self.fy = fy or self.res[1] // 2
+        self.cx = cx or self.res[0] // 2
+        self.cy = cy or self.res[1] // 2
         # python scope camera transformations
         self.pos_py = pos
         self.target_py = target
+        self.trans_py = None
         self.up_py = up
+        self.set(init=True)
         # mouse position for camera control
         self.mpos = (0, 0)
+
+    def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
+        self.fx = fx or self.fx
+        self.fy = fy or self.fy
+        self.cx = cx or self.cx
+        self.cy = cy or self.cy
 
     '''
     NOTE: taichi_three uses a LEFT HANDED coordinate system.
     that is, the +Z axis points FROM the camera TOWARDS the scene,
     with X, Y being device coordinates
     '''
-    def set(self, pos=None, target=None, up=None):
+    def set(self, pos=None, target=None, up=None, init=False):
         pos = self.pos_py if pos is None else pos
         target = self.target_py if target is None else target
         up = self.up_py if up is None else up
-        
         # fwd = target - pos
         fwd = [target[i] - pos[i] for i in range(3)]
         # fwd = fwd.normalized()
@@ -176,15 +166,29 @@ class Camera(AutoInit):
 
         # trans = ti.Matrix.cols([right, up, fwd])
         trans = [right, up, fwd]
-        trans = [[trans[i][j] for i in range(3)] for j in range(3)]
-        self.trans[None] = trans
-        self.pos[None] = pos
-        self.target[None] = target
+        self.trans_py = [[trans[i][j] for i in range(3)] for j in range(3)]
         self.pos_py = pos
         self.target_py = target
+        if not init:
+            self.pos[None] = self.pos_py
+            self.trans[None] = self.trans_py
+            self.target[None] = self.target_py
 
     def _init(self):
-        self.set()
+        self.pos[None] = self.pos_py
+        self.trans[None] = self.trans_py
+        self.target[None] = self.target_py
+        self.intrinsic[None][0, 0] = self.fx
+        self.intrinsic[None][0, 2] = self.cx
+        self.intrinsic[None][1, 1] = self.fy
+        self.intrinsic[None][1, 2] = self.cy
+        self.intrinsic[None][2, 2] = 1.0
+
+    @ti.func
+    def clear_buffer(self):
+        for I in ti.grouped(self.img):
+            self.img[I] = ts.vec3(0.0)
+            self.zbuf[I] = 0.0
 
     def from_mouse(self, gui):
         if gui.is_pressed(ti.GUI.LMB):
@@ -254,7 +258,6 @@ class Camera(AutoInit):
             newpos = [self.pos_py[i] + newtarget[i] - self.target_py[i] for i in range(3)]
             self.set(pos=newpos, target=newtarget)
 
-
     @ti.func
     def trans_pos(self, pos):
         return self.trans[None] @ pos + self.pos[None]
@@ -270,6 +273,44 @@ class Camera(AutoInit):
     @ti.func
     def untrans_dir(self, pos):
         return self.trans[None].inverse() @ pos
+    
+    @ti.func
+    def uncook(self, pos):
+        if ti.static(self.type == self.ORTHO):
+            pos[0] *= self.intrinsic[None][0, 0] 
+            pos[1] *= self.intrinsic[None][1, 1]
+            pos[0] += self.intrinsic[None][0, 2]
+            pos[1] += self.intrinsic[None][1, 2]
+        else:
+            pos = self.intrinsic[None] @ pos
+            pos[0] /= pos[2]
+            pos[1] /= pos[2]
+        return ts.vec2(pos[0], pos[1])
+
+    def export_intrinsic(self):
+        import numpy as np
+        intrinsic = np.zeros((3, 3))
+        intrinsic[0, 0] = self.fx
+        intrinsic[1, 1] = self.fy
+        intrinsic[0, 2] = self.cx
+        intrinsic[1, 2] = self.cy
+        intrinsic[2, 2] = 1
+        return intrinsic
+
+    def export_extrinsic(self):
+        import numpy as np
+        trans = np.array(self.trans_py)
+        pos = np.array(self.pos_py)
+        extrinsic = np.zeros((3, 4))
+
+        trans = np.transpose(trans)
+        for i in range(3):
+            for j in range(3):
+                extrinsic[i][j] = trans[i, j]
+        pos = -trans @ pos
+        for i in range(3):
+            extrinsic[i][3] = pos[i]
+        return extrinsic
 
     @ti.func
     def generate(self, coor):

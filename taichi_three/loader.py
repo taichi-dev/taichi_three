@@ -1,66 +1,70 @@
 import numpy as np
 
 
-def readobj(path, direct=False, scale=None):
-    vertices = []
-    vertexNormals = []
+
+def _append(faces, indices):
+    if len(indices) == 4:
+        faces.append([indices[0], indices[1], indices[2]])
+        faces.append([indices[2], indices[3], indices[0]])
+    elif len(indices) == 3:
+        faces.append(indices)
+    else:
+        assert False, len(indices)
+
+
+def readobj(path, scale=1):
+    vi = []
+    vt = []
+    vn = []
     faces = []
+
     with open(path, 'r') as myfile:
-        data = myfile.readlines()
-        # cache vertices
+        lines = myfile.readlines()
 
-        for line in data:
-            if line.startswith('v '):
-                splitted = line.split()
-                vertex = [float(splitted[1]),
-                          float(splitted[2]),
-                          float(splitted[3])
-                          ]
-                vertices.append(vertex)
-            if line.startswith('vn '):
-                splitted = line.split()
-                normal = [float(splitted[1]),
-                          float(splitted[2]),
-                          float(splitted[3])
-                          ]
-                vertexNormals.append(normal)
+    # cache vertices
+    for line in lines:
+        try:
+            type, fields = line.split(maxsplit=1)
+            fields = [float(_) for _ in fields.split()]
+        except ValueError:
+            continue
 
-        # cache faces
-        # DONT merge this 'for loop'
-        # must initialize vertices for faces to work
-        for line in data:
-            # line looks like 'f 5/1/1 1/2/1 4/3/1'
-            # or 'f 314/380/494 382/400/494 388/550/494 506/551/494' for quads
-            if line.startswith('f '):
-                splitted = line.split()
-                faceVertices = []
+        if type == 'v':
+            vi.append(fields)
+        elif type == 'vt':
+            vt.append(fields)
+        elif type == 'vn':
+            vn.append(fields)
 
-                for i in range(1, len(splitted)):
-                    # splitted[i] should look like '5/1/1'
-                    # for vertex/vertex UV coords/vertex Normal  (indexes number in the list)
-                    # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
-                    index = int((splitted[i].split('/'))[0]) - 1
-                    if direct:
-                        faceVertices.append(vertices[index])
-                    else:
-                        faceVertices.append(index)
+    # cache faces
+    for line in lines:
+        try:
+            type, fields = line.split(maxsplit=1)
+            fields = fields.split()
+        except ValueError:
+            continue
 
-                if len(faceVertices) == 4:
-                    faces.append([
-                        faceVertices[0], faceVertices[1], faceVertices[2]])
-                    faces.append([
-                        faceVertices[2], faceVertices[3], faceVertices[0]])
-                else:
-                    faces.append(faceVertices)
+        # line looks like 'f 5/1/1 1/2/1 4/3/1'
+        # or 'f 314/380/494 382/400/494 388/550/494 506/551/494' for quads
+        if type != 'f':
+            continue
 
-    faces = np.array(faces)
-    vertices = np.array(vertices)
+        # a field should look like '5/1/1'
+        # for vertex/vertex UV coords/vertex Normal  (indexes number in the list)
+        # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
+        indices = [[int(_) - 1 for _ in field.split('/')] for field in fields]
+
+        if len(indices) == 4:
+            faces.append([indices[0], indices[1], indices[2]])
+            faces.append([indices[2], indices[3], indices[0]])
+        elif len(indices) == 3:
+            faces.append(indices)
+        else:
+            assert False, len(indices)
 
     ret = {}
-    if direct:
-        ret['f'] = faces.astype(np.float32) * scale
-    else:
-        ret['v'] = vertices.astype(np.float32) * scale
-        ret['f'] = faces.astype(np.int32)
-
+    ret['vi'] = None if len(vi) == 0 else np.array(vi).astype(np.float32) * scale
+    ret['vt'] = None if len(vt) == 0 else np.array(vt).astype(np.float32)
+    ret['vn'] = None if len(vn) == 0 else np.array(vn).astype(np.float32)
+    ret['f'] = None if len(faces) == 0 else np.array(faces).astype(np.int32)
     return ret
