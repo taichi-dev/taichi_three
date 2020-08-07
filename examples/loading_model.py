@@ -14,7 +14,7 @@ scene.add_camera(camera)
 scene.set_light_dir([0.4, -1.5, 1.8])
 gui = ti.GUI('Model', camera.res)
 while gui.running:
-    gui.get_event()
+    gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     camera.from_mouse(gui)
     #model.L2W.from_mouse(gui)

@@ -18,7 +18,7 @@ scene.add_camera(camera)
 scene.set_light_dir([0.4, -1.5, 1.8])
 gui = ti.GUI('Transform', camera.res)
 while gui.running:
-    gui.get_event()
+    gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     camera.from_mouse(gui)
     monkey.L2W.matrix[None] = t3.rotationZ(angle=time.time())

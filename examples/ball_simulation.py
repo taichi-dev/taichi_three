@@ -63,7 +63,7 @@ def substep():
 init()
 gui = ti.GUI('Balls', camera.res)
 while gui.running:
-    gui.get_event()
+    gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     for i in range(4):
         substep()
