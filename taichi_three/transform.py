@@ -4,31 +4,6 @@ from .common import *
 import math
 
 
-def crossProduct(a, b):
-    x, y, z = a
-    u, v, w = b
-    return y * w - z * v, z * u - w * x, x * v - y * u
-
-def dotProduct(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x * u + y * v + z * w
-
-def vectorAdd(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x + u, y + v, z + w
-
-def vectorSub(a, b):
-    x, y, z = a
-    u, v, w = b
-    return x - u, y - v, z - w
-
-def vectorMul(a, k):
-    x, y, z = a
-    return x * k, y * k, z * k
-
-
 def rotationX(angle):
     return [
             [1,               0,                0],
@@ -80,10 +55,8 @@ class Affine(ts.TaichiClass, AutoInit):
 
     @ti.func
     def inverse(self):
+        # TODO: incorrect:
         return Affine(self.matrix.inverse(), -self.offset)
-
-    def variable(self):
-        return Affine(self.matrix.variable(), self.offset.variable())
 
     def loadOrtho(self, fwd=[0, 0, 1], up=[0, 1, 0]):
         # fwd = target - pos
@@ -128,11 +101,29 @@ class Camera(AutoInit):
     TAN_FOV = 'Tangent Perspective'
     COS_FOV = 'Cosine Perspective'
 
-    def __init__(self):
+    def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None):
+        self.res = res or (512, 512)
+        self.img = ti.Vector.var(3, ti.f32, self.res)
+        self.zbuf = ti.var(ti.f32, self.res)
         self.trans = ti.Matrix(3, 3, ti.f32, ())
         self.pos = ti.Vector(3, ti.f32, ())
+        self.intrinsic = ti.Matrix(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
         self.fov = 25
+
+        self.fx = fx or self.res[0] // 2
+        self.fy = fy or self.res[1] // 2
+        self.cx = cx or self.res[0] // 2
+        self.cy = cy or self.res[1] // 2
+        self.trans_np = None
+        self.pos_np = None
+        self.set()
+
+    def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
+        self.fx = fx or self.fx
+        self.fy = fy or self.fy
+        self.cx = cx or self.cx
+        self.cy = cy or self.cy
 
     def set(self, pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
         # fwd = target - pos
@@ -159,11 +150,23 @@ class Camera(AutoInit):
         # trans = ti.Matrix.cols([right, up, fwd])
         trans = [right, up, fwd]
         trans = [[trans[i][j] for i in range(3)] for j in range(3)]
-        self.trans[None] = trans
-        self.pos[None] = pos
+        self.trans_np = trans
+        self.pos_np = pos
 
     def _init(self):
-        self.set()
+        self.trans[None] = self.trans_np
+        self.pos[None] = self.pos_np
+        self.intrinsic[None][0, 0] = self.fx
+        self.intrinsic[None][0, 2] = self.cx
+        self.intrinsic[None][1, 1] = self.fy
+        self.intrinsic[None][1, 2] = self.cy
+        self.intrinsic[None][2, 2] = 1.0
+
+    @ti.func
+    def clear_buffer(self):
+        for I in ti.grouped(self.img):
+            self.img[I] = ts.vec3(0.0)
+            self.zbuf[I] = 0.0
 
     def from_mouse(self, mpos, dis=2):
         if isinstance(mpos, ti.GUI):
@@ -174,6 +177,7 @@ class Camera(AutoInit):
             a, t = a * math.tau - math.pi, t * math.pi - math.pi / 2
         d = dis * math.cos(t)
         self.set(pos=[d * math.sin(a), dis * math.sin(t), -d * math.cos(a)])
+        self._init()
 
     @ti.func
     def trans_pos(self, pos):
@@ -190,6 +194,44 @@ class Camera(AutoInit):
     @ti.func
     def untrans_dir(self, pos):
         return self.trans[None].inverse() @ pos
+    
+    @ti.func
+    def uncook(self, pos):
+        if ti.static(self.type == self.ORTHO):
+            pos[0] *= self.intrinsic[None][0, 0] 
+            pos[1] *= self.intrinsic[None][1, 1]
+            pos[0] += self.intrinsic[None][0, 2]
+            pos[1] += self.intrinsic[None][1, 2]
+        else:
+            pos = self.intrinsic[None] @ pos
+            pos[0] /= pos[2]
+            pos[1] /= pos[2]
+        return ts.vec2(pos[0], pos[1])
+
+    def export_intrinsic(self):
+        import numpy as np
+        intrinsic = np.zeros((3, 3))
+        intrinsic[0, 0] = self.fx
+        intrinsic[1, 1] = self.fy
+        intrinsic[0, 2] = self.cx
+        intrinsic[1, 2] = self.cy
+        intrinsic[2, 2] = 1
+        return intrinsic
+
+    def export_extrinsic(self):
+        import numpy as np
+        trans = np.array(self.trans_np)
+        pos = np.array(self.pos_np)
+        extrinsic = np.zeros((3, 4))
+
+        trans = np.transpose(trans)
+        for i in range(3):
+            for j in range(3):
+                extrinsic[i][j] = trans[i, j]
+        pos = -trans @ pos
+        for i in range(3):
+            extrinsic[i][3] = pos[i]
+        return extrinsic
 
     @ti.func
     def generate(self, coor):
