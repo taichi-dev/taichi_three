@@ -1,4 +1,4 @@
-version = (0, 0, 4)
+version = (0, 0, 3)
 taiglsl_version = (0, 0, 5)
 taichi_version = (0, 6, 24)
 
