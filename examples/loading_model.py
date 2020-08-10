@@ -5,8 +5,7 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-texture = ti.imread("assets/cloth.jpg")
-model = t3.Model(obj=t3.readobj('assets/torus.obj'), tex=texture)
+model = t3.Model(obj=t3.readobj('assets/monkey.obj', scale=0.8))
 scene.add_model(model)
 camera = t3.Camera()
 scene.add_camera(camera)

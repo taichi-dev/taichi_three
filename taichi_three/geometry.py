@@ -15,14 +15,13 @@ def render_triangle(model, camera, face):
     a = camera.untrans_pos(L2W @ ia)
     b = camera.untrans_pos(L2W @ ib)
     c = camera.untrans_pos(L2W @ ic)
-        
-    # NOTE: the normal computation indicates that 
-    # a front-facing face should be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW​);
+
+    # NOTE: the normal computation indicates that # a front-facing face should
+    # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
     # this is to be compatible with obj model loading.
     normal = ts.normalize(ts.cross(a - b, a - c))
     pos = (a + b + c) / 3
-    # backface culling, only perform for perspective camera
-    if ti.static(camera.type == camera.ORTHO) or (ts.dot(pos, normal) <= 0):
+    if ts.dot(pos, normal) <= 0:
         # shading
         light_dir = camera.untrans_dir(scene.light_dir[None])
         color = scene.opt.render_func(pos, normal, ts.vec3(0.0), light_dir)
