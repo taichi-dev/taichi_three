@@ -98,8 +98,7 @@ with ti.GUI('Mass Spring') as gui:
                 substep()
             update_display()
 
-        mx, my = gui.get_cursor_pos()
-        camera.from_mouse((mx, my))
+        camera.from_mouse(gui)
 
         scene.render()
         gui.set_image(camera.img)

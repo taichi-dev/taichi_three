@@ -10,6 +10,20 @@ Taichi THREE is an extension library of the [Taichi Programming Language](https:
 ![Example](https://github.com/taichi-dev/taichi_three/raw/master/assets/monkey.png)
 
 
+New in 0.0.3
+------------
+**Full camera control:** use `scene.camera.from_mouse(gui)` after a `gui.get_event()` call (without arguments) to control the camera with the mouse.
+* Drag with the left mouse button pressed to orbit the camera.
+* Drag with the right mouse button or use the wheel to zoom in and out.
+* Drag with the middle mouse buttom to pan the camera.
+
+Other updates:
+* Backface culling for perspective cameras
+* Used the area method to compute barycentric coordinates
+* Clip the triangle bounding box to prevent drawing outside the camera
+
+
+
 Installation
 ------------
 
@@ -80,3 +94,7 @@ while gui.running:
 ---
 
 Checkout the [`examples/`](https://github.com/taichi-dev/taichi_three/tree/master/examples) directory for more runnable examples.
+
+Loading models
+---
+Taichi-three uses a **left-handed** coordinate system where the +Z axis points **from** the camera **towards** the object. Therefore when exporting meshes from a modeling software (e.g., Blender), the axis directions should be set as "+Z forward, +Y up" so that the model will be oriented corrected in the taichi-three camera.

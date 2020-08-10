@@ -86,13 +86,15 @@ class Affine(ts.TaichiClass, AutoInit):
 
     def from_mouse(self, mpos):
         if isinstance(mpos, ti.GUI):
-            mpos = mpos.get_cursor_pos()
-
+            if mpos.is_pressed(ti.GUI.LMB):
+                mpos = mpos.get_cursor_pos()
+            else:
+                mpos = (0, 0)
         a, t = mpos
         if a != 0 or t != 0:
             a, t = a * math.tau - math.pi, t * math.pi - math.pi / 2
-        c = math.cos(t)
-        self.loadOrtho(fwd=[c * math.sin(a), math.sin(t), c * math.cos(a)])
+            c = math.cos(t)
+            self.loadOrtho(fwd=[c * math.sin(a), math.sin(t), c * math.cos(a)])
 
 
 @ti.data_oriented
@@ -101,12 +103,14 @@ class Camera(AutoInit):
     TAN_FOV = 'Tangent Perspective'
     COS_FOV = 'Cosine Perspective'
 
-    def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None):
+    def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None,
+            pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
         self.res = res or (512, 512)
         self.img = ti.Vector.var(3, ti.f32, self.res)
         self.zbuf = ti.var(ti.f32, self.res)
         self.trans = ti.Matrix(3, 3, ti.f32, ())
         self.pos = ti.Vector(3, ti.f32, ())
+        self.target = ti.Vector(3, ti.f32, ())
         self.intrinsic = ti.Matrix(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
         self.fov = 25
@@ -115,9 +119,14 @@ class Camera(AutoInit):
         self.fy = fy or self.res[1] // 2
         self.cx = cx or self.res[0] // 2
         self.cy = cy or self.res[1] // 2
-        self.trans_np = None
-        self.pos_np = None
-        self.set()
+        # python scope camera transformations
+        self.pos_py = pos
+        self.target_py = target
+        self.trans_py = None
+        self.up_py = up
+        self.set(init=True)
+        # mouse position for camera control
+        self.mpos = (0, 0)
 
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
         self.fx = fx or self.fx
@@ -125,13 +134,21 @@ class Camera(AutoInit):
         self.cx = cx or self.cx
         self.cy = cy or self.cy
 
-    def set(self, pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
+    '''
+    NOTE: taichi_three uses a LEFT HANDED coordinate system.
+    that is, the +Z axis points FROM the camera TOWARDS the scene,
+    with X, Y being device coordinates
+    '''
+    def set(self, pos=None, target=None, up=None, init=False):
+        pos = self.pos_py if pos is None else pos
+        target = self.target_py if target is None else target
+        up = self.up_py if up is None else up
         # fwd = target - pos
         fwd = [target[i] - pos[i] for i in range(3)]
         # fwd = fwd.normalized()
         fwd_len = math.sqrt(sum(x**2 for x in fwd))
         fwd = [x / fwd_len for x in fwd]
-        # right = fwd.cross(up)
+        # right = fwd.cross(up) 
         right = [
                 fwd[2] * up[1] - fwd[1] * up[2],
                 fwd[0] * up[2] - fwd[2] * up[0],
@@ -149,13 +166,18 @@ class Camera(AutoInit):
 
         # trans = ti.Matrix.cols([right, up, fwd])
         trans = [right, up, fwd]
-        trans = [[trans[i][j] for i in range(3)] for j in range(3)]
-        self.trans_np = trans
-        self.pos_np = pos
+        self.trans_py = [[trans[i][j] for i in range(3)] for j in range(3)]
+        self.pos_py = pos
+        self.target_py = target
+        if not init:
+            self.pos[None] = self.pos_py
+            self.trans[None] = self.trans_py
+            self.target[None] = self.target_py
 
     def _init(self):
-        self.trans[None] = self.trans_np
-        self.pos[None] = self.pos_np
+        self.pos[None] = self.pos_py
+        self.trans[None] = self.trans_py
+        self.target[None] = self.target_py
         self.intrinsic[None][0, 0] = self.fx
         self.intrinsic[None][0, 2] = self.cx
         self.intrinsic[None][1, 1] = self.fy
@@ -168,16 +190,73 @@ class Camera(AutoInit):
             self.img[I] = ts.vec3(0.0)
             self.zbuf[I] = 0.0
 
-    def from_mouse(self, mpos, dis=2):
-        if isinstance(mpos, ti.GUI):
-            mpos = mpos.get_cursor_pos()
+    def from_mouse(self, gui):
+        if gui.is_pressed(ti.GUI.LMB):
+            mpos = gui.get_cursor_pos()
+            if self.mpos != (0, 0):
+                self.orbit((mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]),
+                    pov=gui.is_pressed(ti.GUI.CTRL))
+            self.mpos = mpos
+        elif gui.is_pressed(ti.GUI.RMB):
+            mpos = gui.get_cursor_pos()
+            if self.mpos != (0, 0):
+                self.zoom_by_mouse(mpos, (mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]))
+            self.mpos = mpos
+        elif gui.is_pressed(ti.GUI.MMB):
+            mpos = gui.get_cursor_pos()
+            if self.mpos != (0, 0):
+                self.pan((mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]))
+            self.mpos = mpos
+        else:
+            if gui.event and gui.event.key == ti.GUI.WHEEL:
+                # one mouse wheel unit is (0, 120)
+                self.zoom(-gui.event.delta[1] / 1200)
+                gui.event = None
+            mpos = (0, 0)
+        self.mpos = mpos
 
-        a, t = mpos
-        if a != 0 or t != 0:
-            a, t = a * math.tau - math.pi, t * math.pi - math.pi / 2
-        d = dis * math.cos(t)
-        self.set(pos=[d * math.sin(a), dis * math.sin(t), -d * math.cos(a)])
-        self._init()
+
+    def orbit(self, delta, sensitivity=5, pov=False):
+        ds, dt = delta
+        if ds != 0 or dt != 0:
+            dis = math.sqrt(sum((self.target_py[i] - self.pos_py[i]) ** 2 for i in range(3)))
+            fov = math.radians(self.fov)
+            ds, dt = ds * fov * sensitivity, dt * fov * sensitivity
+            newdir = ts.vec3(ds, dt, 1).normalized()
+            newdir = [sum(self.trans[None][i, j] * newdir[j] for j in range(3))\
+                        for i in range(3)]
+            if pov:
+                newtarget = [self.pos_py[i] + dis * newdir[i] for i in range(3)]
+                self.set(target=newtarget)
+            else:
+                newpos = [self.target_py[i] - dis * newdir[i] for i in range(3)]
+                self.set(pos=newpos)
+
+    def zoom_by_mouse(self, pos, delta, sensitivity=3):
+        ds, dt = delta
+        if ds != 0 or dt != 0:
+            z = math.sqrt(ds ** 2 + dt ** 2) * sensitivity
+            if (pos[0] - 0.5) * ds + (pos[1] - 0.5) * dt > 0:
+                z *= -1
+            self.zoom(z)
+    
+    def zoom(self, z):
+        newpos = [(1 + z) * self.pos_py[i] - z * self.target_py[i] for i in range(3)]
+        newtarget = [z * self.pos_py[i] + (1 - z) * self.target_py[i] for i in range(3)]
+        self.set(pos=newpos, target=newtarget)
+
+    def pan(self, delta, sensitivity=3):
+        ds, dt = delta
+        if ds != 0 or dt != 0:
+            dis = math.sqrt(sum((self.target_py[i] - self.pos_py[i]) ** 2 for i in range(3)))
+            fov = math.radians(self.fov)
+            ds, dt = ds * fov * sensitivity, dt * fov * sensitivity
+            newdir = ts.vec3(-ds, -dt, 1).normalized()
+            newdir = [sum(self.trans[None][i, j] * newdir[j] for j in range(3))\
+                        for i in range(3)]
+            newtarget = [self.pos_py[i] + dis * newdir[i] for i in range(3)]
+            newpos = [self.pos_py[i] + newtarget[i] - self.target_py[i] for i in range(3)]
+            self.set(pos=newpos, target=newtarget)
 
     @ti.func
     def trans_pos(self, pos):
@@ -220,8 +299,8 @@ class Camera(AutoInit):
 
     def export_extrinsic(self):
         import numpy as np
-        trans = np.array(self.trans_np)
-        pos = np.array(self.pos_np)
+        trans = np.array(self.trans_py)
+        pos = np.array(self.pos_py)
         extrinsic = np.zeros((3, 4))
 
         trans = np.transpose(trans)

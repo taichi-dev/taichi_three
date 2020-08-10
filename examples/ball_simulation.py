@@ -11,7 +11,7 @@ model = t3.ScatterModel(radius=5)
 scene.add_model(model)
 camera = t3.Camera()
 scene.add_camera(camera)
-camera.type = camera.ORTHO
+#camera.type = camera.ORTHO
 
 pos = ti.Vector(3, ti.f32, N)
 vel = ti.Vector(3, ti.f32, N)
@@ -63,10 +63,11 @@ def substep():
 init()
 gui = ti.GUI('Balls', camera.res)
 while gui.running:
-    gui.running = not gui.get_event(ti.GUI.ESCAPE)
+    gui.get_event(None)
+    gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     for i in range(4):
         substep()
-    camera.from_mouse(gui, dis=4)
+    camera.from_mouse(gui)
     scene.render()
     gui.set_image(camera.img)
     gui.show()
