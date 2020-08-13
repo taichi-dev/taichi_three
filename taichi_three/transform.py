@@ -191,16 +191,18 @@ class Camera(AutoInit):
             self.zbuf[I] = 0.0
 
     def from_mouse(self, gui):
+        is_alter_move = gui.is_pressed(ti.GUI.CTRL)
         if gui.is_pressed(ti.GUI.LMB):
             mpos = gui.get_cursor_pos()
             if self.mpos != (0, 0):
                 self.orbit((mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]),
-                    pov=gui.is_pressed(ti.GUI.CTRL))
+                    pov=is_alter_move)
             self.mpos = mpos
         elif gui.is_pressed(ti.GUI.RMB):
             mpos = gui.get_cursor_pos()
             if self.mpos != (0, 0):
-                self.zoom_by_mouse(mpos, (mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]))
+                self.zoom_by_mouse(mpos, (mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]),
+                        dolly=is_alter_move)
             self.mpos = mpos
         elif gui.is_pressed(ti.GUI.MMB):
             mpos = gui.get_cursor_pos()
@@ -210,7 +212,8 @@ class Camera(AutoInit):
         else:
             if gui.event and gui.event.key == ti.GUI.WHEEL:
                 # one mouse wheel unit is (0, 120)
-                self.zoom(-gui.event.delta[1] / 1200)
+                self.zoom(-gui.event.delta[1] / 1200,
+                    dolly=is_alter_move)
                 gui.event = None
             mpos = (0, 0)
         self.mpos = mpos
@@ -232,18 +235,21 @@ class Camera(AutoInit):
                 newpos = [self.target_py[i] - dis * newdir[i] for i in range(3)]
                 self.set(pos=newpos)
 
-    def zoom_by_mouse(self, pos, delta, sensitivity=3):
+    def zoom_by_mouse(self, pos, delta, sensitivity=3, dolly=False):
         ds, dt = delta
         if ds != 0 or dt != 0:
             z = math.sqrt(ds ** 2 + dt ** 2) * sensitivity
             if (pos[0] - 0.5) * ds + (pos[1] - 0.5) * dt > 0:
                 z *= -1
-            self.zoom(z)
+            self.zoom(z, dolly)
     
-    def zoom(self, z):
+    def zoom(self, z, dolly=False):
         newpos = [(1 + z) * self.pos_py[i] - z * self.target_py[i] for i in range(3)]
-        newtarget = [z * self.pos_py[i] + (1 - z) * self.target_py[i] for i in range(3)]
-        self.set(pos=newpos, target=newtarget)
+        if dolly:
+            newtarget = [z * self.pos_py[i] + (1 - z) * self.target_py[i] for i in range(3)]
+            self.set(pos=newpos, target=newtarget)
+        else:
+            self.set(pos=newpos)
 
     def pan(self, delta, sensitivity=3):
         ds, dt = delta
