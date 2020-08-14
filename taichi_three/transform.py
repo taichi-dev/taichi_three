@@ -112,7 +112,7 @@ class Camera(AutoInit):
         self.pos = ti.Vector(3, ti.f32, ())
         self.target = ti.Vector(3, ti.f32, ())
         self.intrinsic = ti.Matrix(3, 3, ti.f32, ())
-        self.type = self.COS_FOV
+        self.type = self.TAN_FOV
         self.fov = math.radians(fov)
 
         self.cx = cx or self.res[0] // 2
