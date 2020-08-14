@@ -100,11 +100,11 @@ class Affine(ts.TaichiClass, AutoInit):
 @ti.data_oriented
 class Camera(AutoInit):
     ORTHO = 'Orthogonal'
-    TAN_FOV = 'Tangent Perspective'
-    COS_FOV = 'Cosine Perspective'
+    TAN_FOV = 'Tangent Perspective' # rectilinear perspective
+    COS_FOV = 'Cosine Perspective' # curvilinear perspective, see en.wikipedia.org/wiki/Curvilinear_perspective
 
     def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None,
-            pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
+            pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0], fov=45):
         self.res = res or (512, 512)
         self.img = ti.Vector.var(3, ti.f32, self.res)
         self.zbuf = ti.var(ti.f32, self.res)
@@ -112,13 +112,13 @@ class Camera(AutoInit):
         self.pos = ti.Vector(3, ti.f32, ())
         self.target = ti.Vector(3, ti.f32, ())
         self.intrinsic = ti.Matrix(3, 3, ti.f32, ())
-        self.type = self.TAN_FOV
-        self.fov = 25
+        self.type = self.COS_FOV
+        self.fov = math.radians(fov)
 
-        self.fx = fx or self.res[0] // 2
-        self.fy = fy or self.res[1] // 2
         self.cx = cx or self.res[0] // 2
         self.cy = cy or self.res[1] // 2
+        self.fx = fx or self.cx / math.tan(self.fov)
+        self.fy = fy or self.cy / math.tan(self.fov)
         # python scope camera transformations
         self.pos_py = pos
         self.target_py = target
@@ -129,6 +129,7 @@ class Camera(AutoInit):
         self.mpos = (0, 0)
 
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
+        # see http://ais.informatik.uni-freiburg.de/teaching/ws09/robotics2/pdfs/rob2-08-camera-calibration.pdf, 
         self.fx = fx or self.fx
         self.fy = fy or self.fy
         self.cx = cx or self.cx
@@ -223,7 +224,7 @@ class Camera(AutoInit):
         ds, dt = delta
         if ds != 0 or dt != 0:
             dis = math.sqrt(sum((self.target_py[i] - self.pos_py[i]) ** 2 for i in range(3)))
-            fov = math.radians(self.fov)
+            fov = self.fov
             ds, dt = ds * fov * sensitivity, dt * fov * sensitivity
             newdir = ts.vec3(ds, dt, 1).normalized()
             newdir = [sum(self.trans[None][i, j] * newdir[j] for j in range(3))\
@@ -255,7 +256,7 @@ class Camera(AutoInit):
         ds, dt = delta
         if ds != 0 or dt != 0:
             dis = math.sqrt(sum((self.target_py[i] - self.pos_py[i]) ** 2 for i in range(3)))
-            fov = math.radians(self.fov)
+            fov = self.fov
             ds, dt = ds * fov * sensitivity, dt * fov * sensitivity
             newdir = ts.vec3(-ds, -dt, 1).normalized()
             newdir = [sum(self.trans[None][i, j] * newdir[j] for j in range(3))\
@@ -287,10 +288,12 @@ class Camera(AutoInit):
             pos[1] *= self.intrinsic[None][1, 1]
             pos[0] += self.intrinsic[None][0, 2]
             pos[1] += self.intrinsic[None][1, 2]
-        else:
+        elif ti.static(self.type == ti.TAN_FOV):
             pos = self.intrinsic[None] @ pos
-            pos[0] /= pos[2]
-            pos[1] /= pos[2]
+            pos[0] /= abs(pos[2])
+            pos[1] /= abs(pos[2])
+        else:
+            raise NotImplementedError("Curvilinear projection matrix not implemented!")
         return ts.vec2(pos[0], pos[1])
 
     def export_intrinsic(self):
@@ -320,7 +323,7 @@ class Camera(AutoInit):
 
     @ti.func
     def generate(self, coor):
-        fov = ti.static(math.radians(self.fov))
+        fov = ti.static(self.fov)
         tan_fov = ti.static(math.tan(fov))
 
         orig = ts.vec3(0.0)
