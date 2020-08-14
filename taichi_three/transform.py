@@ -288,7 +288,7 @@ class Camera(AutoInit):
             pos[1] *= self.intrinsic[None][1, 1]
             pos[0] += self.intrinsic[None][0, 2]
             pos[1] += self.intrinsic[None][1, 2]
-        elif ti.static(self.type == ti.TAN_FOV):
+        elif ti.static(self.type == self.TAN_FOV):
             pos = self.intrinsic[None] @ pos
             pos[0] /= abs(pos[2])
             pos[1] /= abs(pos[2])
