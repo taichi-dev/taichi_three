@@ -8,3 +8,4 @@ from .geometry import *
 from .loader import *
 from .raycast import *
 from .meshgen import *
+from .light import *

@@ -21,7 +21,7 @@ class Scene(AutoInit):
             light = Light(ldir)
             self.add_light(light)
         else:
-            self.light[0].set(dir=ldir)
+            self.light[0].set(ldir)
 
     @ti.func
     def cook_coor(self, I, camera):
@@ -64,6 +64,9 @@ class Scene(AutoInit):
         if ti.static(len(self.cameras)):
             for camera in ti.static(self.cameras):
                 camera.clear_buffer()
+                # sets up light directions
+                for light in ti.static(self.lights):
+                    light.set_view(camera)
                 if ti.static(len(self.models)):
                     for model in ti.static(self.models):
                         model.render(camera)
