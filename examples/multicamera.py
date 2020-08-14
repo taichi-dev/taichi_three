@@ -8,21 +8,22 @@ scene = t3.Scene()
 texture = ti.imread("assets/cloth.jpg")
 model = t3.Model(obj=t3.readobj('assets/monkey.obj', scale=0.8), tex=texture)
 scene.add_model(model)
-camera = t3.Camera(res=(256, 256))
+camera = t3.Camera(res=(256, 256), pos=[0, 0, 2.5], target=[0, 0, 0], up=[0, 1, 0])
 scene.add_camera(camera)
 
-camera2 = t3.Camera()
+camera2 = t3.Camera(pos=[0, 1, -2], target=[0, 1, 0], up=[0, 1, 0])
 scene.add_camera(camera2)
 
+light = t3.Light([0.4, -1.5, -0.8])
+scene.add_light(light)
+
 camera.type = camera.ORTHO
-camera.set(pos=[0, 0, 2.5], target=[0, 0, 0], up=[0, 1, 0])
-camera2.set(pos=[0, 1, -2], target=[0, 1, 0], up=[0, 1, 0])
 camera2.set_intrinsic(256, 256, 256, 256)
 
 print(camera2.export_intrinsic())
 print(camera2.export_extrinsic())
 
-scene.set_light_dir([0.4, -1.5, -0.8])
+
 gui = ti.GUI('Model', camera.res)
 gui2 = ti.GUI('Model2', camera2.res)
 

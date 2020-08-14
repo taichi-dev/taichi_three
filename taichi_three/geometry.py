@@ -23,8 +23,11 @@ def render_triangle(model, camera, face):
     pos = (a + b + c) / 3
     if ts.dot(pos, normal) <= 0:
         # shading
-        light_dir = camera.untrans_dir(scene.light_dir[None])
-        color = scene.opt.render_func(pos, normal, ts.vec3(0.0), light_dir)
+        color = ts.vec3(0.0)
+        for light in ti.static(scene.lights):
+            light_dir = camera.untrans_dir(light.dir[None])
+            light_color = scene.opt.render_func(pos, normal, ts.vec3(0.0), light_dir, camera)
+            color += light_color * light.color[None]
         color = scene.opt.pre_process(color)
         A = camera.uncook(a)
         B = camera.uncook(b)

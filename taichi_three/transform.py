@@ -104,7 +104,7 @@ class Camera(AutoInit):
     COS_FOV = 'Cosine Perspective' # curvilinear perspective, see en.wikipedia.org/wiki/Curvilinear_perspective
 
     def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None,
-            pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0], fov=45):
+            pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0], fov=30):
         self.res = res or (512, 512)
         self.img = ti.Vector.var(3, ti.f32, self.res)
         self.zbuf = ti.var(ti.f32, self.res)

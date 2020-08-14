@@ -19,7 +19,6 @@ radius = ti.var(ti.f32, N)
 
 model.particles = pos
 
-scene.set_light_dir([1, 1, -1])
 
 @ti.kernel
 def init():

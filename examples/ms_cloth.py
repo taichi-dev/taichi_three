@@ -3,7 +3,7 @@ import taichi_glsl as tl
 import taichi_three as t3
 import numpy as np
 
-ti.init(ti.opengl)
+ti.init(ti.cuda)
 
 ### Parameters
 
@@ -59,6 +59,8 @@ scene.add_model(model)
 camera = t3.Camera()
 scene.add_camera(camera)
 camera.type = camera.ORTHO
+light = t3.Light([0.4, -1.5, 1.8])
+scene.add_light(light)
 
 
 @ti.kernel
@@ -89,7 +91,6 @@ def update_display():
 
 init()
 init_display()
-scene.set_light_dir([0.4, -1.5, 1.8])
 
 with ti.GUI('Mass Spring') as gui:
     while gui.running and not gui.get_event(gui.ESCAPE):
