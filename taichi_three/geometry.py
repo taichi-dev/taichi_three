@@ -30,31 +30,32 @@ def render_triangle(model, camera, face):
         A = camera.uncook(a)
         B = camera.uncook(b)
         C = camera.uncook(c)
-        B_A = B - A
-        C_B = C - B
-        A_C = A - C
+        scr_norm = 1 / ts.cross(A - C, B - A)
+        B_A = (B - A) * scr_norm
+        C_B = (C - B) * scr_norm
+        A_C = (A - C) * scr_norm
 
         W = 1
         # screen space bounding box
         M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
         M.x, N.x = min(max(M.x, 0), camera.img.shape[0]), min(max(N.x, 0), camera.img.shape[1])
         M.y, N.y = min(max(M.y, 0), camera.img.shape[0]), min(max(N.y, 0), camera.img.shape[1])
-        scr_norm = ts.cross(A_C, B_A)
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             # barycentric coordinates using the area method
             X_A = X - A
-            w_C = ts.cross(B_A, X_A) / scr_norm
-            w_B = ts.cross(A_C, X_A) / scr_norm
-            w_A = 1. - w_C - w_B
+            w_C = ts.cross(B_A, X_A)
+            w_B = ts.cross(A_C, X_A)
+            w_A = 1 - w_C - w_B
             # draw
-            if w_A >= 0 and w_B >= 0 and w_C >= 0\
-                    and 0 < X[0] < camera.img.shape[0] and 0 < X[1] < camera.img.shape[1]:
-                zindex = 1 / (a.z * w_A + b.z * w_B + c.z * w_C)
-                if zindex >= ti.atomic_max(camera.zbuf[X], zindex):
-                    clr = color
-                    coor = (ta * w_A + tb * w_B + tc * w_C)
-                    clr = clr * model.texSample(coor)
-                    camera.img[X] = clr
+            in_screen = w_A >= 0 and w_B >= 0 and w_C >= 0 and 0 < X[0] < camera.img.shape[0] and 0 < X[1] < camera.img.shape[1]
+            if not in_screen:
+                continue
+            zindex = 1 / (a.z * w_A + b.z * w_B + c.z * w_C)
+            if zindex < ti.atomic_max(camera.zbuf[X], zindex):
+                continue
+
+            coor = (ta * w_A + tb * w_B + tc * w_C)
+            camera.img[X] = color * model.texSample(coor)
 
 
 @ti.func
