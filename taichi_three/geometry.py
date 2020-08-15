@@ -25,7 +25,7 @@ def render_triangle(model, camera, face):
         # shading
         color = ts.vec3(0.0)
         for light in ti.static(scene.lights):
-            light_color = scene.opt.render_func(pos, normal, ts.vec3(0.0), light)
+            color += scene.opt.render_func(pos, normal, ts.vec3(0.0), light)
         color = scene.opt.pre_process(color)
         A = camera.uncook(a)
         B = camera.uncook(b)
