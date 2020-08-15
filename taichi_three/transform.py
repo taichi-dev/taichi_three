@@ -129,7 +129,7 @@ class Camera(AutoInit):
         self.mpos = (0, 0)
 
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
-        # see http://ais.informatik.uni-freiburg.de/teaching/ws09/robotics2/pdfs/rob2-08-camera-calibration.pdf, 
+        # see http://ais.informatik.uni-freiburg.de/teaching/ws09/robotics2/pdfs/rob2-08-camera-calibration.pdf
         self.fx = fx or self.fx
         self.fy = fy or self.fy
         self.cx = cx or self.cx
