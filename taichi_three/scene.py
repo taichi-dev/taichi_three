@@ -2,12 +2,13 @@ import taichi as ti
 import taichi_glsl as ts
 from .transform import *
 from .shading import *
+from .light import *
 
 
 @ti.data_oriented
 class Scene(AutoInit):
     def __init__(self):
-        self.light_dir = ti.Vector.var(3, ti.f32, ())
+        self.lights = []
         self.cameras = []
         self.opt = Shading()
         self.models = []
@@ -16,9 +17,11 @@ class Scene(AutoInit):
         # changes light direction input to the direction
         # from the light towards the object
         # to be consistent with future light types
-        norm = math.sqrt(sum(x**2 for x in ldir))
-        ldir = [-x / norm for x in ldir]
-        self.light_dir[None] = ldir
+        if not self.lights:
+            light = Light(ldir)
+            self.add_light(light)
+        else:
+            self.light[0].set(ldir)
 
     @ti.func
     def cook_coor(self, I, camera):
@@ -40,7 +43,13 @@ class Scene(AutoInit):
         camera.scene = self
         self.cameras.append(camera)
 
+    def add_light(self, light):
+        light.scene = self
+        self.lights.append(light)
+
     def _init(self):
+        for light in self.lights:
+            light.init()
         for camera in self.cameras:
             camera.init()
         for model in self.models:
@@ -55,6 +64,9 @@ class Scene(AutoInit):
         if ti.static(len(self.cameras)):
             for camera in ti.static(self.cameras):
                 camera.clear_buffer()
+                # sets up light directions
+                for light in ti.static(self.lights):
+                    light.set_view(camera)
                 if ti.static(len(self.models)):
                     for model in ti.static(self.models):
                         model.render(camera)

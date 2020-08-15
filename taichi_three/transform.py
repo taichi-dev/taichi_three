@@ -100,11 +100,11 @@ class Affine(ts.TaichiClass, AutoInit):
 @ti.data_oriented
 class Camera(AutoInit):
     ORTHO = 'Orthogonal'
-    TAN_FOV = 'Tangent Perspective'
-    COS_FOV = 'Cosine Perspective'
+    TAN_FOV = 'Tangent Perspective' # rectilinear perspective
+    COS_FOV = 'Cosine Perspective' # curvilinear perspective, see en.wikipedia.org/wiki/Curvilinear_perspective
 
     def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None,
-            pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0]):
+            pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0], fov=30):
         self.res = res or (512, 512)
         self.img = ti.Vector.var(3, ti.f32, self.res)
         self.zbuf = ti.var(ti.f32, self.res)
@@ -113,12 +113,12 @@ class Camera(AutoInit):
         self.target = ti.Vector(3, ti.f32, ())
         self.intrinsic = ti.Matrix(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
-        self.fov = 25
+        self.fov = math.radians(fov)
 
-        self.fx = fx or self.res[0] // 2
-        self.fy = fy or self.res[1] // 2
         self.cx = cx or self.res[0] // 2
         self.cy = cy or self.res[1] // 2
+        self.fx = fx or self.cx / math.tan(self.fov)
+        self.fy = fy or self.cy / math.tan(self.fov)
         # python scope camera transformations
         self.pos_py = pos
         self.target_py = target
@@ -129,6 +129,7 @@ class Camera(AutoInit):
         self.mpos = (0, 0)
 
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
+        # see http://ais.informatik.uni-freiburg.de/teaching/ws09/robotics2/pdfs/rob2-08-camera-calibration.pdf
         self.fx = fx or self.fx
         self.fy = fy or self.fy
         self.cx = cx or self.cx
@@ -191,16 +192,18 @@ class Camera(AutoInit):
             self.zbuf[I] = 0.0
 
     def from_mouse(self, gui):
+        is_alter_move = gui.is_pressed(ti.GUI.CTRL)
         if gui.is_pressed(ti.GUI.LMB):
             mpos = gui.get_cursor_pos()
             if self.mpos != (0, 0):
                 self.orbit((mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]),
-                    pov=gui.is_pressed(ti.GUI.CTRL))
+                    pov=is_alter_move)
             self.mpos = mpos
         elif gui.is_pressed(ti.GUI.RMB):
             mpos = gui.get_cursor_pos()
             if self.mpos != (0, 0):
-                self.zoom_by_mouse(mpos, (mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]))
+                self.zoom_by_mouse(mpos, (mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]),
+                        dolly=is_alter_move)
             self.mpos = mpos
         elif gui.is_pressed(ti.GUI.MMB):
             mpos = gui.get_cursor_pos()
@@ -210,7 +213,8 @@ class Camera(AutoInit):
         else:
             if gui.event and gui.event.key == ti.GUI.WHEEL:
                 # one mouse wheel unit is (0, 120)
-                self.zoom(-gui.event.delta[1] / 1200)
+                self.zoom(-gui.event.delta[1] / 1200,
+                    dolly=is_alter_move)
                 gui.event = None
             mpos = (0, 0)
         self.mpos = mpos
@@ -220,7 +224,7 @@ class Camera(AutoInit):
         ds, dt = delta
         if ds != 0 or dt != 0:
             dis = math.sqrt(sum((self.target_py[i] - self.pos_py[i]) ** 2 for i in range(3)))
-            fov = math.radians(self.fov)
+            fov = self.fov
             ds, dt = ds * fov * sensitivity, dt * fov * sensitivity
             newdir = ts.vec3(ds, dt, 1).normalized()
             newdir = [sum(self.trans[None][i, j] * newdir[j] for j in range(3))\
@@ -232,24 +236,27 @@ class Camera(AutoInit):
                 newpos = [self.target_py[i] - dis * newdir[i] for i in range(3)]
                 self.set(pos=newpos)
 
-    def zoom_by_mouse(self, pos, delta, sensitivity=3):
+    def zoom_by_mouse(self, pos, delta, sensitivity=3, dolly=False):
         ds, dt = delta
         if ds != 0 or dt != 0:
             z = math.sqrt(ds ** 2 + dt ** 2) * sensitivity
             if (pos[0] - 0.5) * ds + (pos[1] - 0.5) * dt > 0:
                 z *= -1
-            self.zoom(z)
+            self.zoom(z, dolly)
     
-    def zoom(self, z):
+    def zoom(self, z, dolly=False):
         newpos = [(1 + z) * self.pos_py[i] - z * self.target_py[i] for i in range(3)]
-        newtarget = [z * self.pos_py[i] + (1 - z) * self.target_py[i] for i in range(3)]
-        self.set(pos=newpos, target=newtarget)
+        if dolly:
+            newtarget = [z * self.pos_py[i] + (1 - z) * self.target_py[i] for i in range(3)]
+            self.set(pos=newpos, target=newtarget)
+        else:
+            self.set(pos=newpos)
 
     def pan(self, delta, sensitivity=3):
         ds, dt = delta
         if ds != 0 or dt != 0:
             dis = math.sqrt(sum((self.target_py[i] - self.pos_py[i]) ** 2 for i in range(3)))
-            fov = math.radians(self.fov)
+            fov = self.fov
             ds, dt = ds * fov * sensitivity, dt * fov * sensitivity
             newdir = ts.vec3(-ds, -dt, 1).normalized()
             newdir = [sum(self.trans[None][i, j] * newdir[j] for j in range(3))\
@@ -281,10 +288,12 @@ class Camera(AutoInit):
             pos[1] *= self.intrinsic[None][1, 1]
             pos[0] += self.intrinsic[None][0, 2]
             pos[1] += self.intrinsic[None][1, 2]
-        else:
+        elif ti.static(self.type == self.TAN_FOV):
             pos = self.intrinsic[None] @ pos
-            pos[0] /= pos[2]
-            pos[1] /= pos[2]
+            pos[0] /= abs(pos[2])
+            pos[1] /= abs(pos[2])
+        else:
+            raise NotImplementedError("Curvilinear projection matrix not implemented!")
         return ts.vec2(pos[0], pos[1])
 
     def export_intrinsic(self):
@@ -314,7 +323,7 @@ class Camera(AutoInit):
 
     @ti.func
     def generate(self, coor):
-        fov = ti.static(math.radians(self.fov))
+        fov = ti.static(self.fov)
         tan_fov = ti.static(math.tan(fov))
 
         orig = ts.vec3(0.0)

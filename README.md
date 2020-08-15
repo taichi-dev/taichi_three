@@ -27,11 +27,12 @@ Other updates:
 Installation
 ------------
 
-Install Taichi THREE with `pip`:
+Install Taichi THREE Dev:
 
 ```bash
 # Python 3.6/3.7/3.8 (64-bit)
-pip install taichi_three
+pip install taichi taichi_glsl
+python setup.py build install
 ```
 
 This should also install its dependencies `taichi` and `taichi_glsl` as well.
@@ -70,13 +71,32 @@ model = t3.Model(t3.readobj('assets/monkey.obj', scale=0.6))
 scene.add_model(model)
 ```
 
+If you want to add texture, read the texture image and feed it into `model`:
+
+```py
+texture = ti.imread('assets/cloth.jpg')
+model = t3.Model(t3.readobj('assets/monkey.obj', scale=0.6), tex=texture)
+```
+
 NOTE: model creations should also be put as forward as possible too.
 
 ---
 
-Also don't forget to set the light (only parallel for now) direction:
+Then, create the camera(s), and put it into `scene`:
+
 ```py
-scene.set_light_dir([1, 2, -2])
+camera = t3.Camera()
+scene.add_camera(camera)
+``` 
+
+NOTE: camera creations should also be put as forward as possible.
+
+---
+
+Also don't forget to set the light:
+```py
+light = t3.Light()
+scene.add_light(light)
 ```
 
 ---
@@ -87,7 +107,7 @@ Finally, create a GUI. And here goes the main loop:
 gui = ti.GUI('Monkey')
 while gui.running:
     scene.render()            # render the model(s) into image
-    gui.set_image(scene.img)  # display the result image
+    gui.set_image(camera.img)  # display the result image
     gui.show()
 ```
 
