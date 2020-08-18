@@ -9,12 +9,12 @@ The base light class represents a directional light.
 @ti.data_oriented
 class Light(AutoInit):
 
-    def __init__(self, direction=None, color=None):
-        direction = direction or [0, 0, 1]
-        norm = math.sqrt(sum(x ** 2 for x in direction))
-        direction = [x / norm for x in direction]
+    def __init__(self, dir=None, color=None):
+        dir = dir or [0, 0, 1]
+        norm = math.sqrt(sum(x ** 2 for x in dir))
+        dir = [x / norm for x in dir]
  
-        self.dir_py = [-x for x in direction]
+        self.dir_py = [-x for x in dir]
         self.color_py = color or [1, 1, 1] 
 
         self.dir = ti.Vector(3, ti.float32, ())
@@ -23,10 +23,10 @@ class Light(AutoInit):
         # so that we don't have to compute it for each vertex
         self.viewdir = ti.Vector(3, ti.float32, ())
 
-    def set(self, direction=[0, 0, 1], color=[1, 1, 1]):
-        norm = math.sqrt(sum(x**2 for x in direction))
-        direction = [x / norm for x in direction]
-        self.dir_py = direction
+    def set(self, dir=[0, 0, 1], color=[1, 1, 1]):
+        norm = math.sqrt(sum(x**2 for x in dir))
+        dir = [x / norm for x in dir]
+        self.dir_py = dir
         self.color = color
 
     def _init(self):
