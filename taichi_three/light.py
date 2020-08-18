@@ -52,5 +52,36 @@ class Light(AutoInit):
 
 
 class PointLight(Light):
-    pass
+
+    def __init__(self, position=None, color=None,
+            c1=None, c2=None):
+        position = position or [0, 1, -3]
+        if c1 is not None: 
+            self.c1 = c1
+        if c2 is not None: 
+            self.c2 = c2
+        self.pos_py = position
+        self.color_py = color or [1, 1, 1] 
+        self.pos = ti.Vector(3, ti.float32, ())
+        self.color = ti.Vector(3, ti.float32, ())
+        self.viewpos = ti.Vector(3, ti.float32, ())
+
+    def _init(self):
+        self.pos[None] = self.pos_py
+        self.color[None] = self.color_py
+
+    @ti.func
+    def set_view(self, camera):
+        self.viewpos[None] = camera.untrans_pos(self.pos[None])
+
+    @ti.func
+    def intensity(self, pos):
+        distsq = (self.viewpos[None] - pos).norm_sqr()
+        return 1. / (1. + self.c1 * ti.sqrt(distsq) + self.c2 * distsq)
+
+    @ti.func
+    def get_dir(self, pos):
+        return ts.normalize(self.viewpos[None] - pos)
+    
+    
 
