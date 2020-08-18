@@ -3,7 +3,7 @@ import taichi_glsl as tl
 import taichi_three as t3
 import numpy as np
 
-ti.init(ti.cuda)
+ti.init(arch=ti.gpu)
 
 ### Parameters
 
@@ -53,12 +53,11 @@ def substep():
 ### Rendering GUI
 
 scene = t3.Scene()
-model = t3.Model(f_n=(N - 1)**2 * 2, vi_n=N**2, vt_n=N**2, f_m=1,
+model = t3.Model(f_n=(N - 1)**2 * 4, vi_n=N**2, vt_n=N**2, f_m=1,
                  tex=ti.imread('assets/cloth.jpg'))
 scene.add_model(model)
-camera = t3.Camera()
+camera = t3.Camera(fov=24, pos=[0, 0, -1.5], target=[0, 0.25, 0])
 scene.add_camera(camera)
-camera.type = camera.ORTHO
 light = t3.Light([0.4, -1.5, 1.8])
 scene.add_light(light)
 
@@ -75,8 +74,10 @@ def init_display():
         i.x -= 1
         d = i.dot(tl.vec(N, 1))
         i.y -= 1
-        model.faces[a * 2 + 0] = [a, c, b]
-        model.faces[a * 2 + 1] = [a, d, c]
+        model.faces[a * 4 + 0] = [a, c, b]
+        model.faces[a * 4 + 1] = [a, d, c]
+        model.faces[a * 4 + 2] = [a, b, c]
+        model.faces[a * 4 + 3] = [a, c, d]
     for i in ti.grouped(x):
         j = i.dot(tl.vec(N, 1))
         model.vt[j] = tl.D.yx + i.xY / N
