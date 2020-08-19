@@ -7,7 +7,7 @@ ti.init(arch=ti.gpu)
 
 ### Parameters
 
-N = 128
+N = 256
 NN = N, N
 W = 1
 L = W / N
@@ -19,8 +19,8 @@ dt = 5e-4
 
 ### Physics
 
-x = ti.Vector(3, ti.f32, NN)
-v = ti.Vector(3, ti.f32, NN)
+x = ti.Vector.field(3, float, NN)
+v = ti.Vector.field(3, float, NN)
 
 
 @ti.kernel
