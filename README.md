@@ -29,15 +29,20 @@ Other updates:
 Installation
 ------------
 
-Install Taichi THREE Dev:
+1. Install Taichi THREE via `pip` for end-users:
+
+```bash
+# Python 3.6/3.7/3.8 (64-bit)
+pip install taichi_three
+```
+
+2. Clone and install latest Taichi THREE from `dev` branch:
 
 ```bash
 # Python 3.6/3.7/3.8 (64-bit)
 pip install taichi taichi_glsl
 python setup.py build install
 ```
-
-This should also install its dependencies `taichi` and `taichi_glsl` as well.
 
 
 How to play
@@ -48,7 +53,7 @@ First, import Taichi and Taichi THREE:
 import taichi as ti
 import taichi_three as t3
 
-ti.init(ti.gpu)
+ti.init(ti.cpu)
 ```
 
 ---
