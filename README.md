@@ -7,7 +7,7 @@ Taichi THREE
 Taichi THREE is an extension library of the [Taichi Programming Language](https://github.com/taichi-dev/taichi) to render 3D scenes into nice-looking 2D images in real-time (work in progress).
 
 
-![Example](https://github.com/taichi-dev/taichi_three/raw/master/assets/monkey.png)
+![Example](https://github.com/taichi-dev/taichi_three/raw/master/assets/example.png)
 
 
 New in 0.0.3
