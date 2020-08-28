@@ -37,8 +37,8 @@ class Affine(ts.TaichiClass, AutoInit):
         return self.entries[1]
 
     @classmethod
-    def _var(cls, shape=None):
-        return ti.Matrix(3, 3, ti.f32, shape), ti.Vector.var(3, ti.f32, shape)
+    def _field(cls, shape=None):
+        return ti.Matrix.field(3, 3, ti.f32, shape), ti.Vector.field(3, ti.f32, shape)
 
     @ti.func
     def loadIdentity(self):
@@ -106,12 +106,12 @@ class Camera(AutoInit):
     def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None,
             pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0], fov=30):
         self.res = res or (512, 512)
-        self.img = ti.Vector.var(3, ti.f32, self.res)
-        self.zbuf = ti.var(ti.f32, self.res)
-        self.trans = ti.Matrix(3, 3, ti.f32, ())
-        self.pos = ti.Vector(3, ti.f32, ())
-        self.target = ti.Vector(3, ti.f32, ())
-        self.intrinsic = ti.Matrix(3, 3, ti.f32, ())
+        self.img = ti.Vector.field(3, ti.f32, self.res)
+        self.zbuf = ti.field(ti.f32, self.res)
+        self.trans = ti.Matrix.field(3, 3, ti.f32, ())
+        self.pos = ti.Vector.field(3, ti.f32, ())
+        self.target = ti.Vector.field(3, ti.f32, ())
+        self.intrinsic = ti.Matrix.field(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
         self.fov = math.radians(fov)
 

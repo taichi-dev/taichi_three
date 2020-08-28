@@ -12,7 +12,7 @@ class Model(AutoInit):
     def __init__(self, f_n=None, f_m=None,
             vi_n=None, vt_n=None, vn_n=None, tex_n=None,
             obj=None, tex=None):
-        self.L2W = Affine.var(())
+        self.L2W = Affine.field(())
 
         self.faces = None
         self.vi = None
@@ -44,15 +44,15 @@ class Model(AutoInit):
             vn_n = 1
 
         if f_n is not None:
-            self.faces = ti.Matrix.var(3, f_m, ti.i32, f_n)
+            self.faces = ti.Matrix.field(3, f_m, ti.i32, f_n)
         if vi_n is not None:
-            self.vi = ti.Vector.var(3, ti.f32, vi_n)
+            self.vi = ti.Vector.field(3, ti.f32, vi_n)
         if vt_n is not None:
-            self.vt = ti.Vector.var(2, ti.f32, vt_n)
+            self.vt = ti.Vector.field(2, ti.f32, vt_n)
         if vn_n is not None:
-            self.vn = ti.Vector.var(3, ti.f32, vn_n)
+            self.vn = ti.Vector.field(3, ti.f32, vn_n)
         if tex_n is not None:
-            self.tex = ti.Vector.var(3, ti.f32, tex_n)
+            self.tex = ti.Vector.field(3, ti.f32, tex_n)
 
         if obj is not None:
             self.init_obj = obj

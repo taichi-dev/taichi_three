@@ -13,9 +13,9 @@ camera = t3.Camera()
 scene.add_camera(camera)
 #camera.type = camera.ORTHO
 
-pos = ti.Vector(3, ti.f32, N)
-vel = ti.Vector(3, ti.f32, N)
-radius = ti.var(ti.f32, N)
+pos = ti.Vector.field(3, ti.f32, N)
+vel = ti.Vector.field(3, ti.f32, N)
+radius = ti.field(ti.f32, N)
 
 model.particles = pos
 

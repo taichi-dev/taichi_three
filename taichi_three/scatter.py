@@ -10,13 +10,13 @@ import math
 @ti.data_oriented
 class ScatterModel(AutoInit):
     def __init__(self, num=None, radius=2):
-        self.L2W = Affine.var(())
+        self.L2W = Affine.field(())
 
         self.num = num
         self.radius = radius
 
         if num is not None:
-            self.particles = ti.Vector.var(3, ti.i32, num)
+            self.particles = ti.Vector.field(3, ti.i32, num)
 
     def _init(self):
         self.L2W.init()
