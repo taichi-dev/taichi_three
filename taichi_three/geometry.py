@@ -21,7 +21,10 @@ def render_triangle(model, camera, face):
     # this is to be compatible with obj model loading.
     normal = ts.normalize(ts.cross(a - b, a - c))
     pos = (a + b + c) / 3
-    if ts.dot(pos, normal) <= 0:
+    view_pos = (a+b+c) / 3
+    if camera.type == camera.ORTHO:
+        view_pos = ts.vec3(0.0, 0.0, 1.0)
+    if ts.dot(view_pos, normal) <= 0:
         # shading
         color = ts.vec3(0.0)
         for light in ti.static(scene.lights):
