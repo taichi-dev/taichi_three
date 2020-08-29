@@ -6,29 +6,32 @@ ti.init(ti.cpu)
 
 scene = t3.Scene()
 texture = ti.imread("assets/cloth.jpg")
-model = t3.Model(obj=t3.readobj('assets/monkey.obj', scale=0.6), tex=texture)
+model = t3.Model(obj=t3.readobj('assets/monkey.obj', scale=0.8), tex=texture)
 scene.add_model(model)
-camera = t3.Camera(res=(256, 256))
-camera.set(pos=[0, 0, 2.5], target=[0, 0, 0], up=[0, 1, 0])
-camera.type = camera.ORTHO
+camera = t3.Camera(res=(256, 256), pos=[0, 0, 2.5], target=[0, 0, 0], up=[0, 1, 0])
 scene.add_camera(camera)
 
-camera2 = t3.Camera()
-camera2.set(pos=[0, 1, -2], target=[0, 1, 0], up=[0, 1, 0])
-camera2.set_intrinsic(256, 256, 256, 256)
+camera2 = t3.Camera(pos=[0, 1, -2], target=[0, 1, 0], up=[0, 1, 0])
 scene.add_camera(camera2)
+
+light = t3.Light([0.4, -1.5, -0.8])
+scene.add_light(light)
+
+camera.type = camera.ORTHO
+camera2.set_intrinsic(256, 256, 256, 256)
 
 print(camera2.export_intrinsic())
 print(camera2.export_extrinsic())
 
-light = t3.Light([0.4, -1.5, -0.8])
-scene.add_light(light)
+
 gui = ti.GUI('Model', camera.res)
 gui2 = ti.GUI('Model2', camera2.res)
 
 while gui.running and gui2.running:
-    gui.running = not gui.get_event(ti.GUI.ESCAPE)
-    gui2.running = not gui2.get_event(ti.GUI.ESCAPE)
+    gui.get_event(None)
+    gui2.get_event(None)
+    gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
+    gui2.running = not gui2.is_pressed(ti.GUI.ESCAPE)
     model.L2W.from_mouse(gui)
     scene.render()
     gui.set_image(camera.img)

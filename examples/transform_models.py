@@ -12,14 +12,14 @@ scene.add_model(monkey)
 scene.add_model(torus)
 
 camera = t3.Camera()
-camera.type = camera.ORTHO
 scene.add_camera(camera)
 
 light = t3.Light([0.4, -1.5, 1.8])
 scene.add_light(light)
 gui = ti.GUI('Transform', camera.res)
 while gui.running:
-    gui.running = not gui.get_event(ti.GUI.ESCAPE)
+    gui.get_event(None)
+    gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     camera.from_mouse(gui)
     monkey.L2W.matrix[None] = t3.rotationZ(angle=time.time())
     torus .L2W.offset[None] = [0, math.cos(time.time()) * 0.5, 0]

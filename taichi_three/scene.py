@@ -14,20 +14,25 @@ class Scene(AutoInit):
         self.models = []
 
     def set_light_dir(self, ldir):
-        norm = math.sqrt(sum(x**2 for x in ldir))
-        ldir = [x / norm for x in ldir]
-        self.light_dir[None] = ldir
+        # changes light direction input to the direction
+        # from the light towards the object
+        # to be consistent with future light types
+        if not self.lights:
+            light = Light(ldir)
+            self.add_light(light)
+        else:
+            self.light[0].set(ldir)
 
     @ti.func
-    def cook_coor(self, I):
-        scale = ti.static(2 / min(*self.img.shape()))
-        coor = (I - ts.vec2(*self.img.shape()) / 2) * scale
+    def cook_coor(self, I, camera):
+        scale = ti.static(2 / min(*camera.img.shape()))
+        coor = (I - ts.vec2(*camera.img.shape()) / 2) * scale
         return coor
 
     @ti.func
-    def uncook_coor(self, coor):
-        scale = ti.static(min(*self.img.shape()) / 2)
-        I = coor.xy * scale + ts.vec2(*self.img.shape()) / 2
+    def uncook_coor(self, coor, camera):
+        scale = ti.static(min(*camera.img.shape()) / 2)
+        I = coor.xy * scale + ts.vec2(*camera.img.shape()) / 2
         return I
 
     def add_model(self, model):
@@ -59,13 +64,9 @@ class Scene(AutoInit):
         if ti.static(len(self.cameras)):
             for camera in ti.static(self.cameras):
                 camera.clear_buffer()
+                # sets up light directions
+                for light in ti.static(self.lights):
+                    light.set_view(camera)
                 if ti.static(len(self.models)):
                     for model in ti.static(self.models):
                         model.render(camera)
-
-    # backward-compat:
-    def add_ball(self, *args, **kwargs):
-        raise NotImplementedError('''
-Sorry, the old ray tracing ``t3.Scene`` has been renamed to ``t3.SceneRT``.
-Now ``t3.Scene`` represents for mesh grid rendering scene.
-''')

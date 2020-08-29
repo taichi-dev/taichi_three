@@ -67,16 +67,16 @@ class Ball(ObjectRT):
 
 @ti.data_oriented
 class SceneRTBase(Scene):
-    def __init__(self, res=None):
-        super(SceneRTBase, self).__init__(res)
+    def __init__(self):
+        super(SceneRTBase, self).__init__()
         self.balls = []
 
     def trace(self, pos, dir):
         raise NotImplementedError
 
     @ti.func
-    def color_at(self, coor):
-        orig, dir = self.camera.generate(coor)
+    def color_at(self, coor, camera):
+        orig, dir = camera.generate(coor)
 
         pos, normal = self.trace(orig, dir)
         light_dir = self.light_dir[None]
@@ -87,10 +87,12 @@ class SceneRTBase(Scene):
 
     @ti.kernel
     def _render(self):
-        for I in ti.grouped(self.img):
-            coor = self.cook_coor(I)
-            color = self.color_at(coor)
-            self.img[I] = color
+        if ti.static(len(self.cameras)):
+            for camera in ti.static(self.cameras):
+                for I in ti.grouped(camera.img):
+                    coor = self.cook_coor(I, camera)
+                    color = self.color_at(coor, camera)
+                    camera.img[I] = color
 
     def add_ball(self, pos, radius):
         b = Ball(pos, radius)

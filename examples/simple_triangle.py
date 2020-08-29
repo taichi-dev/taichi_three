@@ -20,7 +20,8 @@ model.faces.from_numpy(np.array([[0, 1, 2], [0, 2, 1]])) # both cull faces
 
 gui = ti.GUI('Triangle', camera.res)
 while gui.running:
-    gui.running = not gui.get_event(ti.GUI.ESCAPE)
+    gui.get_event(None)
+    gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     camera.from_mouse(gui)
     scene.render()
     gui.set_image(camera.img)

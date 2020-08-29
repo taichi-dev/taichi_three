@@ -184,12 +184,14 @@ def update_display():
 
 init()
 init_display()
-scene.set_light_dir([0.4, -1.5, -1.8])
+scene.set_light_dir([0.4, -1.5, 1.8])
 
 print('[Hint] mouse drag to orbit camera')
 with ti.GUI('Mass Spring') as gui:
     gui.frame = 0
-    while gui.running and not gui.get_event(gui.ESCAPE):
+    while gui.running:
+        gui.get_event()
+        gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
         if not gui.is_pressed(gui.SPACE):
             for i in range(steps):
                 if beta == 0:
@@ -197,11 +199,7 @@ with ti.GUI('Mass Spring') as gui:
                 else:
                     implicit()
             update_display()
-        if gui.is_pressed(gui.LMB):
-            scene.camera.from_mouse(gui)
-        else:
-            scene.camera.from_mouse([0.5, 0.4])
-
+        scene.camera.from_mouse(gui)
         scene.render()
         gui.set_image(scene.img)
         #gui.show(f'/tmp/{gui.frame:06d}.png')
