@@ -7,7 +7,7 @@ ti.init(arch=ti.gpu)
 
 ### Parameters
 
-N = 128
+N = 256
 NN = N, N
 W = 1
 L = W / N
@@ -19,8 +19,8 @@ dt = 5e-4
 
 ### Physics
 
-x = ti.Vector(3, ti.f32, NN)
-v = ti.Vector(3, ti.f32, NN)
+x = ti.Vector.field(3, float, NN)
+v = ti.Vector.field(3, float, NN)
 
 
 @ti.kernel
@@ -56,7 +56,7 @@ scene = t3.Scene()
 model = t3.Model(f_n=(N - 1)**2 * 4, vi_n=N**2, vt_n=N**2, f_m=1,
                  tex=ti.imread('assets/cloth.jpg'))
 scene.add_model(model)
-camera = t3.Camera(fov=24, pos=[0, 0, -1.5], target=[0, 0.25, 0])
+camera = t3.Camera(fov=24, pos=[0, 1.1, -1.5], target=[0, 0.25, 0])
 scene.add_camera(camera)
 light = t3.Light([0.4, -1.5, 1.8])
 scene.add_light(light)

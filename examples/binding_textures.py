@@ -7,7 +7,7 @@ ti.init(ti.cpu)
 scene = t3.Scene()
 model = t3.Model(obj=t3.readobj('assets/torus.obj'),
                  tex=ti.imread('assets/cloth.jpg'))
-camera = t3.Camera()
+camera = t3.Camera(pos=[0, 1, -1.8])
 scene.add_model(model)
 scene.add_camera(camera)
 

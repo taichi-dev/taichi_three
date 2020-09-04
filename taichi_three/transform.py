@@ -37,8 +37,8 @@ class Affine(ts.TaichiClass, AutoInit):
         return self.entries[1]
 
     @classmethod
-    def _var(cls, shape=None):
-        return ti.Matrix(3, 3, ti.f32, shape), ti.Vector.var(3, ti.f32, shape)
+    def _field(cls, shape=None):
+        return ti.Matrix.field(3, 3, ti.f32, shape), ti.Vector.field(3, ti.f32, shape)
 
     @ti.func
     def loadIdentity(self):
