@@ -197,8 +197,8 @@ class Camera(AutoInit):
 
     @ti.func
     def clear_buffer(self):
-        for I in ti.grouped(self.img):
-            for buf in ti.static(self.buffers):
+        for buf in ti.static(self.buffers):
+            for I in ti.grouped(self.img):
                 buf[I] *= 0.0
 
     def from_mouse(self, gui):
