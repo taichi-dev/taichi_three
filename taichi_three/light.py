@@ -52,16 +52,15 @@ class Light(AutoInit):
 
 
 class PointLight(Light):
-
     def __init__(self, position=None, color=None,
             c1=None, c2=None):
         position = position or [0, 1, -3]
-        if c1 is not None: 
+        if c1 is not None:
             self.c1 = c1
-        if c2 is not None: 
+        if c2 is not None:
             self.c2 = c2
         self.pos_py = position
-        self.color_py = color or [1, 1, 1] 
+        self.color_py = color or [1, 1, 1]
         self.pos = ti.Vector(3, ti.float32, ())
         self.color = ti.Vector(3, ti.float32, ())
         self.viewpos = ti.Vector(3, ti.float32, ())
@@ -82,6 +81,3 @@ class PointLight(Light):
     @ti.func
     def get_dir(self, pos):
         return ts.normalize(self.viewpos[None] - pos)
-    
-    
-

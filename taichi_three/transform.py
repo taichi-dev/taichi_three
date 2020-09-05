@@ -107,8 +107,8 @@ class Camera(AutoInit):
             pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0], fov=30):
         self.res = res or (512, 512)
         self.buffers = []
-        self.add_buffer("img", dim=3, dtype=ti.f32)
-        self.add_buffer("zbuf", dim=0, dtype=ti.f32)
+        self.add_buffer('img', dim=3, dtype=ti.f32)
+        self.add_buffer('zbuf', dim=0, dtype=ti.f32)
         self.trans = ti.Matrix(3, 3, ti.f32, ())
         self.pos = ti.Vector(3, ti.f32, ())
         self.target = ti.Vector(3, ti.f32, ())
@@ -130,7 +130,7 @@ class Camera(AutoInit):
         self.mpos = (0, 0)
 
 
-    def add_buffer(self, name, dim=3, dtype=ti.f32):
+    def add_buffer(self, name, dim, dtype=ti.f32):
         if not dim:
             buffer = ti.field(dtype, self.res)
         else:
@@ -197,8 +197,8 @@ class Camera(AutoInit):
 
     @ti.func
     def clear_buffer(self):
-        for buf in ti.static(self.buffers):
-            for I in ti.grouped(self.img):
+        for I in ti.grouped(self.img):
+            for buf in ti.static(self.buffers):
                 buf[I] *= 0.0
 
     def from_mouse(self, gui):
