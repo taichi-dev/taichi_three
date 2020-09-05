@@ -109,10 +109,10 @@ class Camera(AutoInit):
         self.buffers = []
         self.add_buffer('img', dim=3, dtype=ti.f32)
         self.add_buffer('zbuf', dim=0, dtype=ti.f32)
-        self.trans = ti.Matrix(3, 3, ti.f32, ())
-        self.pos = ti.Vector(3, ti.f32, ())
-        self.target = ti.Vector(3, ti.f32, ())
-        self.intrinsic = ti.Matrix(3, 3, ti.f32, ())
+        self.trans = ti.Matrix.field(3, 3, ti.f32, ())
+        self.pos = ti.Vector.field(3, ti.f32, ())
+        self.target = ti.Vector.field(3, ti.f32, ())
+        self.intrinsic = ti.Matrix.field(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
         self.fov = math.radians(fov)
 
