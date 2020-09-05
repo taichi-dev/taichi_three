@@ -61,9 +61,9 @@ class PointLight(Light):
             self.c2 = c2
         self.pos_py = position
         self.color_py = color or [1, 1, 1]
-        self.pos = ti.Vector(3, ti.float32, ())
-        self.color = ti.Vector(3, ti.float32, ())
-        self.viewpos = ti.Vector(3, ti.float32, ())
+        self.pos = ti.Vector.field(3, ti.f32, ())
+        self.color = ti.Vector.field(3, ti.f32, ())
+        self.viewpos = ti.Vector.field(3, ti.f32, ())
 
     def _init(self):
         self.pos[None] = self.pos_py
