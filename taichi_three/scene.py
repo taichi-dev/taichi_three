@@ -64,9 +64,19 @@ class Scene(AutoInit):
         if ti.static(len(self.cameras)):
             for camera in ti.static(self.cameras):
                 camera.clear_buffer()
+
                 # sets up light directions
-                for light in ti.static(self.lights):
-                    light.set_view(camera)
+                if ti.static(len(self.lights)):
+                    for light in ti.static(self.lights):
+                        light.set_view(camera)
+                else:
+                    ti.static_print('Warning: no lights')
+
                 if ti.static(len(self.models)):
                     for model in ti.static(self.models):
                         model.render(camera)
+                else:
+                    ti.static_print('Warning: no models')
+
+        else:
+            ti.static_print('Warning: no cameras')
