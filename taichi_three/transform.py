@@ -148,38 +148,20 @@ class Camera(AutoInit):
     '''
     NOTE: taichi_three uses a LEFT HANDED coordinate system.
     that is, the +Z axis points FROM the camera TOWARDS the scene,
-    with X, Y being device coordinates
+    with X, Y being device coordinates.
     '''
     def set(self, pos=None, target=None, up=None, init=False):
-        pos = pos or self.pos_py
-        target = target or self.target_py
-        up = up or self.up_py
-        # fwd = target - pos
-        fwd = [target[i] - pos[i] for i in range(3)]
-        # fwd = fwd.normalized()
-        fwd_len = math.sqrt(sum(x**2 for x in fwd))
-        fwd = [x / fwd_len for x in fwd]
-        # right = fwd.cross(up) 
-        right = [
-                fwd[2] * up[1] - fwd[1] * up[2],
-                fwd[0] * up[2] - fwd[2] * up[0],
-                fwd[1] * up[0] - fwd[0] * up[1],
-                ]
-        # right = right.normalized()
-        right_len = math.sqrt(sum(x**2 for x in right))
-        right = [x / right_len for x in right]
-        # up = right.cross(fwd)
-        up = [
-             right[2] * fwd[1] - right[1] * fwd[2],
-             right[0] * fwd[2] - right[2] * fwd[0],
-             right[1] * fwd[0] - right[0] * fwd[1],
-             ]
+        pos = ti.Vector(pos or self.pos_py)
+        target = ti.Vector(target or self.target_py)
+        up = ti.Vector(up or self.up_py)
+        fwd = (target - pos).normalized()
+        right = up.cross(fwd).normalized()
+        up = fwd.cross(right)
+        trans = ti.Matrix([right.entries, up.entries, fwd.entries]).transpose()
 
-        # trans = ti.Matrix.cols([right, up, fwd])
-        trans = [right, up, fwd]
-        self.trans_py = [[trans[i][j] for i in range(3)] for j in range(3)]
-        self.pos_py = pos
-        self.target_py = target
+        self.trans_py = [[trans[i, j] for j in range(3)] for i in range(3)]
+        self.pos_py = pos.entries
+        self.target_py = target.entries
         if not init:
             self.pos[None] = self.pos_py
             self.trans[None] = self.trans_py
