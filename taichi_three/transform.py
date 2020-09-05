@@ -104,7 +104,7 @@ class Camera(AutoInit):
     COS_FOV = 'Cosine Perspective' # curvilinear perspective, see en.wikipedia.org/wiki/Curvilinear_perspective
 
     def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None,
-            pos=[0, 0, -2], target=[0, 0, 0], up=[0, 1, 0], fov=30):
+            pos=None, target=None, up=None, fov=None):
         self.res = res or (512, 512)
         self.buffers = []
         self.add_buffer('img', dim=3, dtype=ti.f32)
@@ -114,17 +114,17 @@ class Camera(AutoInit):
         self.target = ti.Vector.field(3, ti.f32, ())
         self.intrinsic = ti.Matrix.field(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
-        self.fov = math.radians(fov)
+        self.fov = math.radians(fov or 30)
 
         self.cx = cx or self.res[0] // 2
         self.cy = cy or self.res[1] // 2
         self.fx = fx or self.cx / math.tan(self.fov)
         self.fy = fy or self.cy / math.tan(self.fov)
         # python scope camera transformations
-        self.pos_py = pos
-        self.target_py = target
+        self.pos_py = pos or [0, 0, -2]
+        self.target_py = target or [0, 0, 0]
         self.trans_py = None
-        self.up_py = up
+        self.up_py = up or [0, 1, 0]
         self.set(init=True)
         # mouse position for camera control
         self.mpos = (0, 0)
@@ -151,9 +151,9 @@ class Camera(AutoInit):
     with X, Y being device coordinates
     '''
     def set(self, pos=None, target=None, up=None, init=False):
-        pos = self.pos_py if pos is None else pos
-        target = self.target_py if target is None else target
-        up = self.up_py if up is None else up
+        pos = pos or self.pos_py
+        target = target or self.target_py
+        up = up or self.up_py
         # fwd = target - pos
         fwd = [target[i] - pos[i] for i in range(3)]
         # fwd = fwd.normalized()

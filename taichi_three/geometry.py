@@ -16,7 +16,7 @@ def render_triangle(model, camera, face):
     b = camera.untrans_pos(L2W @ ib)
     c = camera.untrans_pos(L2W @ ic)
 
-    # NOTE: the normal computation indicates that # a front-facing face should
+    # NOTE: the normal computation indicates that a front-facing face should
     # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
     # this is to be compatible with obj model loading.
     normal = ts.normalize(ts.cross(a - b, a - c))
@@ -38,11 +38,10 @@ def render_triangle(model, camera, face):
         C_B = (C - B) * scr_norm
         A_C = (A - C) * scr_norm
 
-        W = 1
         # screen space bounding box
-        M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
-        M.x, N.x = min(max(M.x, 0), camera.img.shape[0]), min(max(N.x, 0), camera.img.shape[1])
-        M.y, N.y = min(max(M.y, 0), camera.img.shape[0]), min(max(N.y, 0), camera.img.shape[1])
+        M, N = int(ti.floor(min(A, B, C) - 1)), int(ti.ceil(max(A, B, C) + 1))
+        M = ts.clamp(M, 0, camera.img.shape[0])
+        N = ts.clamp(N, 0, camera.img.shape[1])
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             # barycentric coordinates using the area method
             X_A = X - A
