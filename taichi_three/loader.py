@@ -13,7 +13,7 @@ def _append(faces, indices):
 
 
 def readobj(path, scale=1):
-    vi = []
+    vp = []
     vt = []
     vn = []
     faces = []
@@ -30,7 +30,7 @@ def readobj(path, scale=1):
             continue
 
         if type == 'v':
-            vi.append(fields)
+            vp.append(fields)
         elif type == 'vt':
             vt.append(fields)
         elif type == 'vn':
@@ -63,7 +63,7 @@ def readobj(path, scale=1):
             assert False, len(indices)
 
     ret = {}
-    ret['vi'] = None if len(vi) == 0 else np.array(vi).astype(np.float32) * scale
+    ret['vp'] = None if len(vp) == 0 else np.array(vp).astype(np.float32) * scale
     ret['vt'] = None if len(vt) == 0 else np.array(vt).astype(np.float32)
     ret['vn'] = None if len(vn) == 0 else np.array(vn).astype(np.float32)
     ret['f'] = None if len(faces) == 0 else np.array(faces).astype(np.int32)

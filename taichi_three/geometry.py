@@ -7,32 +7,33 @@ import taichi_glsl as ts
 def render_triangle(model, camera, face):
     scene = model.scene
     L2W = model.L2W
-    _1 = ti.static(min(1, model.faces.m - 1))
-    _2 = ti.static(min(2, model.faces.m - 1))
-    ia, ib, ic = model.vi[face[0, 0]], model.vi[face[1, 0]], model.vi[face[2, 0]]
-    ta, tb, tc = model.vt[face[0, _1]], model.vt[face[1, _1]], model.vt[face[2, _1]]
-    na, nb, nc = model.vn[face[0, _2]], model.vn[face[1, _2]], model.vn[face[2, _2]]
-    a = camera.untrans_pos(L2W @ ia)
-    b = camera.untrans_pos(L2W @ ib)
-    c = camera.untrans_pos(L2W @ ic)
+    posa, posb, posc = model.pos[face[0, 0]], model.pos[face[1, 0]], model.pos[face[2, 0]]
+    texa, texb, texc = model.tex[face[0, 1]], model.tex[face[1, 1]], model.tex[face[2, 1]]
+    nrma, nrmb, nrmc = model.nrm[face[0, 2]], model.nrm[face[1, 2]], model.nrm[face[2, 2]]
+    posa = camera.untrans_pos(L2W @ posa)
+    posb = camera.untrans_pos(L2W @ posb)
+    posc = camera.untrans_pos(L2W @ posc)
+    nrma = camera.untrans_dir(L2W.matrix @ nrma)
+    nrmb = camera.untrans_dir(L2W.matrix @ nrmb)
+    nrmc = camera.untrans_dir(L2W.matrix @ nrmc)
 
     # NOTE: the normal computation indicates that # a front-facing face should
     # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
     # this is to be compatible with obj model loading.
-    normal = ts.normalize(ts.cross(a - b, a - c))
-    pos = (a + b + c) / 3
-    view_pos = (a + b + c) / 3
+    nrm_center = (nrma + nrmb + nrmc) / 3
+    pos_center = (posa + posb + posc) / 3
     if ti.static(camera.type == camera.ORTHO):
-        view_pos = ts.vec3(0.0, 0.0, 1.0)
-    if ts.dot(view_pos, normal) <= 0:
+        pos_center = ts.vec3(0.0, 0.0, 1.0)
+    if ts.dot(pos_center, nrm_center) <= 0:
         # shading
-        color = ts.vec3(0.0)
-        for light in ti.static(scene.lights):
-            color += scene.opt.render_func(pos, normal, ts.vec3(0.0), light)
-        color = scene.opt.pre_process(color)
-        A = camera.uncook(a)
-        B = camera.uncook(b)
-        C = camera.uncook(c)
+
+        clra = model.vertex_shader(posa, nrma)
+        clrb = model.vertex_shader(posb, nrmb)
+        clrc = model.vertex_shader(posc, nrmc)
+
+        A = camera.uncook(posa)
+        B = camera.uncook(posb)
+        C = camera.uncook(posc)
         scr_norm = 1 / ts.cross(A - C, B - A)
         B_A = (B - A) * scr_norm
         C_B = (C - B) * scr_norm
@@ -40,9 +41,10 @@ def render_triangle(model, camera, face):
 
         W = 1
         # screen space bounding box
-        M, N = int(ti.floor(min(A, B, C) - W)), int(ti.ceil(max(A, B, C) + W))
-        M.x, N.x = min(max(M.x, 0), camera.img.shape[0]), min(max(N.x, 0), camera.img.shape[1])
-        M.y, N.y = min(max(M.y, 0), camera.img.shape[0]), min(max(N.y, 0), camera.img.shape[1])
+        M = int(ti.floor(min(A, B, C) - W))
+        N = int(ti.ceil(max(A, B, C) + W))
+        M = ts.clamp(M, 0, ti.Vector(camera.img.shape))
+        N = ts.clamp(N, 0, ti.Vector(camera.img.shape))
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             # barycentric coordinates using the area method
             X_A = X - A
@@ -53,12 +55,13 @@ def render_triangle(model, camera, face):
             in_screen = w_A >= 0 and w_B >= 0 and w_C >= 0 and 0 < X[0] < camera.img.shape[0] and 0 < X[1] < camera.img.shape[1]
             if not in_screen:
                 continue
-            zindex = 1 / (a.z * w_A + b.z * w_B + c.z * w_C)
+            zindex = 1 / (posa.z * w_A + posb.z * w_B + posc.z * w_C)
             if zindex < ti.atomic_max(camera.zbuf[X], zindex):
                 continue
 
-            coor = (ta * w_A + tb * w_B + tc * w_C)
-            camera.img[X] = color * model.texSample(coor)
+            clr = (clra * w_A + clrb * w_B + clrc * w_C)
+            tex = (texa * w_A + texb * w_B + texc * w_C)
+            camera.img[X] = model.pixel_shader(clr, tex)
 
 
 @ti.func
