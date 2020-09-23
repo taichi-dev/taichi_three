@@ -12,6 +12,8 @@ scene.add_model(model)
 camera = t3.Camera()
 scene.add_camera(camera)
 #camera.type = camera.ORTHO
+light = t3.Light()
+scene.add_light(light)
 
 pos = ti.Vector.field(3, ti.f32, N)
 vel = ti.Vector.field(3, ti.f32, N)
