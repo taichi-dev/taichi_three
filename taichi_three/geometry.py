@@ -20,11 +20,11 @@ def render_triangle(model, camera, face):
     # NOTE: the normal computation indicates that # a front-facing face should
     # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
     # this is to be compatible with obj model loading.
-    nrm_center = (nrma + nrmb + nrmc) / 3
     pos_center = (posa + posb + posc) / 3
     if ti.static(camera.type == camera.ORTHO):
         pos_center = ts.vec3(0.0, 0.0, 1.0)
-    if ts.dot(pos_center, nrm_center) <= 0:
+    normal = ts.cross(posa - posb, posa - posc)
+    if ts.dot(pos_center, normal) <= 0:
         # shading
 
         clra = model.vertex_shader(posa, nrma)
