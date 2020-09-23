@@ -52,8 +52,9 @@ def render_triangle(model, camera, face):
             w_B = ts.cross(A_C, X_A)
             w_A = 1 - w_C - w_B
             # draw
-            in_screen = w_A >= 0 and w_B >= 0 and w_C >= 0 and 0 < X[0] < camera.img.shape[0] and 0 < X[1] < camera.img.shape[1]
-            if not in_screen:
+            eps = ti.get_rel_eps() * 0.1
+            is_inside = w_A >= -eps and w_B >= -eps and w_C >= -eps
+            if not is_inside:
                 continue
             zindex = 1 / (posa.z * w_A + posb.z * w_B + posc.z * w_C)
             if zindex < ti.atomic_max(camera.zbuf[X], zindex):
