@@ -3,6 +3,21 @@ import taichi as ti
 import taichi_glsl as ts
 
 
+# http://www.opengl-tutorial.org/cn/intermediate-tutorials/tutorial-13-normal-mapping/
+@ti.func
+def compute_tangent(dp1, dp2, duv1, duv2):
+    IDUV = ti.Matrix([[duv1.x, duv1.y], [duv2.x, duv2.y]]).inverse()
+    DPx = ti.Vector([dp1.x, dp2.x])
+    DPy = ti.Vector([dp1.y, dp2.y])
+    DPz = ti.Vector([dp1.z, dp2.z])
+    T = ti.Vector([0.0, 0.0, 0.0])
+    B = ti.Vector([0.0, 0.0, 0.0])
+    T.x, B.x = IDUV @ DPx
+    T.y, B.y = IDUV @ DPy
+    T.z, B.z = IDUV @ DPz
+    return T, B
+
+
 @ti.func
 def render_triangle(model, camera, face):
     scene = model.scene
@@ -17,19 +32,26 @@ def render_triangle(model, camera, face):
     nrmb = camera.untrans_dir(L2W.matrix @ nrmb)
     nrmc = camera.untrans_dir(L2W.matrix @ nrmc)
 
-    # NOTE: the normal computation indicates that # a front-facing face should
-    # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
-    # this is to be compatible with obj model loading.
     pos_center = (posa + posb + posc) / 3
     if ti.static(camera.type == camera.ORTHO):
         pos_center = ts.vec3(0.0, 0.0, 1.0)
-    normal = ts.cross(posa - posb, posa - posc)
-    if ts.dot(pos_center, normal) <= 0:
-        # shading
 
-        clra = model.vertex_shader(posa, nrma)
-        clrb = model.vertex_shader(posb, nrmb)
-        clrc = model.vertex_shader(posc, nrmc)
+    dpab = posa - posb
+    dpac = posa - posc
+    dtab = texa - texb
+    dtac = texa - texc
+
+    normal = ts.cross(dpab, dpac)
+    tan, bitan = compute_tangent(-dpab, -dpac, -dtab, -dtac)
+
+    # NOTE: the normal computation indicates that a front-facing face should
+    # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
+    # this is to be compatible with obj model loading.
+    if ts.dot(pos_center, normal) <= 0:
+
+        clra = model.vertex_shader(posa, texa, nrma, tan, bitan)
+        clrb = model.vertex_shader(posb, texb, nrmb, tan, bitan)
+        clrc = model.vertex_shader(posc, texc, nrmc, tan, bitan)
 
         A = camera.uncook(posa)
         B = camera.uncook(posb)
@@ -52,7 +74,7 @@ def render_triangle(model, camera, face):
             w_B = ts.cross(A_C, X_A)
             w_A = 1 - w_C - w_B
             # draw
-            eps = ti.get_rel_eps() * 0.1
+            eps = ti.get_rel_eps() * 0.2
             is_inside = w_A >= -eps and w_B >= -eps and w_C >= -eps
             if not is_inside:
                 continue
@@ -60,9 +82,8 @@ def render_triangle(model, camera, face):
             if zindex < ti.atomic_max(camera.zbuf[X], zindex):
                 continue
 
-            clr = (clra * w_A + clrb * w_B + clrc * w_C)
-            tex = (texa * w_A + texb * w_B + texc * w_C)
-            camera.img[X] = model.pixel_shader(clr, tex)
+            clr = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
+            camera.img[X] = model.pixel_shader(*clr)
 
 
 @ti.func

@@ -17,18 +17,30 @@ class Model(AutoInit):
         self.tex = ti.Vector.field(2, float, tex_n)
         self.nrm = ti.Vector.field(3, float, nrm_n)
         self.texture = None
+        self.normtex = None
 
-    @staticmethod
-    def from_obj(obj, texture=None):
+    @classmethod
+    def from_obj(cls, obj, texture=None, normtex=None):
         if texture is not None:
             if texture.dtype == np.uint8:
                 texture = texture.astype(np.float32) / 255
             assert len(texture.shape) == 3
+            texture = texture[:, :, :3]
             assert texture.shape[2] == 3
 
-        model = Model(len(obj['vp']), len(obj['vt']), len(obj['vn']), len(obj['f']))
+        if normtex is not None:
+            if normtex.dtype == np.uint8:
+                normtex = normtex.astype(np.float32) / 255
+                normtex = normtex * 2 - 1
+            assert len(normtex.shape) == 3
+            normtex = normtex[:, :, :3]
+            assert normtex.shape[2] == 3
+
+        model = cls(len(obj['vp']), len(obj['vt']), len(obj['vn']), len(obj['f']))
         if texture is not None:
             model.texture = ti.Vector(3, float, texture.shape[:2])
+        if normtex is not None:
+            model.normtex = ti.Vector(3, float, normtex.shape[:2])
 
         def other_init_cb():
             model.faces.from_numpy(obj['f'])
@@ -37,6 +49,8 @@ class Model(AutoInit):
             model.nrm.from_numpy(obj['vn'])
             if texture is not None:
                 model.texture.from_numpy(texture)
+            if normtex is not None:
+                model.normtex.from_numpy(normtex)
 
         model.other_init_cb = other_init_cb
         return model
@@ -62,14 +76,40 @@ class Model(AutoInit):
             return 1
 
     @ti.func
-    def pixel_shader(self, color, texcoor):
-        return color * self.texSample(texcoor)
+    def nrmtexSample(self, texcoor):
+        if ti.static(self.normtex is not None):
+            return ts.bilerp(self.normtex, texcoor * ts.vec(*self.normtex.shape))
+        else:
+            return 1
 
     @ti.func
-    def vertex_shader(self, pos, normal):
+    def shade_light_color(self, pos, normal):
         color = ts.vec3(0.0)
         for light in ti.static(self.scene.lights):
             # TODO: maybe render_func should be a per-model function?
             color += self.scene.opt.render_func(pos, normal, ts.vec3(0.0), light)
         color = self.scene.opt.pre_process(color)
         return color
+
+    @ti.func
+    def pixel_shader(self, color, texcoor, normal):
+        return color * self.texSample(texcoor)
+
+    @ti.func
+    def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
+        color = self.shade_light_color(pos, normal)
+        return color, texcoor, normal
+
+
+class ModelPP(Model):
+    @ti.func
+    def pixel_shader(self, pos, texcoor, normal, tangent, bitangent):
+        ndir = self.nrmtexSample(texcoor)
+        normal = ti.Matrix.cols([tangent, bitangent, normal]) @ ndir
+        normal = normal.normalized()
+        color = self.shade_light_color(pos, normal)
+        return color * self.texSample(texcoor)
+
+    @ti.func
+    def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
+        return pos, texcoor, normal, tangent, bitangent
