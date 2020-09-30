@@ -159,7 +159,7 @@ class Camera(AutoInit):
         # fwd = fwd.normalized()
         fwd_len = math.sqrt(sum(x**2 for x in fwd))
         fwd = [x / fwd_len for x in fwd]
-        # right = fwd.cross(up) 
+        # right = fwd.cross(up)
         right = [
                 fwd[2] * up[1] - fwd[1] * up[2],
                 fwd[0] * up[2] - fwd[2] * up[0],
@@ -285,11 +285,11 @@ class Camera(AutoInit):
 
     @ti.func
     def untrans_pos(self, pos):
-        return self.trans[None].inverse() @ (pos - self.pos[None])
+        return self.trans[None].transpose() @ (pos - self.pos[None])
 
     @ti.func
     def untrans_dir(self, pos):
-        return self.trans[None].inverse() @ pos
+        return self.trans[None].transpose() @ pos
     
     @ti.func
     def uncook(self, pos):

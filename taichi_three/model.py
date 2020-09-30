@@ -22,6 +22,15 @@ class Model(AutoInit):
     @classmethod
     def from_obj(cls, obj, texture=None, normtex=None):
         model = cls(len(obj['vp']), len(obj['vt']), len(obj['vn']), len(obj['f']))
+
+        def obj_init_cb():
+            model.faces.from_numpy(obj['f'])
+            model.pos.from_numpy(obj['vp'])
+            model.tex.from_numpy(obj['vt'])
+            model.nrm.from_numpy(obj['vn'])
+
+        model.obj_init_cb = obj_init_cb
+
         model.load_texture(texture, normtex)
         return model
 
@@ -56,7 +65,11 @@ class Model(AutoInit):
 
     def _init(self):
         self.L2W.init()
+        self.obj_init_cb()
         self.other_init_cb()
+
+    def obj_init_cb(self):
+        pass
 
     def other_init_cb(self):
         pass

@@ -6,7 +6,7 @@ ti.init(ti.cpu)
 
 scene = t3.Scene()
 obj = t3.readobj('assets/cube.obj', scale=0.4)
-texture = None#ti.imread('assets/cloth.jpg')
+texture = ti.imread('assets/cloth.jpg')
 normtex = ti.imread('assets/normal.png')
 model = t3.ModelPP.from_obj(obj, texture, normtex)
 scene.add_model(model)
