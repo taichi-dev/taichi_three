@@ -3,7 +3,7 @@ import taichi_glsl as tl
 import taichi_three as t3
 import numpy as np
 
-ti.init(arch=ti.gpu)
+ti.init(arch=ti.cpu)
 
 ### Parameters
 

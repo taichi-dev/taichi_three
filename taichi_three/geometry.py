@@ -44,11 +44,6 @@ def render_triangle(model, camera, face):
     normal = ts.cross(dpab, dpac)
     tan, bitan = compute_tangent(-dpab, -dpac, -dtab, -dtac)
 
-    #normal = normal.normalized()
-    #nrma = normal
-    #nrmb = normal
-    #nrmc = normal
-
     # NOTE: the normal computation indicates that a front-facing face should
     # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
     # this is to be compatible with obj model loading.
