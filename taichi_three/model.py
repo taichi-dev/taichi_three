@@ -21,6 +21,11 @@ class Model(AutoInit):
 
     @classmethod
     def from_obj(cls, obj, texture=None, normtex=None):
+        model = cls(len(obj['vp']), len(obj['vt']), len(obj['vn']), len(obj['f']))
+        model.load_texture(texture, normtex)
+        return model
+
+    def load_texture(self, texture=None, normtex=None):
         if texture is not None:
             if texture.dtype == np.uint8:
                 texture = texture.astype(np.float32) / 255
@@ -36,24 +41,18 @@ class Model(AutoInit):
             normtex = normtex[:, :, :3]
             assert normtex.shape[2] == 3
 
-        model = cls(len(obj['vp']), len(obj['vt']), len(obj['vn']), len(obj['f']))
         if texture is not None:
-            model.texture = ti.Vector(3, float, texture.shape[:2])
+            self.texture = ti.Vector(3, float, texture.shape[:2])
         if normtex is not None:
-            model.normtex = ti.Vector(3, float, normtex.shape[:2])
+            self.normtex = ti.Vector(3, float, normtex.shape[:2])
 
         def other_init_cb():
-            model.faces.from_numpy(obj['f'])
-            model.pos.from_numpy(obj['vp'])
-            model.tex.from_numpy(obj['vt'])
-            model.nrm.from_numpy(obj['vn'])
             if texture is not None:
-                model.texture.from_numpy(texture)
+                self.texture.from_numpy(texture)
             if normtex is not None:
-                model.normtex.from_numpy(normtex)
+                self.normtex.from_numpy(normtex)
 
-        model.other_init_cb = other_init_cb
-        return model
+        self.other_init_cb = other_init_cb
 
     def _init(self):
         self.L2W.init()
