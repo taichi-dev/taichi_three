@@ -92,7 +92,7 @@ class Model(AutoInit):
         if ti.static(self.normtex is not None):
             return ts.bilerp(self.normtex, texcoor * ts.vec(*self.normtex.shape))
         else:
-            return 1
+            return ts.vec3(0.0, 0.0, 1.0)
 
     @ti.func
     def shade_light_color(self, pos, normal):
