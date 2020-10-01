@@ -6,7 +6,7 @@ ti.init(ti.cpu)
 
 scene = t3.Scene()
 texture = ti.imread("assets/cloth.jpg")
-model = t3.Model(obj=t3.readobj('assets/monkey.obj', scale=0.8), tex=texture)
+model = t3.Model.from_obj(t3.readobj('assets/monkey.obj', scale=0.8), texture)
 scene.add_model(model)
 camera = t3.Camera(res=(256, 256), pos=[0, 0, 2.5], target=[0, 0, 0], up=[0, 1, 0])
 scene.add_camera(camera)
