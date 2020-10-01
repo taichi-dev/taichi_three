@@ -267,11 +267,11 @@ class Camera(AutoInit):
 
     @ti.func
     def untrans_pos(self, pos):
-        return self.trans[None].inverse() @ (pos - self.pos[None])
+        return self.trans[None].transpose() @ (pos - self.pos[None])
 
     @ti.func
     def untrans_dir(self, pos):
-        return self.trans[None].inverse() @ pos
+        return self.trans[None].transpose() @ pos
     
     @ti.func
     def uncook(self, pos):

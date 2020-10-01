@@ -5,16 +5,18 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-obj = t3.readobj('assets/torus.obj', scale=0.8)
+obj = t3.readobj('assets/cube.obj', scale=0.4)
 texture = ti.imread('assets/cloth.jpg')
-model = t3.Model.from_obj(obj, texture)
+normtex = ti.imread('assets/normal.png')
+model = t3.ModelPP.from_obj(obj, texture, normtex)
 scene.add_model(model)
 camera = t3.Camera(pos=[0, 1, -1.8])
+camera.type = camera.ORTHO
 scene.add_camera(camera)
 light = t3.Light([0.4, -1.5, 1.8])
 scene.add_light(light)
 
-gui = ti.GUI('Model', camera.res)
+gui = ti.GUI('Normal map', camera.res)
 while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
