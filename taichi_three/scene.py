@@ -1,7 +1,6 @@
 import taichi as ti
 import taichi_glsl as ts
 from .transform import *
-from .shading import *
 from .light import *
 
 
@@ -10,7 +9,6 @@ class Scene(AutoInit):
     def __init__(self):
         self.lights = []
         self.cameras = []
-        self.opt = LambertPhong()
         self.models = []
 
     def set_light_dir(self, ldir):

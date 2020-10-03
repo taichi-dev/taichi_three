@@ -3,6 +3,7 @@ import taichi_glsl as ts
 from .transform import *
 import math
 
+
 @ti.data_oriented
 class Shading:
     @ti.func
@@ -15,10 +16,19 @@ class Shading:
         orange = ts.vec3(1.19, 1.04, 0.98)
         return ti.sqrt(ts.mix(blue, orange, color))
 
+    @ti.func
+    def colorize(self, scene, pos, normal, color):
+        res = ts.vec3(0.0)
+        viewdir = pos.normalized()
+        for light in ti.static(scene.lights):
+            # TODO: maybe render_func should be a per-model function?
+            res += self.render_func(pos, normal, viewdir, light, color)
+        res = self.pre_process(res)
+        return res
+
 
 class LambertPhong(Shading):
     def __init__(self, **kwargs):
-        self.is_normal_map = False
         self.lambert = 0.58
         self.half_lambert = 0.04
         self.blinn_phong = 0.3
@@ -68,8 +78,8 @@ class CookTorrance(Shading):
     def __init__(self, **kwargs):
         self.kd = 1.5
         self.ks = 2.0
-        self.roughness = 0.6
-        self.metallic = 1.0
+        self.roughness = 0.8
+        self.metallic = 0.0
         self.__dict__.update(kwargs)
 
     '''

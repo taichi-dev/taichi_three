@@ -3,7 +3,7 @@ import taichi_glsl as tl
 import taichi_three as t3
 import numpy as np
 
-ti.init(arch=ti.cpu)
+ti.init(arch=ti.gpu)
 
 ### Parameters
 
@@ -54,6 +54,7 @@ def substep():
 
 scene = t3.Scene()
 model = t3.Model(faces_n=(N - 1)**2 * 4, pos_n=N**2, tex_n=N**2, nrm_n=N**2 * 2)
+model.opt = t3.CookTorrance(metallic=0.1, roughness=0.3)
 model.load_texture(ti.imread('assets/cloth.jpg'))
 scene.add_model(model)
 camera = t3.Camera(fov=24, pos=[0, 1.1, -1.5], target=[0, 0.25, 0])

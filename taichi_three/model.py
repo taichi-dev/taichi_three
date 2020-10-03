@@ -2,6 +2,7 @@ import numpy as np
 import taichi as ti
 import taichi_glsl as ts
 from .geometry import *
+from .shading import *
 from .transform import *
 from .common import *
 import math
@@ -16,6 +17,8 @@ class Model(AutoInit):
         self.pos = ti.Vector.field(3, float, pos_n)
         self.tex = ti.Vector.field(2, float, tex_n)
         self.nrm = ti.Vector.field(3, float, nrm_n)
+
+        self.opt = CookTorrance()
         self.texture = None
         self.normtex = None
 
@@ -95,23 +98,13 @@ class Model(AutoInit):
             return ts.vec3(0.0, 0.0, 1.0)
 
     @ti.func
-    def shade_light_color(self, pos, normal, color):
-        res = ts.vec3(0.0)
-        # FIXME: what really viewdir is?
-        viewdir = pos.normalized()
-        for light in ti.static(self.scene.lights):
-            # TODO: maybe render_func should be a per-model function?
-            res += self.scene.opt.render_func(pos, normal, viewdir, light, color)
-        res = self.scene.opt.pre_process(res)
-        return res
-
-    @ti.func
     def pixel_shader(self, color, texcoor, normal):
         return color * self.texSample(texcoor)
 
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
-        color = self.shade_light_color(pos, normal, ts.vec3(1.0))
+        color = ts.vec3(1.0)
+        color = self.opt.colorize(self.scene, pos, normal, color)
         return color, texcoor, normal
 
 
@@ -122,7 +115,7 @@ class ModelPP(Model):
         normal = ti.Matrix.cols([tangent, bitangent, normal]) @ ndir
         normal = normal.normalized()
         color = self.texSample(texcoor)
-        color = self.shade_light_color(pos, normal, color)
+        color = self.opt.colorize(self.scene, pos, normal, color)
         return color
 
     @ti.func

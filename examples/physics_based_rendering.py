@@ -5,7 +5,6 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-scene.opt = t3.CookTorrance()
 obj = t3.readobj('assets/sphere.obj', scale=0.8)
 model = t3.ModelPP.from_obj(obj)
 scene.add_model(model)
