@@ -17,11 +17,10 @@ class Shading:
         return ti.sqrt(ts.mix(blue, orange, color))
 
     @ti.func
-    def colorize(self, scene, pos, normal, color):
+    def colorize(self, pos, normal, color):
         res = ts.vec3(0.0)
         viewdir = pos.normalized()
-        for light in ti.static(scene.lights):
-            # TODO: maybe render_func should be a per-model function?
+        for light in ti.static(self.model.scene.lights):
             res += self.render_func(pos, normal, viewdir, light, color)
         res = self.pre_process(res)
         return res
