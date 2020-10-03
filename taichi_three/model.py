@@ -85,7 +85,7 @@ class Model(AutoInit):
         if ti.static(self.texture is not None):
             return ts.bilerp(self.texture, texcoor * ts.vec(*self.texture.shape))
         else:
-            return 1
+            return ts.vec3(1.0)
 
     @ti.func
     def nrmtexSample(self, texcoor):
@@ -95,13 +95,15 @@ class Model(AutoInit):
             return ts.vec3(0.0, 0.0, 1.0)
 
     @ti.func
-    def shade_light_color(self, pos, normal):
-        color = ts.vec3(0.0)
+    def shade_light_color(self, pos, normal, color):
+        res = ts.vec3(0.0)
+        # FIXME: what really viewdir is?
+        viewdir = pos.normalized()
         for light in ti.static(self.scene.lights):
             # TODO: maybe render_func should be a per-model function?
-            color += self.scene.opt.render_func(pos, normal, ts.vec3(0.0), light)
-        color = self.scene.opt.pre_process(color)
-        return color
+            res += self.scene.opt.render_func(pos, normal, viewdir, light, color)
+        res = self.scene.opt.pre_process(res)
+        return res
 
     @ti.func
     def pixel_shader(self, color, texcoor, normal):
@@ -109,7 +111,7 @@ class Model(AutoInit):
 
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
-        color = self.shade_light_color(pos, normal)
+        color = self.shade_light_color(pos, normal, ts.vec3(1.0))
         return color, texcoor, normal
 
 
@@ -119,8 +121,9 @@ class ModelPP(Model):
         ndir = self.nrmtexSample(texcoor)
         normal = ti.Matrix.cols([tangent, bitangent, normal]) @ ndir
         normal = normal.normalized()
-        color = self.shade_light_color(pos, normal)
-        return color * self.texSample(texcoor)
+        color = self.texSample(texcoor)
+        color = self.shade_light_color(pos, normal, color)
+        return color
 
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):

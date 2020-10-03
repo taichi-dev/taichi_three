@@ -10,7 +10,7 @@ class Scene(AutoInit):
     def __init__(self):
         self.lights = []
         self.cameras = []
-        self.opt = Shading()
+        self.opt = LambertPhong()
         self.models = []
 
     def set_light_dir(self, ldir):
@@ -22,18 +22,6 @@ class Scene(AutoInit):
             self.add_light(light)
         else:
             self.light[0].set(ldir)
-
-    @ti.func
-    def cook_coor(self, I, camera):
-        scale = ti.static(2 / min(*camera.img.shape()))
-        coor = (I - ts.vec2(*camera.img.shape()) / 2) * scale
-        return coor
-
-    @ti.func
-    def uncook_coor(self, coor, camera):
-        scale = ti.static(min(*camera.img.shape()) / 2)
-        I = coor.xy * scale + ts.vec2(*camera.img.shape()) / 2
-        return I
 
     def add_model(self, model):
         model.scene = self

@@ -43,7 +43,7 @@ class Light(AutoInit):
 
     @ti.func
     def get_dir(self, pos):
-        return self.viewdir
+        return self.viewdir[None]
 
     @ti.func
     def set_view(self, camera):

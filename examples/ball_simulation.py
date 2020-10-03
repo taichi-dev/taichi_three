@@ -1,7 +1,7 @@
 import taichi as ti
 import taichi_glsl as ts
 import taichi_three as t3
-ti.init(ti.opengl)
+ti.init(ti.cpu)
 
 N = 12
 dt = 0.01
