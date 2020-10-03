@@ -27,12 +27,13 @@ class Shading:
 
 
 class LambertPhong(Shading):
+    lambert = 0.58
+    half_lambert = 0.04
+    blinn_phong = 0.3
+    phong = 0.0
+    shineness = 10
+
     def __init__(self, **kwargs):
-        self.lambert = 0.58
-        self.half_lambert = 0.04
-        self.blinn_phong = 0.3
-        self.phong = 0.0
-        self.shineness = 10
         self.__dict__.update(kwargs)
 
     @ti.func
@@ -63,8 +64,13 @@ class LambertPhong(Shading):
 # Borrowed from https://github.com/victoriacity/taichimd/blob/1dba9dd825cea33f468ed8516b7e2dc6b8995c41/taichimd/graphics.py#L409
 # All credits by @victoriacity
 class CookTorrance(Shading):
-    specular = 0.6
     eps = 1e-4
+
+    specular = 0.6
+    kd = 1.5
+    ks = 2.0
+    roughness = 0.8
+    metallic = 0.0
 
     '''
     Cook-Torrance BRDF with an Lambertian factor.
@@ -75,10 +81,6 @@ class CookTorrance(Shading):
     '''
 
     def __init__(self, **kwargs):
-        self.kd = 1.5
-        self.ks = 2.0
-        self.roughness = 0.8
-        self.metallic = 0.0
         self.__dict__.update(kwargs)
 
     '''

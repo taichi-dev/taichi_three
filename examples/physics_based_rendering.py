@@ -5,8 +5,10 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-obj = t3.readobj('assets/sphere.obj', scale=0.8)
+obj = t3.readobj('assets/torus.obj', scale=0.8)
 model = t3.ModelPP.from_obj(obj)
+model.add_texture('roughness', ti.imread('assets/rough.jpg'))
+model.add_texture('metallic', np.array([[0.5]]))
 scene.add_model(model)
 camera = t3.Camera(pos=[0, 1, -1.8])
 scene.add_camera(camera)

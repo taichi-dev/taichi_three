@@ -18,8 +18,6 @@ class Model(AutoInit):
         self.tex = ti.Vector.field(2, float, tex_n)
         self.nrm = ti.Vector.field(3, float, nrm_n)
 
-        self.use_shading(CookTorrance())
-
         self.textures = {}
         self.init_cbs = []
 
@@ -41,21 +39,32 @@ class Model(AutoInit):
             model.add_texture('normal', normtex)
         return model
 
-    def use_shading(self, opt):
-        self.opt = opt
-        opt.model = self
-
     def add_texture(self, name, texture):
+        assert name not in self.textures, name
+
         # convert UInt8 into Float32 for storage:
         if texture.dtype == np.uint8:
             texture = texture.astype(np.float32) / 255
+        elif texture.dtype == np.float64:
+            texture = texture.astype(np.float32)
+
+        # normal maps are stored as [-1, 1] for maximizing FP precision:
         if name == 'normal':
             texture = texture * 2 - 1
-        assert len(texture.shape) == 3
-        texture = texture[:, :, :3]
-        assert texture.shape[2] == 3
 
-        self.textures[name] = ti.Vector(3, float, texture.shape[:2])
+        if len(texture.shape) == 3 and texture.shape[2] == 1:
+            texture = texture.reshape(texture.shape[:2])
+
+        # either RGB or greyscale
+        if len(texture.shape) == 2:
+            self.textures[name] = ti.field(float, texture.shape)
+
+        else:
+            assert len(texture.shape) == 3, texture.shape
+            texture = texture[:, :, :3]
+            assert texture.shape[2] == 3, texture.shape
+
+            self.textures[name] = ti.Vector.field(3, float, texture.shape[:2])
 
         def other_init_cb():
             self.textures[name].from_numpy(texture)
@@ -81,6 +90,13 @@ class Model(AutoInit):
         else:
             return default
 
+    def colorize(self, pos, texcoor, normal, color):
+        roughness = self.sample('roughness', texcoor, CookTorrance.roughness)
+        metallic = self.sample('metallic', texcoor, CookTorrance.metallic)
+        opt = CookTorrance(roughness=roughness, metallic=metallic)
+        opt.model = ti.static(self)
+        return opt.colorize(pos, normal, color)
+
     @ti.func
     def pixel_shader(self, color, texcoor, normal):
         return color * self.sample('color', texcoor, ts.vec3(1.0))
@@ -88,7 +104,7 @@ class Model(AutoInit):
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
         color = ts.vec3(1.0)
-        color = self.opt.colorize(pos, normal, color)
+        color = self.colorize(pos, texcoor, normal, color)
         return color, texcoor, normal
 
 
@@ -98,8 +114,9 @@ class ModelPP(Model):
         ndir = self.sample('normal', texcoor, ts.vec3(0.0, 0.0, 1.0))
         normal = ti.Matrix.cols([tangent, bitangent, normal]) @ ndir
         normal = normal.normalized()
+
         color = self.sample('color', texcoor, ts.vec3(1.0))
-        color = self.opt.colorize(pos, normal, color)
+        color = self.colorize(pos, texcoor, normal, color)
         return color
 
     @ti.func
