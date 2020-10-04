@@ -9,7 +9,11 @@ import math
 
 
 @ti.data_oriented
-class Model(AutoInit):
+class ModelBase(AutoInit):
+    pass
+
+
+class Model(ModelBase):
     def __init__(self, pos_n, tex_n, nrm_n, faces_n):
         self.L2W = Affine.field(())
 

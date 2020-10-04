@@ -5,27 +5,26 @@ from .geometry import *
 from .shading import *
 from .transform import *
 from .common import *
+from .model import *
 import math
 
 
-@ti.data_oriented
-class ScatterModel(AutoInit):
-    def __init__(self, num=None, radius=2):
+class ScatterModel(ModelBase):
+    def __init__(self, num=None):
         self.L2W = Affine.field(())
 
         self.num = num
-        self.radius = radius
 
         if num is not None:
-            self.particles = ti.Vector.field(3, float, num)
+            self.pos = ti.Vector.field(3, float, num)
 
     def _init(self):
         self.L2W.init()
 
     @ti.func
     def render(self, camera):
-        for i in ti.grouped(self.particles):
-            render_particle(self, camera, self.particles[i], self.radius)
+        for i in ti.grouped(self.pos):
+            render_particle(self, camera, i)
 
     @ti.func
     def colorize(self, pos, normal, color):

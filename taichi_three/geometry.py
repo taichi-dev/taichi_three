@@ -86,28 +86,30 @@ def render_triangle(model, camera, face):
 
 
 @ti.func
-def render_particle(model, camera, vertex, radius):
+def render_particle(model, camera, index):
     scene = model.scene
     L2W = model.L2W
-    a = camera.untrans_pos(L2W @ vertex)
+    a = model.pos[index]
+    r = model.radius[index]
+    a = camera.untrans_pos(L2W @ a)
     A = camera.uncook(a)
 
-    rad = camera.uncook(ts.vec3(radius, radius, a.z), False)
+    rad = camera.uncook(ts.vec3(r, r, a.z), False)
 
     M = int(ti.floor(A - rad))
     N = int(ti.ceil(A + rad))
+    M = ts.clamp(M, 0, ti.Vector(camera.img.shape))
+    N = ts.clamp(N, 0, ti.Vector(camera.img.shape))
 
     for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
         pos = camera.cook(float(ts.vec3(X, a.z)))
         dp = pos - a
         dp2 = dp.norm_sqr()
 
-        if X.x < 0 or X.x >= camera.res[0] or X.y < 0 or X.y >= camera.res[1]:
-            continue
-        if dp2 > radius**2:
+        if dp2 > r**2:
             continue
 
-        dz = ti.sqrt(radius**2 - dp2)
+        dz = ti.sqrt(r**2 - dp2)
         zindex = 1 / (a.z - dz)
 
         if zindex < ti.atomic_max(camera.zbuf[X], zindex):

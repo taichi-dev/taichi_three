@@ -7,7 +7,7 @@ N = 12
 dt = 0.01
 
 scene = t3.Scene()
-model = t3.ScatterModel(radius=0.06)
+model = t3.ScatterModel()
 scene.add_model(model)
 camera = t3.Camera()
 scene.add_camera(camera)
@@ -15,11 +15,12 @@ scene.add_camera(camera)
 light = t3.Light()
 scene.add_light(light)
 
-pos = ti.Vector.field(3, ti.f32, N)
-vel = ti.Vector.field(3, ti.f32, N)
-radius = ti.field(ti.f32, N)
+pos = ti.Vector.field(3, float, N)
+vel = ti.Vector.field(3, float, N)
+radius = ti.field(float, N)
 
-model.particles = pos
+model.pos = pos
+model.radius = radius
 
 
 @ti.kernel
