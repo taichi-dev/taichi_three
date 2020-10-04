@@ -61,6 +61,7 @@ class LambertPhong(Shading):
         return strength * color * light.get_color(pos)
 
 
+# References at https://learnopengl.com/PBR/Theory
 # Borrowed from https://github.com/victoriacity/taichimd/blob/1dba9dd825cea33f468ed8516b7e2dc6b8995c41/taichimd/graphics.py#L409
 # All credits by @victoriacity
 class CookTorrance(Shading):
@@ -107,8 +108,9 @@ class CookTorrance(Shading):
     @ti.func
     def microfacet(self, normal, halfway):
         alpha = self.roughness
-        ggx = alpha ** 2 / math.pi
-        ggx /= (ts.dot(normal, halfway)**2 * (alpha**2 - 1.0) + 1.0)**2
+        ndoth = ts.dot(normal, halfway)
+        ggx = alpha**2 / math.pi
+        ggx /= (ndoth**2 * (alpha**2 - 1.0) + 1.0)**2
         return ggx
 
     '''
@@ -118,16 +120,16 @@ class CookTorrance(Shading):
     def frensel(self, view, halfway, color):
         f0 = ts.mix(self.specular, color, self.metallic)
         hdotv = ts.clamp(ts.dot(halfway, view), 0, 1)
-        return (f0 + (1.0 - f0) * (1.0 - hdotv)**5) * self.ks
+        return (f0 + (1 - f0) * (1 - hdotv)**5) * self.ks
 
     '''
     Smith's method with Schlick-GGX
     '''
     @ti.func
     def geometry(self, ndotv, ndotl):
-        k = (self.roughness + 1.0) ** 2 / 8
+        k = (self.roughness + 1)**2 / 8
         geom = ndotv * ndotl \
-            / (ndotv * (1.0 - k) + k) / (ndotl * (1.0 - k) + k)
+            / (ndotv * (1 - k) + k) / (ndotl * (1 - k) + k)
         return max(0, geom)
 
 
