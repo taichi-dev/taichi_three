@@ -1,13 +1,13 @@
 import taichi as ti
 import taichi_glsl as ts
 import taichi_three as t3
-ti.init(ti.cpu)
+ti.init(ti.cpu, excepthook=True)
 
 N = 12
 dt = 0.01
 
 scene = t3.Scene()
-model = t3.ScatterModel(radius=5)
+model = t3.ScatterModel(radius=0.06)
 scene.add_model(model)
 camera = t3.Camera()
 scene.add_camera(camera)

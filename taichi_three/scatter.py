@@ -2,6 +2,7 @@ import numpy as np
 import taichi as ti
 import taichi_glsl as ts
 from .geometry import *
+from .shading import *
 from .transform import *
 from .common import *
 import math
@@ -16,7 +17,7 @@ class ScatterModel(AutoInit):
         self.radius = radius
 
         if num is not None:
-            self.particles = ti.Vector.field(3, ti.i32, num)
+            self.particles = ti.Vector.field(3, float, num)
 
     def _init(self):
         self.L2W.init()
@@ -25,3 +26,9 @@ class ScatterModel(AutoInit):
     def render(self, camera):
         for i in ti.grouped(self.particles):
             render_particle(self, camera, self.particles[i], self.radius)
+
+    @ti.func
+    def colorize(self, pos, normal, color):
+        opt = CookTorrance()
+        opt.model = ti.static(self)
+        return opt.colorize(pos, normal, color)

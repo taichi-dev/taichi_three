@@ -92,13 +92,30 @@ def render_particle(model, camera, vertex, radius):
     a = camera.untrans_pos(L2W @ vertex)
     A = camera.uncook(a)
 
-    M = int(ti.floor(A - radius))
-    N = int(ti.ceil(A + radius))
+    rad = camera.uncook(ts.vec3(radius, radius, a.z), False)
+
+    M = int(ti.floor(A - rad))
+    N = int(ti.ceil(A + rad))
 
     for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
+        pos = camera.cook(float(ts.vec3(X, a.z)))
+        dp = pos - a
+        dp2 = dp.norm_sqr()
+
         if X.x < 0 or X.x >= camera.res[0] or X.y < 0 or X.y >= camera.res[1]:
             continue
-        if (X - A).norm_sqr() > radius**2:
+        if dp2 > radius**2:
             continue
 
-        camera.img[X] = ts.vec3(1)
+        dz = ti.sqrt(radius**2 - dp2)
+        zindex = 1 / (a.z - dz)
+
+        if zindex < ti.atomic_max(camera.zbuf[X], zindex):
+            continue
+
+        n = ts.vec3(dp.xy, -dz)
+        normal = ts.normalize(n)
+        view = ts.normalize(a + n)
+        color = ts.vec3(1.0)
+
+        camera.img[X] = model.colorize(pos, normal, color)

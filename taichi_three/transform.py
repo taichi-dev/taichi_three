@@ -272,20 +272,48 @@ class Camera(AutoInit):
     @ti.func
     def untrans_dir(self, pos):
         return self.trans[None].transpose() @ pos
+
+    @ti.func
+    def cook(self, pos):
+        if ti.static(self.type == self.ORTHO):
+            if ti.static(translate):
+                pos[0] -= self.intrinsic[None][0, 2]
+                pos[1] -= self.intrinsic[None][1, 2]
+            pos[0] /= self.intrinsic[None][0, 0] 
+            pos[1] /= self.intrinsic[None][1, 1]
+
+        elif ti.static(self.type == self.TAN_FOV):
+            pos[0] *= abs(pos[2])
+            pos[1] *= abs(pos[2])
+            pos = self.intrinsic[None].inverse() @ pos
+
+        else:
+            raise NotImplementedError("Curvilinear projection matrix not implemented!")
+
+        return pos
     
     @ti.func
-    def uncook(self, pos):
+    def uncook(self, pos, translate: ti.template() = True):
         if ti.static(self.type == self.ORTHO):
             pos[0] *= self.intrinsic[None][0, 0] 
             pos[1] *= self.intrinsic[None][1, 1]
-            pos[0] += self.intrinsic[None][0, 2]
-            pos[1] += self.intrinsic[None][1, 2]
+            if ti.static(translate):
+                pos[0] += self.intrinsic[None][0, 2]
+                pos[1] += self.intrinsic[None][1, 2]
+
         elif ti.static(self.type == self.TAN_FOV):
-            pos = self.intrinsic[None] @ pos
+            if ti.static(translate):
+                pos = self.intrinsic[None] @ pos
+            else:
+                pos[0] *= self.intrinsic[None][0, 0]
+                pos[1] *= self.intrinsic[None][1, 1]
+
             pos[0] /= abs(pos[2])
             pos[1] /= abs(pos[2])
+
         else:
             raise NotImplementedError("Curvilinear projection matrix not implemented!")
+
         return ts.vec2(pos[0], pos[1])
 
     def export_intrinsic(self):
