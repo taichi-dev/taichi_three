@@ -12,6 +12,19 @@ Taichi THREE is an extension library of the [Taichi Programming Language](https:
 ![Example](https://github.com/taichi-dev/public_files/raw/master/taichi/mass_spring_3d.gif)
 
 
+New in 0.0.5
+------------
+
+* Support smooth shading by interpolating colors at vertices.
+* Support `t3.ModelPP` for per-pixel light samping instead of color interpolation.
+* Support specifying normal map as textures, by using `t3.ModelPP.from_obj(obj, texture, normtex)`.
+* Support overriding `model.pixel_shader` and `model.vertex_shader` for customized shader.
+
+**API breaking changes**:
+* `t3.Model` now must take `faces`, `pos`, `tex`, and `nrm` as input, use an array with size 1 to dummy them.
+* Use `t3.Model.from_obj` instead to initialize Model from `.obj` files.
+
+
 New in 0.0.3
 ------------
 
@@ -25,6 +38,29 @@ Other updates:
 * Backface culling for perspective cameras.
 * Used the area method to compute barycentric coordinates.
 * Clip the triangle bounding box to prevent drawing outside the camera.
+
+
+New in latest master branch
+---------------------------
+
+* Move to physics-based rendering (PBR), roughness and metallic can be textures.
+* Support `t3.ScatterModel` for particle model renderer.
+* Standardize multi-buffer infrastructure for camera.
+* Standardize texture infrastructure, e.g.:
+
+```py
+model.load_texture('color', ti.imread('assets/cloth.jpg'))
+model.load_texture('roughness', ti.imread('assets/rough.jpg'))
+model.load_texture('metallic', np.array([[0.5]]))  # uniform metallic everywhere
+```
+
+TODO list
+---------
+
+* Support shadow mapping.
+* Support image-based lighting and environment maps (skybox).
+* Path tracing scheme, e.g. cornell box.
+* Differentiable rendering (#18).
 
 
 

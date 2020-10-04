@@ -35,3 +35,16 @@ class subscriptable(property):
             return wrapped
 
         super().__init__(accessor)
+
+class dummy_expression:
+    is_taichi_class = True
+
+    def __getattr__(self, key):
+        print(key)
+        def wrapped(*args, **kwargs):
+            return self
+        wrapped.__name__ = key
+        return wrapped
+
+    def __bool__(self):
+        return False

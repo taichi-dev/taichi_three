@@ -1,7 +1,7 @@
 import taichi as ti
 import taichi_glsl as ts
 import taichi_three as t3
-ti.init(ti.cpu, excepthook=True)
+ti.init(ti.cpu)
 
 N = 12
 dt = 0.01
@@ -10,8 +10,8 @@ scene = t3.Scene()
 model = t3.ScatterModel()
 scene.add_model(model)
 camera = t3.Camera()
+#camera.add_buffer('normal', 3)
 scene.add_camera(camera)
-#camera.type = camera.ORTHO
 light = t3.Light()
 scene.add_light(light)
 
@@ -72,4 +72,5 @@ while gui.running:
     camera.from_mouse(gui)
     scene.render()
     gui.set_image(camera.img)
+    #gui.set_image(camera.buf('normal').to_numpy() * 0.5 + 0.5)
     gui.show()
