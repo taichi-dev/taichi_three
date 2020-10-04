@@ -122,7 +122,23 @@ class ModelPP(Model):
 
         color = self.sample('color', texcoor, ts.vec3(1.0))
         color = self.colorize(pos, texcoor, normal, color)
-        return dict(img=color, normal=normal, tangent=tangent, bitangent=bitangent)
+        return dict(img=color, normal=normal,
+                    tangent=tangent, bitangent=bitangent)
+
+    @ti.func
+    def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
+        return pos, texcoor, normal, tangent, bitangent
+
+
+class ModelDS(Model):
+    @ti.func
+    def pixel_shader(self, pos, texcoor, normal, tangent, bitangent):
+        ndir = self.sample('normal', texcoor, ts.vec3(0.0, 0.0, 1.0))
+        normal = ti.Matrix.cols([tangent, bitangent, normal]) @ ndir
+        normal = normal.normalized()
+
+        return dict(texcoor=texcoor, normal=normal,
+                    tangent=tangent, bitangent=bitangent)
 
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):

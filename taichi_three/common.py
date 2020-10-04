@@ -45,5 +45,11 @@ class dummy_expression:
         wrapped.__name__ = key
         return wrapped
 
-    def __bool__(self):
-        return False
+_old_begin_frontend_if = ti.begin_frontend_if
+
+def _begin_frontend_if(cond):
+    if isinstance(cond, dummy_expression):
+        cond = 0
+    return _old_begin_frontend_if(cond)
+
+ti.begin_frontend_if = _begin_frontend_if

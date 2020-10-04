@@ -98,6 +98,41 @@ class Affine(ts.TaichiClass, AutoInit):
 
 
 @ti.data_oriented
+class FrameBuffer:
+    def __init__(self, res=None):
+        self.res = res or (512, 512)
+        self.buffers = {}
+        self.add_buffer('img', 3)
+        self.add_buffer('idepth', 0)
+
+    def add_buffer(self, name, dim, dtype=float):
+        if dim == 0:
+            buf = ti.field(dtype, self.res)
+        else:
+            buf = ti.Vector.field(dim, dtype, self.res)
+        self.buffers[name] = buf
+
+    def __getitem__(self, name):
+        if isinstance(name, tuple):
+            name = name[0]
+        if name in self.buffers:
+            return self.buffers[name]
+        else:
+            return dummy_expression()
+
+    @ti.func
+    def update(self, I, res: ti.template()):
+        for k, v in ti.static(res.items()):
+            self[k][I] = v
+
+    @ti.func
+    def clear_buffer(self):
+        for I in ti.grouped(next(iter(self.buffers.values()))):
+            for buf in ti.static(self.buffers.values()):
+                buf[I] *= 0.0
+
+
+@ti.data_oriented
 class Camera(AutoInit):
     ORTHO = 'Orthogonal'
     TAN_FOV = 'Tangent Perspective' # rectilinear perspective
@@ -106,9 +141,7 @@ class Camera(AutoInit):
     def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None,
             pos=None, target=None, up=None, fov=None):
         self.res = res or (512, 512)
-        self.buffers = {}
-        self.add_buffer('img', 3)
-        self.add_buffer('idepth', 0)
+        self.fb = FrameBuffer(self.res)
         self.trans = ti.Matrix.field(3, 3, ti.f32, ())
         self.pos = ti.Vector.field(3, ti.f32, ())
         self.target = ti.Vector.field(3, ti.f32, ())
@@ -128,14 +161,6 @@ class Camera(AutoInit):
         self.set(init=True)
         # mouse position for camera control
         self.mpos = (0, 0)
-
-
-    def add_buffer(self, name, dim, dtype=float):
-        if dim == 0:
-            buf = ti.field(dtype, self.res)
-        else:
-            buf = ti.Vector.field(dim, dtype, self.res)
-        self.buffers[name] = buf
 
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
         # see http://ais.informatik.uni-freiburg.de/teaching/ws09/robotics2/pdfs/rob2-08-camera-calibration.pdf
@@ -176,26 +201,9 @@ class Camera(AutoInit):
         self.intrinsic[None][1, 2] = self.cy
         self.intrinsic[None][2, 2] = 1.0
 
-    def buf(self, name):
-        if name in self.buffers:
-            return self.buffers[name]
-        else:
-            return dummy_expression()
-
-    @ti.func
-    def buf_update(self, I, res: ti.template()):
-        for k, v in ti.static(res.items()):
-            self.buf(k)[I] = v
-
     @property
     def img(self):
-        return self.buf('img')
-
-    @ti.func
-    def clear_buffer(self):
-        for I in ti.grouped(self.img):
-            for buf in ti.static(self.buffers.values()):
-                buf[I] *= 0.0
+        return self.fb['img']
 
     def from_mouse(self, gui):
         is_alter_move = gui.is_pressed(ti.GUI.CTRL)

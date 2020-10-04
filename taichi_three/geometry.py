@@ -78,11 +78,11 @@ def render_triangle(model, camera, face):
             if not is_inside:
                 continue
             zindex = 1 / (posa.z * w_A + posb.z * w_B + posc.z * w_C)
-            if zindex < ti.atomic_max(camera.buf('idepth')[X], zindex):
+            if zindex < ti.atomic_max(camera.fb['idepth'][X], zindex):
                 continue
 
             clr = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
-            camera.buf_update(X, model.pixel_shader(*clr))
+            camera.fb.update(X, model.pixel_shader(*clr))
 
 
 @ti.func
@@ -112,7 +112,7 @@ def render_particle(model, camera, index):
         dz = ti.sqrt(r**2 - dp2)
         zindex = 1 / (a.z - dz)
 
-        if zindex < ti.atomic_max(camera.buf('idepth')[X], zindex):
+        if zindex < ti.atomic_max(camera.fb['idepth'][X], zindex):
             continue
 
         n = ts.vec3(dp.xy, -dz)
@@ -121,5 +121,5 @@ def render_particle(model, camera, index):
         color = ts.vec3(1.0)
 
         color = model.colorize(pos, normal, color)
-        camera.buf('img')[X] = color
-        camera.buf('normal')[X] = normal
+        camera.fb['img'][X] = color
+        camera.fb['normal'][X] = normal

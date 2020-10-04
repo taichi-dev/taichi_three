@@ -49,7 +49,7 @@ class Scene(AutoInit):
     def _render(self):
         if ti.static(len(self.cameras)):
             for camera in ti.static(self.cameras):
-                camera.clear_buffer()
+                camera.fb.clear_buffer()
 
                 # sets up light directions
                 if ti.static(len(self.lights)):
