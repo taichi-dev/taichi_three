@@ -55,6 +55,8 @@ def substep():
 scene = t3.Scene()
 model = t3.Model(faces_n=(N - 1)**2 * 4, pos_n=N**2, tex_n=N**2, nrm_n=N**2 * 2)
 model.add_texture('color', ti.imread('assets/cloth.jpg'))
+#model.add_texture('roughness', 1 - ti.imread('assets/rough.jpg'))
+#model.add_texture('metallic', np.array([[0.8]]))
 scene.add_model(model)
 camera = t3.Camera(fov=24, pos=[0, 1.1, -1.5], target=[0, 0.25, 0])
 scene.add_camera(camera)
