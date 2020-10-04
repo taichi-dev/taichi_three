@@ -182,15 +182,19 @@ class Camera(AutoInit):
         else:
             return dummy_expression()
 
+    @ti.func
+    def buf_update(self, I, res: ti.template()):
+        for k, v in ti.static(res.items()):
+            self.buf(k)[I] = v
+
     @property
     def img(self):
         return self.buf('img')
 
     @ti.func
     def clear_buffer(self):
-        bufs = ti.static(list(self.buffers.values()))
-        for I in ti.grouped(bufs[0]):
-            for buf in ti.static(bufs):
+        for I in ti.grouped(self.img):
+            for buf in ti.static(self.buffers.values()):
                 buf[I] *= 0.0
 
     def from_mouse(self, gui):

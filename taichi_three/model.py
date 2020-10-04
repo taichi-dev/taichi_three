@@ -103,7 +103,8 @@ class Model(ModelBase):
 
     @ti.func
     def pixel_shader(self, color, texcoor, normal):
-        return color * self.sample('color', texcoor, ts.vec3(1.0))
+        color = color * self.sample('color', texcoor, ts.vec3(1.0))
+        return dict(img=color, normal=normal)
 
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
@@ -121,7 +122,7 @@ class ModelPP(Model):
 
         color = self.sample('color', texcoor, ts.vec3(1.0))
         color = self.colorize(pos, texcoor, normal, color)
-        return color
+        return dict(img=color)
 
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):

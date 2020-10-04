@@ -58,6 +58,7 @@ TODO list
 ---------
 
 * Support shadow mapping.
+* Support deferred shading.
 * Support image-based lighting and environment maps (skybox).
 * Path tracing scheme, e.g. cornell box.
 * Differentiable rendering (#18).

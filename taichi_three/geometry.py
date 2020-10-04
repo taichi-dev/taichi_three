@@ -82,7 +82,7 @@ def render_triangle(model, camera, face):
                 continue
 
             clr = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
-            camera.buf('img')[X] = model.pixel_shader(*clr)
+            camera.buf_update(X, model.pixel_shader(*clr))
 
 
 @ti.func
@@ -120,5 +120,6 @@ def render_particle(model, camera, index):
         view = ts.normalize(a + n)
         color = ts.vec3(1.0)
 
-        camera.buf('img')[X] = model.colorize(pos, normal, color)
+        color = model.colorize(pos, normal, color)
+        camera.buf('img')[X] = color
         camera.buf('normal')[X] = normal
