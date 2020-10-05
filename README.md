@@ -12,6 +12,9 @@ Taichi THREE is an extension library of the [Taichi Programming Language](https:
 ![Example](https://github.com/taichi-dev/public_files/raw/master/taichi/mass_spring_3d.gif)
 
 
+Changelog
+=========
+
 New in 0.0.5
 ------------
 
@@ -49,9 +52,9 @@ New in latest master branch
 * Standardize texture infrastructure, e.g.:
 
 ```py
-model.load_texture('color', ti.imread('assets/cloth.jpg'))
-model.load_texture('roughness', ti.imread('assets/rough.jpg'))
-model.load_texture('metallic', np.array([[0.5]]))  # uniform metallic everywhere
+model.add_texture('color', ti.imread('assets/cloth.jpg'))
+model.add_texture('roughness', ti.imread('assets/rough.jpg'))
+model.add_texture('metallic', np.array([[0.5]]))  # uniform metallic everywhere
 ```
 
 TODO list
@@ -64,6 +67,9 @@ TODO list
 * Differentiable rendering (#18).
 
 
+
+Help
+====
 
 Installation
 ------------
@@ -120,8 +126,7 @@ scene.add_model(model)
 If you want to add texture, read the texture image and feed it into `model`:
 
 ```py
-texture = ti.imread('assets/cloth.jpg')
-model = t3.Model(t3.readobj('assets/monkey.obj', scale=0.6), tex=texture)
+model.load_texture(ti.imread('assets/cloth.jpg'))
 ```
 
 NOTE: model creations should also be put as forward as possible too.
@@ -163,4 +168,5 @@ Checkout the [`examples/`](https://github.com/taichi-dev/taichi_three/tree/maste
 
 Loading models
 --------------
+
 Taichi-three uses a **left-handed** coordinate system where the +Z axis points **from** the camera **towards** the object. Therefore when exporting meshes from a modeling software (e.g., Blender), the axis directions should be set as "+Z forward, +Y up" so that the model will be oriented corrected in the taichi-three camera.
