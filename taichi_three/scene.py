@@ -29,6 +29,10 @@ class Scene(AutoInit):
         camera.scene = self
         self.cameras.append(camera)
 
+    def add_shadow_camera(self, shadow):
+        shadow.scene = self
+        self.cameras.insert(0, shadow)
+
     def add_light(self, light):
         light.scene = self
         self.lights.append(light)

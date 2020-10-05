@@ -40,6 +40,7 @@ class FrameBuffer:
                 buf[I] *= 0.0
 
 
+# TODO: separate intrinsic to FrameBuffer, leave extrinsic to Camera?
 @ti.data_oriented
 class Camera(AutoInit):
     ORTHO = 'Orthogonal'

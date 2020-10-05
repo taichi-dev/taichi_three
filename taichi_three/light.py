@@ -23,6 +23,8 @@ class Light(AutoInit):
         # so that we don't have to compute it for each vertex
         self.viewdir = ti.Vector.field(3, ti.float32, ())
 
+        self.shadow = None
+
     def set(self, dir=[0, 0, 1], color=[1, 1, 1]):
         norm = math.sqrt(sum(x**2 for x in dir))
         dir = [x / norm for x in dir]
@@ -48,6 +50,20 @@ class Light(AutoInit):
     @ti.func
     def set_view(self, camera):
         self.viewdir[None] = camera.untrans_dir(self.dir[None])
+
+    def bind_shadow(self, shadow):
+        self.shadow = shadow
+
+    @ti.func
+    def shadow_occlusion(self, wpos):
+        if ti.static(self.shadow is None):
+            return 1
+
+        lspos = self.shadow.untrans_pos(wpos)
+        lscoor = self.shadow.uncook(lspos)
+        lst_idepth = ts.bilerp(self.shadow.fb['idepth'], lscoor)
+        cur_idepth = 1 / lspos.z
+        return ts.smoothstep(-128 * (cur_idepth - lst_idepth), 1, 0)
 
 
 
