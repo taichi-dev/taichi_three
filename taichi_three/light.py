@@ -1,6 +1,7 @@
 import taichi as ti
 import taichi_glsl as ts
 from .common import *
+from .camera import *
 import math
 
 '''
@@ -51,8 +52,16 @@ class Light(AutoInit):
     def set_view(self, camera):
         self.viewdir[None] = camera.untrans_dir(self.dir[None])
 
-    def bind_shadow(self, shadow):
+    def make_shadow_camera(self, dis=10, fov=60, **kwargs):
+        shadow = Camera(pos=[x * dis for x in self.dir_py], fov=fov, **kwargs)
+        shadow.type = shadow.ORTHO
         self.shadow = shadow
+        return shadow
+
+    @ti.func
+    def _sub_SO(self, cur_idepth, lscoor):
+        lst_idepth = ts.bilerp(self.shadow.fb['idepth'], lscoor)
+        return 1 if lst_idepth < cur_idepth + 1e-3 else 0
 
     @ti.func
     def shadow_occlusion(self, wpos):
@@ -61,9 +70,16 @@ class Light(AutoInit):
 
         lspos = self.shadow.untrans_pos(wpos)
         lscoor = self.shadow.uncook(lspos)
-        lst_idepth = ts.bilerp(self.shadow.fb['idepth'], lscoor)
+
         cur_idepth = 1 / lspos.z
-        return ts.smoothstep(-128 * (cur_idepth - lst_idepth), 1, 0)
+        return self._sub_SO(cur_idepth, lscoor)
+        #W = 0.8
+        #K = 3
+        #r = self._sub_SO(cur_idepth, lscoor + ts.D.x_ * W)
+        #l = self._sub_SO(cur_idepth, lscoor + ts.D.X_ * W)
+        #u = self._sub_SO(cur_idepth, lscoor + ts.D._x * W)
+        #d = self._sub_SO(cur_idepth, lscoor + ts.D._X * W)
+        #return (K * c + r + l + u + d) / (4 + K)
 
 
 
