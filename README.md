@@ -51,6 +51,7 @@ Notable changes:
 * Support `t3.ScatterModel` for particle model renderer.
 * Support `t3.writeobj` for exporting OBJ files.
 * Add CLI support, use `python -m taichi_three` to invoke.
+* Support shadow mapping.
 
 Internal updates:
 * Standardize multi-buffer infrastructure for camera.
@@ -65,8 +66,7 @@ model.add_texture('metallic', np.array([[0.5]]))  # uniform metallic everywhere
 TODO list
 ---------
 
-* Support shadow mapping.
-* Support deferred shading.
+* Support deferred shading (screen-space shading).
 * Support image-based lighting and environment maps (skybox).
 * Path tracing scheme, e.g. cornell box.
 * Differentiable rendering (#18).

@@ -9,6 +9,7 @@ class Scene(AutoInit):
     def __init__(self):
         self.lights = []
         self.cameras = []
+        self.shadows = []
         self.models = []
 
     def set_light_dir(self, ldir):
@@ -31,7 +32,7 @@ class Scene(AutoInit):
 
     def add_shadow_camera(self, shadow):
         shadow.scene = self
-        self.cameras.insert(0, shadow)
+        self.shadows.append(shadow)
 
     def add_light(self, light):
         light.scene = self
@@ -42,6 +43,8 @@ class Scene(AutoInit):
             light.init()
         for camera in self.cameras:
             camera.init()
+        for shadow in self.shadows:
+            shadow.init()
         for model in self.models:
             model.init()
 
@@ -49,24 +52,38 @@ class Scene(AutoInit):
         self.init()
         self._render()
 
+    def render_shadows(self):
+        self.init()
+        self._render_shadows()
+
+    @ti.kernel
+    def _render_shadows(self):
+        if ti.static(len(self.shadows)):
+            for shadow in ti.static(self.shadows):
+                self._render_camera(shadow)
+
     @ti.kernel
     def _render(self):
         if ti.static(len(self.cameras)):
             for camera in ti.static(self.cameras):
-                camera.fb.clear_buffer()
-
-                # sets up light directions
-                if ti.static(len(self.lights)):
-                    for light in ti.static(self.lights):
-                        light.set_view(camera)
-                else:
-                    ti.static_print('Warning: no lights')
-
-                if ti.static(len(self.models)):
-                    for model in ti.static(self.models):
-                        model.render(camera)
-                else:
-                    ti.static_print('Warning: no models')
+                self._render_camera(camera)
 
         else:
             ti.static_print('Warning: no cameras')
+
+    @ti.func
+    def _render_camera(self, camera):
+        camera.fb.clear_buffer()
+
+        # sets up light directions
+        if ti.static(len(self.lights)):
+            for light in ti.static(self.lights):
+                light.set_view(camera)
+        else:
+            ti.static_print('Warning: no lights')
+
+        if ti.static(len(self.models)):
+            for model in ti.static(self.models):
+                model.render(camera)
+        else:
+            ti.static_print('Warning: no models')
