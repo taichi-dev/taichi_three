@@ -103,13 +103,30 @@ class Main:
         return msg
 
     @register
+    def conv(self, arguments: list = sys.argv[2:]):
+        """Conversation between OBJ and NPZ file formats"""
+        parser = argparse.ArgumentParser(prog='t3 conv',
+                                         description=f"{self.conv.__doc__}")
+        parser.add_argument(
+            'input',
+            help='File name of the OBJ/NPZ model as input, e.g. monkey.obj')
+        parser.add_argument(
+            'output',
+            help='File name of the NPZ/OBJ model as output, e.g. monkey.npz')
+        args = parser.parse_args(arguments)
+
+        import taichi_three as t3
+        obj = t3.readobj(args.input)
+        t3.writeobj(args.output, obj)
+
+    @register
     def show(self, arguments: list = sys.argv[2:]):
-        """Display / visualize an OBJ model using Taichi THREE"""
+        """Visualize an OBJ/NPZ model using Taichi THREE"""
         parser = argparse.ArgumentParser(prog='t3 show',
                                          description=f"{self.show.__doc__}")
         parser.add_argument(
             'filename',
-            help='File name of the OBJ file to visualize, e.g. monkey.obj')
+            help='File name of the OBJ/NPZ model to visualize, e.g. monkey.obj')
         parser.add_argument('-s', '--scale', default=0.75,
                 type=float, help='Specify a scale parameter')
         parser.add_argument('-o', '--ortho',

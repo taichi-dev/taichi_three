@@ -2,7 +2,7 @@ import numpy as np
 
 
 
-def _append(faces, indices):
+def _tri_append(faces, indices):
     if len(indices) == 3:
         faces.append(indices)
     elif len(indices) == 4:
@@ -16,6 +16,26 @@ def _append(faces, indices):
 
 
 def readobj(path, scale=1):
+    if path.endswith('.obj'):
+        ret = read_OBJ(path, scale)
+    elif path.endswith('.npz'):
+        ret = read_NPZ(path, scale)
+    else:
+        assert False, f'Unrecognized file format: {path}'
+
+    if ret['vp'] is not None:
+        ret['vp'] = ret['vp'] * scale
+    return ret
+
+def writeobj(path, obj):
+    if path.endswith('.obj'):
+        write_OBJ(path, obj)
+    elif path.endswith('.npz'):
+        write_NPZ(path, obj)
+    else:
+        assert False, f'Unrecognized file format: {path}'
+
+def read_OBJ(path, scale=1):
     vp = []
     vt = []
     vn = []
@@ -57,11 +77,29 @@ def readobj(path, scale=1):
         # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
         indices = [[int(_) - 1 for _ in field.split('/')] for field in fields]
 
-        _append(faces, indices)
+        _tri_append(faces, indices)
 
     ret = {}
     ret['vp'] = None if len(vp) == 0 else np.array(vp).astype(np.float32) * scale
     ret['vt'] = None if len(vt) == 0 else np.array(vt).astype(np.float32)
     ret['vn'] = None if len(vn) == 0 else np.array(vn).astype(np.float32)
     ret['f'] = None if len(faces) == 0 else np.array(faces).astype(np.int32)
+    return ret
+
+
+def write_OBJ(path, obj):
+    raise NotImplementedError
+
+
+def write_NPZ(path, obj):
+    np.savez(path, **obj)
+
+def read_NPZ(path, scale=1):
+    data = np.load(path)
+
+    ret = {}
+    ret['vp'] = data['vp'] * scale
+    ret['vt'] = data['vt']
+    ret['vn'] = data['vn']
+    ret['f'] = data['f']
     return ret
