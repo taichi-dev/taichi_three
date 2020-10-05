@@ -3,11 +3,14 @@ import numpy as np
 
 
 def _append(faces, indices):
-    if len(indices) == 4:
+    if len(indices) == 3:
+        faces.append(indices)
+    elif len(indices) == 4:
         faces.append([indices[0], indices[1], indices[2]])
         faces.append([indices[2], indices[3], indices[0]])
-    elif len(indices) == 3:
-        faces.append(indices)
+    elif len(indices) > 4:
+        for n in range(1, len(indices) - 1):
+            faces.append([indices[0], indices[n], indices[n + 1]])
     else:
         assert False, len(indices)
 
@@ -54,13 +57,7 @@ def readobj(path, scale=1):
         # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
         indices = [[int(_) - 1 for _ in field.split('/')] for field in fields]
 
-        if len(indices) == 4:
-            faces.append([indices[0], indices[1], indices[2]])
-            faces.append([indices[2], indices[3], indices[0]])
-        elif len(indices) == 3:
-            faces.append(indices)
-        else:
-            assert False, len(indices)
+        _append(faces, indices)
 
     ret = {}
     ret['vp'] = None if len(vp) == 0 else np.array(vp).astype(np.float32) * scale

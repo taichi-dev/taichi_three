@@ -90,8 +90,7 @@ class Main:
         except:
             pass
         return '\n' \
-               f'Docs:   https://taichi.rtfd.io/{uri}\n' \
-               f'GitHub: https://github.com/taichi-dev/taichi\n' \
+               f'GitHub: https://github.com/taichi-dev/taichi_three\n' \
                f'Forum:  https://forum.taichi.graphics\n'
 
     def _usage(self) -> str:
@@ -153,12 +152,12 @@ class Main:
 
     @register
     def run(self, arguments: list = sys.argv[2:]):
-        """Run a single script"""
+        """Run a single Python script"""
         parser = argparse.ArgumentParser(prog='t3 run',
                                          description=f"{self.run.__doc__}")
         parser.add_argument(
             'filename',
-            help='A single (Python) script to run with Taichi, e.g. render.py')
+            help='A single (Python) script to run with Taichi THREE, e.g. render.py')
         args = parser.parse_args(arguments)
 
         runpy.run_path(args.filename)
