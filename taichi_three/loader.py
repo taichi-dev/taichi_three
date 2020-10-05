@@ -35,6 +35,7 @@ def writeobj(path, obj):
     else:
         assert False, f'Unrecognized file format: {path}'
 
+
 def read_OBJ(path, scale=1):
     vp = []
     vt = []

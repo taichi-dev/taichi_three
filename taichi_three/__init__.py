@@ -19,7 +19,6 @@ from .model import *
 from .scatter import *
 from .geometry import *
 from .loader import *
-from .meshgen import *
 from .light import *
 
 print(f'[Tai3D] Camera control hints: LMB to orbit, MMB to move, RMB to scale')

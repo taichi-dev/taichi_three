@@ -46,8 +46,13 @@ Other updates:
 New in latest master branch
 ---------------------------
 
-* Move to physics-based rendering (PBR), roughness and metallic can be textures.
+Notable changes:
+* Support physics-based rendering (PBR), roughness and metallic can be textures.
 * Support `t3.ScatterModel` for particle model renderer.
+* Support `t3.writeobj` for exporting OBJ files.
+* Add CLI support, use `python -m taichi_three` to invoke.
+
+Internal updates:
 * Standardize multi-buffer infrastructure for camera.
 * Standardize texture infrastructure, e.g.:
 
