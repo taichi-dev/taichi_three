@@ -87,8 +87,20 @@ def read_OBJ(path, scale=1):
     return ret
 
 
-def write_OBJ(path, obj):
-    raise NotImplementedError
+def write_OBJ(path, obj, name='Object'):
+    with open(path, 'w') as f:
+        f.write('# Taichi THREE saved OBJ file\n')
+        f.write('# https://github.com/taichi-dev/taichi-three\n')
+        f.write(f'o {name}\n')
+        for pos in obj['vp']:
+            f.write(f'v {" ".join(map(str, pos))}\n')
+        for pos in obj['vt']:
+            f.write(f'vt {" ".join(map(str, pos))}\n')
+        for pos in obj['vn']:
+            f.write(f'vn {" ".join(map(str, pos))}\n')
+        f.write('s off\n')
+        for face in obj['f']:
+            f.write(f'f {" ".join("/".join(map(str, f + 1)) for f in face)}\n')
 
 
 def write_NPZ(path, obj):
