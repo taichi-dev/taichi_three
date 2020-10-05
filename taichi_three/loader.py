@@ -105,7 +105,12 @@ def write_OBJ(path, obj, name='Object'):
 
 
 def write_NPZ(path, obj):
-    np.savez(path, **obj)
+    data = {}
+    data['vp'] = obj['vp']
+    data['vt'] = obj['vt']
+    data['vn'] = (obj['vn'] * (2**15 - 1)).astype(np.int16)
+    data['f'] = obj['f'].astype(np.uint16)
+    np.savez(path, **data)
 
 def read_NPZ(path, scale=1):
     data = np.load(path)
@@ -113,6 +118,6 @@ def read_NPZ(path, scale=1):
     ret = {}
     ret['vp'] = data['vp'] * scale
     ret['vt'] = data['vt']
-    ret['vn'] = data['vn']
-    ret['f'] = data['f']
+    ret['vn'] = data['vn'].astype(np.float32) / (2**15 - 1)
+    ret['f'] = data['f'].astype(np.int32)
     return ret

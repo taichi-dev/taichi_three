@@ -120,6 +120,24 @@ class Main:
         t3.writeobj(args.output, obj)
 
     @register
+    def info(self, arguments: list = sys.argv[2:]):
+        """Display informations of an OBJ/NPZ model"""
+        parser = argparse.ArgumentParser(prog='t3 show',
+                                         description=f"{self.show.__doc__}")
+        parser.add_argument(
+            'filename',
+            help='File name of the OBJ/NPZ model to visualize, e.g. monkey.obj')
+        args = parser.parse_args(arguments)
+
+        import taichi_three as t3
+        obj = t3.readobj(args.filename)
+        print('vertices:', len(obj['vp']))
+        print('normals:', len(obj['vn']))
+        print('texcoors:', len(obj['vt']))
+        print('maxpoly:', max(len(f) for f in obj['f']))
+        print('faces:', len(obj['f']))
+
+    @register
     def show(self, arguments: list = sys.argv[2:]):
         """Visualize an OBJ/NPZ model using Taichi THREE"""
         parser = argparse.ArgumentParser(prog='t3 show',
@@ -131,25 +149,37 @@ class Main:
                 type=float, help='Specify a scale parameter')
         parser.add_argument('-o', '--ortho',
                 action='store_true', help='Display in orthogonal mode')
+        parser.add_argument('-l', '--lowp',
+                action='store_true', help='Shade faces by interpolation')
         parser.add_argument('-t', '--texture',
                 type=str, help='Path to texture to bind')
         parser.add_argument('-n', '--normtex',
                 type=str, help='Path to normal map to bind')
+        parser.add_argument('-m', '--metallic',
+                type=str, help='Path to metallic map to bind')
+        parser.add_argument('-r', '--roughness',
+                type=str, help='Path to roughness map to bind')
+        parser.add_argument('-a', '--arch', default='cpu',
+                type=str, help='Backend to use for rendering')
         args = parser.parse_args(arguments)
 
         import taichi as ti
         import taichi_three as t3
         import numpy as np
 
-        ti.init(ti.cpu)
+        ti.init(getattr(ti, args.arch))
 
         scene = t3.Scene()
         obj = t3.readobj(args.filename, scale=args.scale)
-        model = t3.ModelPP.from_obj(obj)
+        model = (t3.Model if args.lowp else t3.ModelPP).from_obj(obj)
         if args.texture is not None:
             model.add_texture('color', ti.imread(args.texture))
         if args.normtex is not None:
             model.add_texture('normal', ti.imread(args.normtex))
+        if args.metallic is not None:
+            model.add_texture('metallic', ti.imread(args.metallic))
+        if args.roughness is not None:
+            model.add_texture('roughness', ti.imread(args.roughness))
         scene.add_model(model)
         camera = t3.Camera()
         if args.ortho:
