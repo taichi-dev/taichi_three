@@ -17,7 +17,7 @@ print(f'[Tai3D] Inputs are welcomed at https://github.com/taichi-dev/taichi_thre
 from .scene import *
 from .model import *
 from .scatter import *
-from .geometry import *
+from .camera import *
 from .loader import *
 from .light import *
 
