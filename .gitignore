@@ -9,3 +9,5 @@ __pycache__
 /.idea
 /*.ipynb
 /.vscode
+node_modules/
+package-lock.json
