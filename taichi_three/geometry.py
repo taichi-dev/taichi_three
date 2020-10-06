@@ -58,34 +58,39 @@ def render_triangle(model, camera, face):
         B = camera.uncook(posb)
         C = camera.uncook(posc)
         scr_norm = ts.cross(A - C, B - A)
-        assert scr_norm != 0
-        B_A = (B - A) / scr_norm
-        C_B = (C - B) / scr_norm
-        A_C = (A - C) / scr_norm
+        if scr_norm != 0:
+            B_A = (B - A) / scr_norm
+            A_C = (A - C) / scr_norm
 
-        # screen space bounding box
-        M = int(ti.floor(min(A, B, C) - 1))
-        N = int(ti.ceil(max(A, B, C) + 1))
-        M = ts.clamp(M, 0, ti.Vector(camera.res))
-        N = ts.clamp(N, 0, ti.Vector(camera.res))
-        for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
-            # barycentric coordinates using the area method
-            X_A = X - A
-            w_C = ts.cross(B_A, X_A)
-            w_B = ts.cross(A_C, X_A)
-            w_A = 1 - w_C - w_B
-            # draw
-            eps = ti.get_rel_eps() * 0.2
-            is_inside = w_A >= -eps and w_B >= -eps and w_C >= -eps
-            if not is_inside:
-                continue
-            zindex = 1 / (posa.z * w_A + posb.z * w_B + posc.z * w_C)
-            if zindex < ti.atomic_max(camera.fb['idepth'][X], zindex):
-                continue
+            # screen space bounding box
+            M = int(ti.floor(min(A, B, C) - 1))
+            N = int(ti.ceil(max(A, B, C) + 1))
+            M = ts.clamp(M, 0, ti.Vector(camera.res))
+            N = ts.clamp(N, 0, ti.Vector(camera.res))
+            for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
+                # barycentric coordinates using the area method
+                X_A = X - A
+                w_C = ts.cross(B_A, X_A)
+                w_B = ts.cross(A_C, X_A)
+                w_A = 1 - w_C - w_B
 
-            clr = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
-            camera.fb.update(X, model.pixel_shader(*clr))
-            #camera.img[X].fill(1)
+                # https://gitee.com/zxtree2006/tinyrenderer/blob/master/our_gl.cpp
+                if ti.static(camera.type != camera.ORTHO):
+                    bclip = ts.vec3(w_A / posa.z, w_B / posb.z, w_C / posc.z)
+                    bclip /= bclip.x + bclip.y + bclip.z
+                    w_A, w_B, w_C = bclip
+
+                # draw
+                eps = ti.get_rel_eps() * 0.2
+                is_inside = w_A >= -eps and w_B >= -eps and w_C >= -eps
+                if not is_inside:
+                    continue
+                zindex = 1 / (posa.z * w_A + posb.z * w_B + posc.z * w_C)
+                if zindex < ti.atomic_max(camera.fb['idepth'][X], zindex):
+                    continue
+
+                clr = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
+                camera.fb.update(X, model.pixel_shader(*clr))
 
 
 @ti.func

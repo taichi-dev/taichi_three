@@ -66,21 +66,30 @@ Other updates:
 New in latest master
 --------------------
 
+Notable changes:
 * Preview our WIP documentation at https://t3.142857.red.
 * Add `t3.SimpleModel` that simply do color interpolation between vertices.
+
+Minor fixes:
+* Fix an artifect in perspective mode due to texture coordinate interpolation.
 
 
 TODO list
 ---------
 
-Minor steps:
-* Fix the coordinate system to be right-handed.
+Minor fixes:
 * Support non-equal width and height in camera.
+* Fix black-pixels artifect in `ms_cloth.py`.
+* Fix color artifects due to interpolation.
+* Make shadow smoother using bilerp.
+* ...
+
+Major steps:
+* Fix the coordinate system to be right-handed.
 * Refactor field initialization before materialization.
 * Support `t3.AmbientLight` and ambient occulsion.
-* Support shadow mapping for `t3.SpotLight`.
 * Separate camera control logic from `t3.Camera`.
-* Fix artifects in `ms_cloth.py`.
+* Support shadow mapping for `t3.SpotLight`.
 
 Ambitions:
 * Support deferred shading and SSAO.

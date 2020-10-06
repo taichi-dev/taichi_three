@@ -26,3 +26,8 @@ Features may be available in the future:
 Despite it's a soft renderer which means there'll be overheads compared with a true GPU rendering pipeline. It provides better flexibility.
 
 TODO: more demostrations to be added.
+
+## Mirror sites
+
+Gitee repo: https://gitee.com/archibate/taichi_three.git
+Gitee docs: https://archibate.gitee.io/taichi_three/
