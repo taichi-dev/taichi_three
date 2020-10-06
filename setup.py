@@ -19,7 +19,7 @@ setuptools.setup(
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.6',
-    install_requies=[
+    install_requires=[
         'taichi>=0.6.38',
         'taichi-glsl',
     ],

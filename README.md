@@ -15,6 +15,27 @@ Taichi THREE is an extension library of the [Taichi Programming Language](https:
 Changelog
 =========
 
+New in 0.0.6
+------------
+
+Notable changes:
+* Support physics-based rendering (PBR), roughness and metallic can be textures.
+* Support `t3.ScatterModel` for particle model renderer.
+* Support `t3.writeobj` for exporting OBJ files.
+* Add CLI tools, use `python -m taichi_three` to invoke.
+* Support shadow mapping.
+
+Internal updates:
+* Setup the fundemental infrastructure for docsify.
+* Standardize multi-buffer infrastructure for camera.
+* Standardize texture infrastructure, e.g.:
+
+```py
+model.add_texture('color', ti.imread('assets/cloth.jpg'))
+model.add_texture('roughness', ti.imread('assets/rough.jpg'))
+model.add_texture('metallic', np.array([[0.5]]))  # uniform metallic everywhere
+```
+
 New in 0.0.5
 ------------
 
@@ -41,27 +62,6 @@ Other updates:
 * Backface culling for perspective cameras.
 * Used the area method to compute barycentric coordinates.
 * Clip the triangle bounding box to prevent drawing outside the camera.
-
-
-New in latest master branch
----------------------------
-
-Notable changes:
-* Support physics-based rendering (PBR), roughness and metallic can be textures.
-* Support `t3.ScatterModel` for particle model renderer.
-* Support `t3.writeobj` for exporting OBJ files.
-* Add CLI support, use `python -m taichi_three` to invoke.
-* Support shadow mapping.
-
-Internal updates:
-* Standardize multi-buffer infrastructure for camera.
-* Standardize texture infrastructure, e.g.:
-
-```py
-model.add_texture('color', ti.imread('assets/cloth.jpg'))
-model.add_texture('roughness', ti.imread('assets/rough.jpg'))
-model.add_texture('metallic', np.array([[0.5]]))  # uniform metallic everywhere
-```
 
 TODO list
 ---------

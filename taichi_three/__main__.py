@@ -50,7 +50,7 @@ class Main:
 
         print(self._get_friend_links())
 
-        parser = argparse.ArgumentParser(description="Taichi CLI",
+        parser = argparse.ArgumentParser(description="Taichi THREE CLI",
                                          usage=self._usage())
         parser.add_argument('command',
                             help="command from the above list to run")
