@@ -10,12 +10,19 @@ import math
 
 @ti.data_oriented
 class ModelBase(AutoInit):
-    pass
+    def __init__(self):
+        self.L2W = Affine.field(())
+        self.init_cbs = []
+
+    def _init(self):
+        self.L2W.init()
+        for cb in self.init_cbs:
+            cb()
 
 
 class Model(ModelBase):
-    def __init__(self, pos_n, tex_n, nrm_n, faces_n):
-        self.L2W = Affine.field(())
+    def __init__(self, faces_n, pos_n, tex_n, nrm_n):
+        super.__init__()
 
         self.faces = ti.Matrix.field(3, 3, int, faces_n)
         self.pos = ti.Vector.field(3, float, pos_n)
@@ -23,7 +30,12 @@ class Model(ModelBase):
         self.nrm = ti.Vector.field(3, float, nrm_n)
 
         self.textures = {}
-        self.init_cbs = []
+
+    @ti.func
+    def render(self, camera):
+        for i in ti.grouped(self.faces):
+            # assume all elements to be triangle
+            render_triangle(self, camera, self.faces[i])
 
     @classmethod
     def from_obj(cls, obj, texture=None, normtex=None):
@@ -75,17 +87,6 @@ class Model(ModelBase):
 
         self.init_cbs.append(other_init_cb)
 
-    def _init(self):
-        self.L2W.init()
-        for cb in self.init_cbs:
-            cb()
-
-    @ti.func
-    def render(self, camera):
-        for i in ti.grouped(self.faces):
-            # assume all elements to be triangle
-            render_triangle(self, camera, self.faces[i])
-
     @ti.func
     def sample(self, name: ti.template(), texcoor, default):
         if ti.static(name in self.textures.keys()):
@@ -111,6 +112,43 @@ class Model(ModelBase):
         color = ts.vec3(1.0)
         color = self.colorize(pos, texcoor, normal, color)
         return pos, color, texcoor, normal
+
+
+class ModelEZ(ModelBase):
+    def __init__(self, faces_n, pos_n):
+        super().__init__()
+
+        self.pos = ti.Vector.field(3, float, pos_n)
+        self.clr = ti.Vector.field(3, float, pos_n)
+        self.faces = ti.Vector.field(3, int, faces_n)
+
+        @ti.materialize_callback
+        def initialize_clr():
+            self.clr.fill(1.0)
+
+    @ti.func
+    def render(self, camera):
+        for i in ti.grouped(self.faces):
+            face = ti.Matrix.cols([self.faces[i], self.faces[i], ts.vec3(0)])
+            render_triangle(self, camera, face)
+
+    @subscriptable
+    @ti.func
+    def tex(self, I):
+        return self.clr[I]
+
+    @subscriptable
+    def nrm(self, I):
+        return ts.vec3(0.0, 0.0, -1.0)
+
+    @ti.func
+    def pixel_shader(self, pos, color):
+        return dict(img=color, pos=pos)
+
+    @ti.func
+    def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
+        color = texcoor
+        return pos, color
 
 
 class ModelPP(Model):

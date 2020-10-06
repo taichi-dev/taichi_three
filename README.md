@@ -63,6 +63,12 @@ Other updates:
 * Used the area method to compute barycentric coordinates.
 * Clip the triangle bounding box to prevent drawing outside the camera.
 
+New in latest master
+--------------------
+
+* Preview our WIP documentation at https://t3.142857.red.
+
+
 TODO list
 ---------
 

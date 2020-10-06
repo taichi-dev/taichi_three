@@ -42,12 +42,13 @@ def render_triangle(model, camera, face):
     dtac = texa - texc
 
     normal = ts.cross(dpab, dpac)
-    tan, bitan = compute_tangent(-dpab, -dpac, -dtab, -dtac)
 
     # NOTE: the normal computation indicates that a front-facing face should
     # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
     # this is to be compatible with obj model loading.
     if ts.dot(pos_center, normal) <= 0:
+
+        tan, bitan = compute_tangent(-dpab, -dpac, -dtab, -dtac)
 
         clra = model.vertex_shader(posa, texa, nrma, tan, bitan)
         clrb = model.vertex_shader(posb, texb, nrmb, tan, bitan)
@@ -56,10 +57,11 @@ def render_triangle(model, camera, face):
         A = camera.uncook(posa)
         B = camera.uncook(posb)
         C = camera.uncook(posc)
-        scr_norm = 1 / ts.cross(A - C, B - A)
-        B_A = (B - A) * scr_norm
-        C_B = (C - B) * scr_norm
-        A_C = (A - C) * scr_norm
+        scr_norm = ts.cross(A - C, B - A)
+        assert scr_norm != 0
+        B_A = (B - A) / scr_norm
+        C_B = (C - B) / scr_norm
+        A_C = (A - C) / scr_norm
 
         # screen space bounding box
         M = int(ti.floor(min(A, B, C) - 1))
@@ -83,6 +85,7 @@ def render_triangle(model, camera, face):
 
             clr = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
             camera.fb.update(X, model.pixel_shader(*clr))
+            #camera.img[X].fill(1)
 
 
 @ti.func
