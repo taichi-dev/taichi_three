@@ -80,6 +80,7 @@ Minor steps:
 * Support `t3.AmbientLight` and ambient occulsion.
 * Support shadow mapping for `t3.SpotLight`.
 * Separate camera control logic from `t3.Camera`.
+* Fix artifects in `ms_cloth.py`.
 
 Ambitions:
 * Support deferred shading and SSAO.

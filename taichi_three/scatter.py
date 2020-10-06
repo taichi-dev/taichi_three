@@ -17,6 +17,11 @@ class ScatterModel(ModelBase):
 
         if num is not None:
             self.pos = ti.Vector.field(3, float, num)
+            self.radius = ti.field(float, num)
+
+            @ti.materialize_callback
+            def initialize_radius():
+                self.radius.fill(1.0)
 
     def _init(self):
         self.L2W.init()

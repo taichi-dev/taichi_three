@@ -56,7 +56,6 @@ def substep():
 
 scene = t3.Scene()
 camera = t3.Camera(fov=24, pos=[0, 1.1, -1.5], target=[0, 0.25, 0])
-#camera.add_buffer('normal', 3)
 scene.add_camera(camera)
 light = t3.Light(dir=[0.4, -1.5, 1.8])
 scene.add_shadow_camera(light.make_shadow_camera())
@@ -122,8 +121,9 @@ init_display()
 
 with ti.GUI('Mass Spring') as gui:
     while gui.running and not gui.get_event(gui.ESCAPE):
-        for i in range(steps):
-            substep()
+        if not gui.is_pressed(gui.SPACE):
+            for i in range(steps):
+                substep()
         if gui.is_pressed('r'):
             init()
         update_display()
@@ -135,5 +135,4 @@ with ti.GUI('Mass Spring') as gui:
         scene.render_shadows()
         scene.render()
         gui.set_image(camera.img)
-        #gui.set_image(camera.buf('normal').to_numpy() * 0.5 + 0.5)
         gui.show()

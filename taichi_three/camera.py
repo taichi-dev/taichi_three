@@ -205,7 +205,7 @@ class Camera(AutoInit):
         return self.trans[None].transpose() @ pos
 
     @ti.func
-    def cook(self, pos):
+    def cook(self, pos, translate=True):
         if ti.static(self.type == self.ORTHO):
             if ti.static(translate):
                 pos[0] -= self.intrinsic[None][0, 2]
