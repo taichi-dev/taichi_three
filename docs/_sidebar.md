@@ -1,7 +1,5 @@
 - Getting started
 
+  - [Installation](installation.md)
   - [Hello triangle](hello_triangle.md)
-
-- Miscellaneous
-
-  - [Troubleshooting](troubleshooting.md)
+  - [Loading models](loading_models.md)
