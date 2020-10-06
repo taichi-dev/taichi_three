@@ -64,8 +64,8 @@ def render_triangle(model, camera, face):
         # screen space bounding box
         M = int(ti.floor(min(A, B, C) - 1))
         N = int(ti.ceil(max(A, B, C) + 1))
-        M = ts.clamp(M, 0, ti.Vector(camera.img.shape))
-        N = ts.clamp(N, 0, ti.Vector(camera.img.shape))
+        M = ts.clamp(M, 0, ti.Vector(camera.res))
+        N = ts.clamp(N, 0, ti.Vector(camera.res))
         for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
             # barycentric coordinates using the area method
             X_A = X - A
@@ -78,27 +78,48 @@ def render_triangle(model, camera, face):
             if not is_inside:
                 continue
             zindex = 1 / (posa.z * w_A + posb.z * w_B + posc.z * w_C)
-            if zindex < ti.atomic_max(camera.zbuf[X], zindex):
+            if zindex < ti.atomic_max(camera.fb['idepth'][X], zindex):
                 continue
 
             clr = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
-            camera.img[X] = model.pixel_shader(*clr)
+            camera.fb.update(X, model.pixel_shader(*clr))
 
 
 @ti.func
-def render_particle(model, camera, vertex, radius):
+def render_particle(model, camera, index):
     scene = model.scene
     L2W = model.L2W
-    a = camera.untrans_pos(L2W @ vertex)
+    a = model.pos[index]
+    r = model.radius[index]
+    a = camera.untrans_pos(L2W @ a)
     A = camera.uncook(a)
 
-    M = int(ti.floor(A - radius))
-    N = int(ti.ceil(A + radius))
+    rad = camera.uncook(ts.vec3(r, r, a.z), False)
+
+    M = int(ti.floor(A - rad))
+    N = int(ti.ceil(A + rad))
+    M = ts.clamp(M, 0, ti.Vector(camera.res))
+    N = ts.clamp(N, 0, ti.Vector(camera.res))
 
     for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
-        if X.x < 0 or X.x >= camera.res[0] or X.y < 0 or X.y >= camera.res[1]:
-            continue
-        if (X - A).norm_sqr() > radius**2:
+        pos = camera.cook(float(ts.vec3(X, a.z)))
+        dp = pos - a
+        dp2 = dp.norm_sqr()
+
+        if dp2 > r**2:
             continue
 
-        camera.img[X] = ts.vec3(1)
+        dz = ti.sqrt(r**2 - dp2)
+        zindex = 1 / (a.z - dz)
+
+        if zindex < ti.atomic_max(camera.fb['idepth'][X], zindex):
+            continue
+
+        n = ts.vec3(dp.xy, -dz)
+        normal = ts.normalize(n)
+        view = ts.normalize(a + n)
+        color = ts.vec3(1.0)
+
+        color = model.colorize(pos, normal, color)
+        camera.fb['img'][X] = color
+        camera.fb['normal'][X] = normal

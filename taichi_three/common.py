@@ -35,3 +35,21 @@ class subscriptable(property):
             return wrapped
 
         super().__init__(accessor)
+
+class dummy_expression:
+    is_taichi_class = True
+
+    def __getattr__(self, key):
+        def wrapped(*args, **kwargs):
+            return self
+        wrapped.__name__ = key
+        return wrapped
+
+_old_begin_frontend_if = ti.begin_frontend_if
+
+def _begin_frontend_if(cond):
+    if isinstance(cond, dummy_expression):
+        cond = 0
+    return _old_begin_frontend_if(cond)
+
+ti.begin_frontend_if = _begin_frontend_if

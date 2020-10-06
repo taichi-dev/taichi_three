@@ -1,39 +1,27 @@
-project_name = 'taichi_three'
-from taichi_three.version import version, taichi_version, taiglsl_version
-version = '.'.join(map(str, version))
-taichi_version = '.'.join(map(str, taichi_version))
-taiglsl_version = '.'.join(map(str, taiglsl_version))
-description = 'A Taichi extension library helps you rendering 3D scenes'
-long_description = '''
-Taichi THREE
-============
-
-Taichi THREE is an extension library of the `Taichi Programming Language <https://github.com/taichi-dev/taichi>`_, that helps rendering your 3D scenes into nice-looking 2D images to display in GUI.
-'''
-classifiers = [
-    'Intended Audience :: Developers',
-    'Intended Audience :: Science/Research',
-    'Topic :: Multimedia :: Graphics',
-    'Topic :: Games/Entertainment :: Simulation',
-    'Operating System :: OS Independent',
-]
-python_requires = '>=3.6'
-install_requires = [
-    'taichi>=' + taichi_version,
-    'taichi-glsl>=' + taiglsl_version,
-]
-
+import taichi_three as t3
 import setuptools
 
 setuptools.setup(
-    name=project_name,
-    version=version,
-    author='彭于斌',
-    author_email='1931127624@qq.com',
-    description=description,
-    long_description=long_description,
-    classifiers=classifiers,
-    python_requires=python_requires,
-    install_requies=install_requires,
+    name=t3.__package__,
+    version='.'.join(map(str, t3.__version__)),
+    author=t3.__author__.split('<')[0][:-1],
+    author_email=t3.__author__.split('<')[1][:-1],
+    url='https://github.com/taichi-dev/taichi_three',
+    description='A Taichi extension library to render 3D scenes',
+    long_description=t3.__doc__,
+    license='MIT',
+    keywords=['graphics', 'renderer'],
+    classifiers=[
+        'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
+        'Topic :: Multimedia :: Graphics',
+        'Topic :: Games/Entertainment :: Simulation',
+        'Operating System :: OS Independent',
+    ],
+    python_requires='>=3.6',
+    install_requies=[
+        'taichi>=0.6.38',
+        'taichi-glsl',
+    ],
     packages=setuptools.find_packages(),
 )

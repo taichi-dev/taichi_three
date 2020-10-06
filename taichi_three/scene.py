@@ -1,7 +1,6 @@
 import taichi as ti
 import taichi_glsl as ts
 from .transform import *
-from .shading import *
 from .light import *
 
 
@@ -10,7 +9,7 @@ class Scene(AutoInit):
     def __init__(self):
         self.lights = []
         self.cameras = []
-        self.opt = Shading()
+        self.shadows = []
         self.models = []
 
     def set_light_dir(self, ldir):
@@ -23,18 +22,6 @@ class Scene(AutoInit):
         else:
             self.light[0].set(ldir)
 
-    @ti.func
-    def cook_coor(self, I, camera):
-        scale = ti.static(2 / min(*camera.img.shape()))
-        coor = (I - ts.vec2(*camera.img.shape()) / 2) * scale
-        return coor
-
-    @ti.func
-    def uncook_coor(self, coor, camera):
-        scale = ti.static(min(*camera.img.shape()) / 2)
-        I = coor.xy * scale + ts.vec2(*camera.img.shape()) / 2
-        return I
-
     def add_model(self, model):
         model.scene = self
         self.models.append(model)
@@ -42,6 +29,10 @@ class Scene(AutoInit):
     def add_camera(self, camera):
         camera.scene = self
         self.cameras.append(camera)
+
+    def add_shadow_camera(self, shadow):
+        shadow.scene = self
+        self.shadows.append(shadow)
 
     def add_light(self, light):
         light.scene = self
@@ -52,6 +43,8 @@ class Scene(AutoInit):
             light.init()
         for camera in self.cameras:
             camera.init()
+        for shadow in self.shadows:
+            shadow.init()
         for model in self.models:
             model.init()
 
@@ -59,24 +52,38 @@ class Scene(AutoInit):
         self.init()
         self._render()
 
+    def render_shadows(self):
+        self.init()
+        self._render_shadows()
+
+    @ti.kernel
+    def _render_shadows(self):
+        if ti.static(len(self.shadows)):
+            for shadow in ti.static(self.shadows):
+                self._render_camera(shadow)
+
     @ti.kernel
     def _render(self):
         if ti.static(len(self.cameras)):
             for camera in ti.static(self.cameras):
-                camera.clear_buffer()
-
-                # sets up light directions
-                if ti.static(len(self.lights)):
-                    for light in ti.static(self.lights):
-                        light.set_view(camera)
-                else:
-                    ti.static_print('Warning: no lights')
-
-                if ti.static(len(self.models)):
-                    for model in ti.static(self.models):
-                        model.render(camera)
-                else:
-                    ti.static_print('Warning: no models')
+                self._render_camera(camera)
 
         else:
             ti.static_print('Warning: no cameras')
+
+    @ti.func
+    def _render_camera(self, camera):
+        camera.fb.clear_buffer()
+
+        # sets up light directions
+        if ti.static(len(self.lights)):
+            for light in ti.static(self.lights):
+                light.set_view(camera)
+        else:
+            ti.static_print('Warning: no lights')
+
+        if ti.static(len(self.models)):
+            for model in ti.static(self.models):
+                model.render(camera)
+        else:
+            ti.static_print('Warning: no models')
