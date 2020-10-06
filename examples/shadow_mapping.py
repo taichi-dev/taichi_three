@@ -2,7 +2,7 @@ import taichi as ti
 import taichi_three as t3
 import numpy as np
 
-ti.init(ti.cpu, kernel_profiler=True)
+ti.init(ti.gpu)
 
 scene = t3.Scene()
 obj1 = t3.readobj('assets/torus.obj', scale=0.8)
@@ -31,5 +31,3 @@ while gui.running:
     #gui2.set_image(light.shadow.fb['idepth'])
     gui.show()
     #gui2.show()
-
-ti.kernel_profiler_print()

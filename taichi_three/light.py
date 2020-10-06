@@ -60,8 +60,8 @@ class Light(AutoInit):
 
     @ti.func
     def _sub_SO(self, cur_idepth, lscoor):
-        lst_idepth = ts.bilerp(self.shadow.fb['idepth'], lscoor)
-        return 1 if lst_idepth < cur_idepth + 1e-6 else 0
+        lst_idepth = ts.sample(self.shadow.fb['idepth'], lscoor)
+        return 1 if lst_idepth < cur_idepth + 1e-4 else 0
 
     @ti.func
     def shadow_occlusion(self, wpos):
@@ -72,14 +72,14 @@ class Light(AutoInit):
         lscoor = self.shadow.uncook(lspos)
 
         cur_idepth = 1 / lspos.z
-        #return self._sub_SO(cur_idepth, lscoor)
-        W = 1
-        c = self._sub_SO(cur_idepth, lscoor)
-        r = self._sub_SO(cur_idepth, lscoor + ts.D.x_ * W)
-        l = self._sub_SO(cur_idepth, lscoor + ts.D.X_ * W)
-        u = self._sub_SO(cur_idepth, lscoor + ts.D._x * W)
-        d = self._sub_SO(cur_idepth, lscoor + ts.D._X * W)
-        return max(c, r, l, u, d)
+        x = ts.fract(lscoor)
+        y = 1 - x
+        B = int(lscoor)
+        xx = self._sub_SO(cur_idepth, B + ts.D.xx)
+        x_ = self._sub_SO(cur_idepth, B + ts.D.x_)
+        __ = self._sub_SO(cur_idepth, B + ts.D.__)
+        _x = self._sub_SO(cur_idepth, B + ts.D._x)
+        return xx * x.x * x.y + x_ * x.x * y.y + __ * y.x * y.y + _x * y.x * x.y
 
 
 
