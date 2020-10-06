@@ -1,6 +1,9 @@
 import taichi_three as t3
 import setuptools
 
+with open('requirements.txt') as f:
+    install_requires = f.read().splitlines()
+
 setuptools.setup(
     name=t3.__package__,
     version='.'.join(map(str, t3.__version__)),
@@ -19,9 +22,6 @@ setuptools.setup(
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.6',
-    install_requires=[
-        'taichi>=0.6.38',
-        'taichi-glsl',
-    ],
+    install_requires=install_requires,
     packages=setuptools.find_packages(),
 )
