@@ -16,7 +16,8 @@ import taichi_three as t3
 
 ## Command line interface
 
-Installing ``taichi_three`` successfully should also allows you to invoke it from command line, e.g., to visualize a OBJ model:
+Installing ``taichi_three`` successfully should also allows you to invoke it from command line. 
+E.g., to visualize a OBJ model:
 
 ```py
 python3 -m taichi_three show /path/to/model.obj

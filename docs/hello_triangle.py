@@ -1,7 +1,6 @@
 import taichi_three as t3
 
 scene = t3.Scene()
-
 camera = t3.Camera()
 scene.add_camera(camera)
 
