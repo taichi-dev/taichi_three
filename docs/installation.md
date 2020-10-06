@@ -1,6 +1,8 @@
 # Installation
 
-First of all, let's install Taichi THREE. Make sure you're using Python **3.6/3.7/3.8**, and **64-bit**. And then install Taichi THREE via `pip`:
+First of all, let's install Taichi THREE on your computer.
+Make sure you're using Python **3.6/3.7/3.8**, and **64-bit**.
+And then install Taichi THREE via `pip`:
 
 ```bash
 python3 -m pip install taichi_three
@@ -12,10 +14,26 @@ To verify the installation, type this command into the Python shell:
 import taichi_three as t3
 ```
 
+## Install from latest master branch (optional)
+
+If you'd like to keep catching up with latest Taichi THREE updates, please clone it from [our GitHub repository](https://github.com/taichi-dev/taichi_three). Then build and install it:
+
+```bash
+git clone https://github.com/taichi-dev/taichi_three.git
+# try this mirror repository on Gitee if the above is too slow:
+# git clone https://gitee.com/archibate/taichi_three.git
+
+cd taichi_three
+python3 -m pip install -r requirements.txt  # install `taichi` and `taichi-glsl`
+python3 -m pip install wheel                # required for the next step
+python3 setup.py bdist_wheel                # create a `.whl` file
+pip install -U dist/taichi_three-0.0.6-py3-none-any.whl
+```
+
 ## Command line interface
 
 Installing ``taichi_three`` successfully should also allows you to invoke it from command line. 
-E.g., to visualize a OBJ model:
+E.g., to visualize a OBJ model located at `/path/to/model.obj`:
 
 ```py
 python3 -m taichi_three show /path/to/model.obj

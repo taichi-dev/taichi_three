@@ -8,10 +8,11 @@
   - **Sections below are WIP:**
   - [Binding textures](binding_textures.md)
   - [Coordinate system](coordinate_system.md)
+  - [Camera control](camera_control.md)
 
 - Advanced topics
 
-  - [Shadow mapping](shadow_mapping.md)
+  - [Light and shadows](light_and_shadows.md)
   - [Mesh deformation](mesh_deformation.md)
   - [Customizing shaders](customizing_shaders.md)
   - [Physically-based rendering](physically_based_rendering.md)

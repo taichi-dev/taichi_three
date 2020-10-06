@@ -61,7 +61,7 @@ class Light(AutoInit):
     @ti.func
     def _sub_SO(self, cur_idepth, lscoor):
         lst_idepth = ts.bilerp(self.shadow.fb['idepth'], lscoor)
-        return 1 if lst_idepth < cur_idepth + 1e-3 else 0
+        return 1 if lst_idepth < cur_idepth + 1e-4 else 0
 
     @ti.func
     def shadow_occlusion(self, wpos):

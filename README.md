@@ -67,14 +67,25 @@ New in latest master
 --------------------
 
 * Preview our WIP documentation at https://t3.142857.red.
+* Add `t3.SimpleModel` that simply do color interpolation between vertices.
 
 
 TODO list
 ---------
 
-* Support deferred shading (screen-space shading).
-* Support image-based lighting and environment maps (skybox).
+Minor steps:
+* Fix the coordinate system to be right-handed.
+* Support non-equal width and height in camera.
+* Refactor field initialization before materialization.
+* Support `t3.AmbientLight` and ambient occulsion.
+* Support shadow mapping for `t3.SpotLight`.
+* Separate camera control logic from `t3.Camera`.
+
+Ambitions:
+* Support deferred shading and SSAO.
 * Path tracing scheme, e.g. cornell box.
+* Support image-based lighting and environment maps (skybox).
+* Support screen-space reflection.
 * Differentiable rendering (#18).
 
 
