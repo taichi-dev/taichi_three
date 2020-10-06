@@ -22,7 +22,7 @@ class ModelBase(AutoInit):
 
 class Model(ModelBase):
     def __init__(self, faces_n, pos_n, tex_n, nrm_n):
-        super.__init__()
+        super().__init__()
 
         self.faces = ti.Matrix.field(3, 3, int, faces_n)
         self.pos = ti.Vector.field(3, float, pos_n)
@@ -39,7 +39,7 @@ class Model(ModelBase):
 
     @classmethod
     def from_obj(cls, obj, texture=None, normtex=None):
-        model = cls(len(obj['vp']), len(obj['vt']), len(obj['vn']), len(obj['f']))
+        model = cls(len(obj['f']), len(obj['vp']), len(obj['vt']), len(obj['vn']))
 
         def obj_init_cb():
             model.faces.from_numpy(obj['f'])

@@ -13,7 +13,7 @@ model.pos.from_numpy(obj['vp'] * 0.6)
 model.clr.from_numpy(obj['vp'] * 0.5 + 0.5)
 model.faces.from_numpy(obj['f'][:, :, 0])
 
-gui = t3.GUI('Hello Triangle')
+gui = t3.GUI('Loading Models')
 while gui.running:
     scene.render()
     gui.get_event(None)

@@ -21,11 +21,12 @@ class Shading:
         res = ts.vec3(0.0)
         viewdir = pos.normalized()
         wpos = self.model.scene.cameras[-1].trans_pos(pos)
-        for light in ti.static(self.model.scene.lights):
-            strength = light.shadow_occlusion(wpos)
-            if strength != 0:
-                subclr = self.render_func(pos, normal, viewdir, light, color)
-                res += strength * subclr
+        if ti.static(self.model.scene.lights):
+            for light in ti.static(self.model.scene.lights):
+                strength = light.shadow_occlusion(wpos)
+                if strength != 0:
+                    subclr = self.render_func(pos, normal, viewdir, light, color)
+                    res += strength * subclr
         res = self.pre_process(res)
         return res
 

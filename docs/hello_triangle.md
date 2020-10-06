@@ -20,6 +20,9 @@ model = t3.SimpleModel(faces_n=1, pos_n=3)
 scene.add_model(model)
 ```
 
+The `faces_n` indicates how much faces the model have, the `pos_n` indicates how much vertices the model have.
+Finally, don't forget to **add** the model and camera to scene.
+
 ## Loading mesh data
 
 In the world of Taichi THREE (and many other modern rendering pipelines), a model is composed of many pieces of triangle faces, and their vertices.

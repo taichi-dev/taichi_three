@@ -31,16 +31,6 @@ array([[ 1.,  1., -1.],
        [-1.,  1.,  1.],
        [-1., -1.,  1.]])
 
->> obj['vp'] * 0.6   # scaling the model by 0.6
-array([[ 0.6,  0.6, -0.6],
-       [ 0.6, -0.6, -0.6],
-       [ 0.6,  0.6,  0.6],
-       [ 0.6, -0.6,  0.6],
-       [-0.6,  0.6, -0.6],
-       [-0.6, -0.6, -0.6],
-       [-0.6,  0.6,  0.6],
-       [-0.6, -0.6,  0.6]])
-
 >>> obj['f']          # containing both position, texture, normal indices, not what we want for t3.SimpleModel.faces
 array([[[ 0,  0,  0],
         [ 4,  1,  0],
@@ -66,7 +56,7 @@ You may want to use a for-loop for assigning properties to each vertex/face:
 
 ```py
 for i in range(len(obj['vp'])):
-    model.pos[i] = obj['vp'][i] * 0.6
+    model.pos[i] = obj['vp'][i]
 for i in range(len(obj['f'])):
     model.faces[i] = obj['f'][i, :, 0]
 ```
@@ -74,7 +64,7 @@ for i in range(len(obj['f'])):
 It works but become low-effcient when the model is huge. Use ``from_numpy`` to ease that concern:
 
 ```py
-model.pos.from_numpy(obj['vp'] * 0.6)
+model.pos.from_numpy(obj['vp']
 model.faces.from_numpy(obj['f'][:, :, 0])
 ```
 
@@ -94,10 +84,10 @@ scene.add_camera(camera)
 model = t3.SimpleModel(faces_n=len(obj['f']), pos_n=len(obj['vp']))
 scene.add_model(model)
 
-model.pos.from_numpy(obj['vp'] * 0.6)
+model.pos.from_numpy(obj['vp'])
 model.faces.from_numpy(obj['f'][:, :, 0])
 
-gui = t3.GUI('Hello Triangle')
+gui = t3.GUI('Loading Models')
 while gui.running:
     scene.render()
     gui.get_event(None)
@@ -105,6 +95,20 @@ while gui.running:
     gui.set_image(camera.img)
     gui.show()
 ```
+
+Your screen is completely filled with white? Well, that's because the cube is so large that it takes up the whole screen, consider specify a `scale=` argument to scale it down:
+
+```py
+obj = t3.readobj('assets/cube.obj', scale=0.6)
+```
+
+Or equivalently:
+
+```py
+model.pos.from_numpy(obj['vp'] * 0.6)
+```
+
+## Give color to vertices
 
 Running the above code should gives you a completely white cube that you can hardly distinguish the borders.
 Don't worry, let's assign some color to each vertex:
