@@ -114,7 +114,7 @@ class Model(ModelBase):
         return pos, color, texcoor, normal
 
 
-class ModelEZ(ModelBase):
+class SimpleModel(ModelBase):
     def __init__(self, faces_n, pos_n):
         super().__init__()
 

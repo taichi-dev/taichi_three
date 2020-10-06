@@ -17,6 +17,8 @@ To verify the installation, type this command into the Python shell:
 import taichi_three as t3
 ```
 
+If you have trouble in this step, make sure you've check out the [troubleshooting page](troubleshooting.md).
+
 ## Creating the scene
 
 To actually be able to display anything with Taichi THREE, we need three things: scene, camera, and model, so that we can render the scene with camera.
@@ -31,11 +33,17 @@ scene = t3.Scene()
 camera = t3.Camera()
 scene.add_camera(camera)
 
-model = t3.ModelEZ(faces_n=1, pos_n=3)  # compared to t3.Model, t3.ModelEZ is easier for beginners :)
+model = t3.SimpleModel(faces_n=1, pos_n=3)
 scene.add_model(model)
 ```
 
 ## Loading mesh data
+
+In the world of Taichi THREE (and many other modern rendering pipelines), a model is composed of many pieces of triangle faces, and their vertices.
+Each triangle face has 3 vertices at its corner.
+
+The positions, colors, and other properties of vertices are stored separately in the **vertex buffer**.
+The vertex-face corespondence for each face, is composed of 3 indices into vertex buffer.
 
 ```py
 model.pos[0] = [+0.0, +0.5, 0.0]  # top
@@ -98,22 +106,57 @@ We can also move the camera by mouse. To do so, we'll need to capture some mouse
             gui.show()
 ```
 
-Now use LMB to orbit around the scene, MMB to move the center of view, RMB to scale the scene.
+Now use **LMB to orbit** around the scene, **MMB to move** the center of view, **RMB to scale** the scene.
+Feel like moving in 3D, right? Exactly what we want!
+
+
+## Face culling
+
+Turning the camera around using LMB, you may already noticed that the triangle is **invisible** when we moved to its back.
+
+That's because Taichi THREE use the **face culling policy**: a face is only visible when the vertices are **clockwise**.
+Why do we set this strange limitation? Well, you'll know in the later sections.
+
+![face_culling](http://learnopengl.com/img/advanced/faceculling_windingorder.png)
+
+For example, we used `[0, 1, 2]` as vertex indices, so the ordered vertices are:
+1. ``x=+0.0, y=+0.5``
+2. ``x=-0.5, y=-0.5``
+3. ``x=+0.5, y=-0.5``
+
+Looking from -Z direction, they are clockwise (therfore visible).
+Looking from +Z direction, they are counter-clockwise (therfore invisible).
+
+## Make both side visible
+
+The face culling can't be **disabled** in Taichi THREE for simplicity and performance.
+
+So in order to make both side visible, we'd create two faces, one face towards -Z, another face towards +Z:
+
+```py
+model = t3.SimpleModel(faces_n=2, pos_n=3)
+
+...
+
+model.faces[0] = [0, 1, 2]  # looks clockwise from -Z
+model.faces[1] = [0, 2, 1]  # looks clockwise from +Z
+```
 
 
 ## Appendix
 
-The final complete code of this example is provided here in case you need it:
+The final complete source code of this example is provided here, in case you need it:
 
 ```py
 import taichi_three as t3
 
 scene = t3.Scene()
-model = t3.ModelEZ(faces_n=1, pos_n=3)
-scene.add_model(model)
 
 camera = t3.Camera()
 scene.add_camera(camera)
+
+model = t3.SimpleModel(faces_n=2, pos_n=3)
+scene.add_model(model)
 
 model.pos[0] = [+0.0, +0.5, 0.0]
 model.pos[1] = [+0.5, -0.5, 0.0]
@@ -122,6 +165,7 @@ model.clr[0] = [1.0, 0.0, 0.0]
 model.clr[1] = [0.0, 1.0, 0.0]
 model.clr[2] = [0.0, 0.0, 1.0]
 model.faces[0] = [0, 1, 2]
+model.faces[1] = [0, 2, 1]
 
 gui = t3.GUI('Hello Triangle')
 while gui.running:
