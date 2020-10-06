@@ -61,7 +61,18 @@ class Light(AutoInit):
     @ti.func
     def _sub_SO(self, cur_idepth, lscoor):
         lst_idepth = ts.sample(self.shadow.fb['idepth'], lscoor)
-        return 1 if lst_idepth < cur_idepth + 1e-4 else 0
+        return 1 if lst_idepth < cur_idepth + 8e-4 else 0
+
+    @ti.func
+    def _sub_SDlerp(self, cur_idepth, lscoor, D):
+        x = ts.fract(lscoor)
+        y = 1 - x
+        B = int(lscoor)
+        xx = self._sub_SO(cur_idepth, B + D + ts.D.xx)
+        xy = self._sub_SO(cur_idepth, B + D + ts.D.xy)
+        yy = self._sub_SO(cur_idepth, B + D + ts.D.yy)
+        yx = self._sub_SO(cur_idepth, B + D + ts.D.yx)
+        return xx * x.x * x.y + xy * x.x * y.y + yy * y.x * y.y + yx * y.x * x.y
 
     @ti.func
     def shadow_occlusion(self, wpos):
@@ -72,14 +83,13 @@ class Light(AutoInit):
         lscoor = self.shadow.uncook(lspos)
 
         cur_idepth = 1 / lspos.z
-        x = ts.fract(lscoor)
-        y = 1 - x
-        B = int(lscoor)
-        xx = self._sub_SO(cur_idepth, B + ts.D.xx)
-        x_ = self._sub_SO(cur_idepth, B + ts.D.x_)
-        __ = self._sub_SO(cur_idepth, B + ts.D.__)
-        _x = self._sub_SO(cur_idepth, B + ts.D._x)
-        return xx * x.x * x.y + x_ * x.x * y.y + __ * y.x * y.y + _x * y.x * x.y
+
+        l = self._sub_SDlerp(cur_idepth, lscoor, ts.D.X_)
+        r = self._sub_SDlerp(cur_idepth, lscoor, ts.D.x_)
+        t = self._sub_SDlerp(cur_idepth, lscoor, ts.D._x)
+        b = self._sub_SDlerp(cur_idepth, lscoor, ts.D._X)
+        c = self._sub_SDlerp(cur_idepth, lscoor, ts.D.__)
+        return (l + r + t + b + c * 4) / 8
 
 
 
