@@ -1,4 +1,4 @@
-# Advanced Models
+# Shading Models
 
 The goal of this section is to give a true introduction to Taichi THREE models.
 
@@ -64,8 +64,11 @@ Or a point source light:
 light = t3.PointLight(position=[0.6, -0.8, -1.2], color=[1.0, 1.0, 0.0])
 ```
 
+?> Also note that you may have multiple lights in a single scene.
+
+
 ## Appendix
 
-Also note that you may have multiple lights in a single scene.
+And here's the final code of this section:
 
-[Click here for downloading the final complete code of this section](/advanced_models.py)
+[shading_models.py](/_media/shading_models.py ':include :type=code')

@@ -123,9 +123,11 @@ Running it and move camera around by LMB, enjoy this beautiful cube!
 
 ![1_1](1_1.gif)
 
+?> Also note that all quadrilateral faces in the OBJ file will be automatically demoted into triangle faces for convinence.
+
 
 ## Appendix
 
-Also note that all quadrilateral faces in the OBJ file will be automatically demoted into triangle faces for convinence.
+And here's the final code of this section:
 
-[Click here for downloading the final complete code of this section](/loading_models.py)
+[loading_models.py](/_media/loading_models.py ':include :type=code')

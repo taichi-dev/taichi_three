@@ -17,7 +17,7 @@ scene.add_model(model)
 #model.nrm.from_numpy(obj['vn'])
 #model.faces.from_numpy(obj['f'])
 
-gui = t3.GUI('Advanced Models')
+gui = t3.GUI('Shading Models')
 while gui.running:
     scene.render()
     gui.get_event(None)

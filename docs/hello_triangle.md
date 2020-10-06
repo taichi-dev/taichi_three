@@ -131,4 +131,6 @@ model.faces[1] = [0, 2, 1]  # looks clockwise from +Z
 
 ## Appendix
 
-[Click here for downloading the final complete code of this section](/hello_triangle.py)
+And here's the final code of this section:
+
+[hello_triangle.py](/_media/hello_triangle.py ':include :type=code')
