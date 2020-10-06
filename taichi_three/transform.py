@@ -26,6 +26,16 @@ def rotationZ(angle):
            ]
 
 
+def scale(x, y=None, z=None):
+    y = y or x
+    z = z or x
+    return [
+            [x, 0, 0],
+            [0, y, 0],
+            [0, 0, z],
+           ]
+
+
 @ti.data_oriented
 class Affine(ts.TaichiClass, AutoInit):
     @property

@@ -1,7 +1,5 @@
 # Installation
 
-## Before we start
-
 First of all, let's install Taichi THREE. Make sure you're using Python **3.6/3.7/3.8**, and **64-bit**. And then install Taichi THREE via `pip`:
 
 ```bash

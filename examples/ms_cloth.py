@@ -13,6 +13,8 @@ W = 1
 L = W / N
 gravity = 0.5
 stiffness = 1600
+ball_pos = tl.vec(+0.0, +0.2, -0.0)
+ball_radius = 0.4
 damping = 2
 steps = 30
 dt = 5e-4
@@ -44,7 +46,7 @@ def substep():
         v[i] += stiffness * acc * dt
     for i in ti.grouped(x):
         v[i].y -= gravity * dt
-        v[i] = tl.ballBoundReflect(x[i], v[i], tl.vec(+0.0, +0.2, -0.0), 0.4, 6)
+        v[i] = tl.ballBoundReflect(x[i], v[i], ball_pos, ball_radius, 6)
     for i in ti.grouped(x):
         v[i] *= ti.exp(-damping * dt)
         x[i] += dt * v[i]
@@ -53,16 +55,18 @@ def substep():
 ### Rendering GUI
 
 scene = t3.Scene()
-model = t3.Model(faces_n=(N - 1)**2 * 4, pos_n=N**2, tex_n=N**2, nrm_n=N**2 * 2)
-model.add_texture('color', ti.imread('assets/cloth.jpg'))
-#model.add_texture('roughness', 1 - ti.imread('assets/rough.jpg'))
-#model.add_texture('metallic', np.array([[0.8]]))
-scene.add_model(model)
 camera = t3.Camera(fov=24, pos=[0, 1.1, -1.5], target=[0, 0.25, 0])
 #camera.add_buffer('normal', 3)
 scene.add_camera(camera)
-light = t3.Light([0.4, -1.5, 1.8])
+light = t3.Light(dir=[0.4, -1.5, 1.8])
 scene.add_light(light)
+
+model = t3.Model(faces_n=N**2 * 4, pos_n=N**2, tex_n=N**2, nrm_n=N**2 * 2)
+model.add_texture('color', ti.imread('assets/cloth.jpg'))
+scene.add_model(model)
+
+sphere = t3.ModelPP.from_obj(t3.readobj('assets/sphere.obj'))
+scene.add_model(sphere)
 
 
 @ti.kernel
@@ -122,6 +126,8 @@ with ti.GUI('Mass Spring') as gui:
         update_display()
 
         camera.from_mouse(gui)
+        sphere.L2W.offset[None] = ball_pos
+        sphere.L2W.matrix[None] = t3.scale(ball_radius)
 
         scene.render()
         gui.set_image(camera.img)

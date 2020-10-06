@@ -12,7 +12,7 @@ High-level features are:
 - Multi-camera support
 - Physically-based rendering
 - Shadow mapping
-- A built-in asset importer
+- A built-in OBJ loader
 
 Features may be available in the future:
 

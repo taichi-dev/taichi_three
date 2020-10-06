@@ -3,13 +3,18 @@
 The goal of this section is to give a brief introduction to Taichi THREE's built-in model loader.
 It's a handy function that allows you load OBJ files from disk.
 
+Let's get started with a simple cube model ``cube.obj``. OBJ files are simply text files, copy and paste these contents:
 
-# Using `t3.readobj`
+[cube.obj](/_media/cube.obj ':include :type=code')
 
-Let's get started with a simple cube model ``cube.obj``, you can download it from [here](cube.obj), or feel free to use your own OBJ files.
+Save it to `assets/cube.obj`, or any other paths you'd like.
+
+Or feel free to use your own OBJ files.
+
+## Using `t3.readobj`
 
 ```py
-obj = t3.readobj('assets/cube.obj')
+obj = t3.readobj('assets/cube.obj')  # path to your cube.obj
 ```
 
 Its return value ``obj``, is a ``dict`` with these keys:
