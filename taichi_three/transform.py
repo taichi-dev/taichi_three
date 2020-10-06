@@ -68,6 +68,11 @@ class Affine(ts.TaichiClass, AutoInit):
         inv_mat = self.matrix.inverse()
         return Affine(inv_mat, -inv_mat @ self.offset)
 
+    @ti.func
+    def transpose(self):
+        inv_mat = self.matrix.transpose()
+        return Affine(inv_mat, -inv_mat @ self.offset)
+
     def loadOrtho(self, fwd=[0, 0, 1], up=[0, 1, 0]):
         # fwd = target - pos
         # fwd = fwd.normalized()

@@ -51,8 +51,7 @@ class Camera(AutoInit):
             pos=None, target=None, up=None, fov=None):
         self.res = res or (512, 512)
         self.fb = FrameBuffer(self.res)
-        self.trans = ti.Matrix.field(3, 3, ti.f32, ())
-        self.pos = ti.Vector.field(3, ti.f32, ())
+        self.affine = Affine.field(())
         self.target = ti.Vector.field(3, ti.f32, ())
         self.intrinsic = ti.Matrix.field(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
@@ -71,6 +70,14 @@ class Camera(AutoInit):
         self.set(init=True)
         # mouse position for camera control
         self.mpos = (0, 0)
+
+    @property
+    def pos(self):
+        return self.affine.offset
+
+    @property
+    def trans(self):
+        return self.affine.matrix
 
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
         # see http://ais.informatik.uni-freiburg.de/teaching/ws09/robotics2/pdfs/rob2-08-camera-calibration.pdf
@@ -97,13 +104,13 @@ class Camera(AutoInit):
         self.pos_py = pos.entries
         self.target_py = target.entries
         if not init:
-            self.pos[None] = self.pos_py
-            self.trans[None] = self.trans_py
+            self.affine.offset[None] = self.pos_py
+            self.affine.matrix[None] = self.trans_py
             self.target[None] = self.target_py
 
     def _init(self):
-        self.pos[None] = self.pos_py
-        self.trans[None] = self.trans_py
+        self.affine.offset[None] = self.pos_py
+        self.affine.matrix[None] = self.trans_py
         self.target[None] = self.target_py
         self.intrinsic[None][0, 0] = self.fx
         self.intrinsic[None][0, 2] = self.cx
@@ -151,7 +158,7 @@ class Camera(AutoInit):
             fov = self.fov
             ds, dt = ds * fov * sensitivity, dt * fov * sensitivity
             newdir = ts.vec3(ds, dt, 1).normalized()
-            newdir = [sum(self.trans[None][i, j] * newdir[j] for j in range(3))\
+            newdir = [sum(self.affine.matrix[None][i, j] * newdir[j] for j in range(3))\
                         for i in range(3)]
             if pov:
                 newtarget = [self.pos_py[i] + dis * newdir[i] for i in range(3)]
@@ -183,7 +190,7 @@ class Camera(AutoInit):
             fov = self.fov
             ds, dt = ds * fov * sensitivity, dt * fov * sensitivity
             newdir = ts.vec3(-ds, -dt, 1).normalized()
-            newdir = [sum(self.trans[None][i, j] * newdir[j] for j in range(3))\
+            newdir = [sum(self.affine.matrix[None][i, j] * newdir[j] for j in range(3))\
                         for i in range(3)]
             newtarget = [self.pos_py[i] + dis * newdir[i] for i in range(3)]
             newpos = [self.pos_py[i] + newtarget[i] - self.target_py[i] for i in range(3)]
@@ -191,19 +198,19 @@ class Camera(AutoInit):
 
     @ti.func
     def trans_pos(self, pos):
-        return self.trans[None] @ pos + self.pos[None]
+        return self.affine[None] @ pos
 
     @ti.func
     def trans_dir(self, pos):
-        return self.trans[None] @ pos
+        return self.affine.matrix[None] @ pos
 
     @ti.func
     def untrans_pos(self, pos):
-        return self.trans[None].transpose() @ (pos - self.pos[None])
+        return self.affine[None].transpose() @ pos
 
     @ti.func
     def untrans_dir(self, pos):
-        return self.trans[None].transpose() @ pos
+        return self.affine.matrix[None].transpose() @ pos
 
     @ti.func
     def cook(self, pos, translate=True):
