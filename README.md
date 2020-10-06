@@ -72,6 +72,7 @@ Notable changes:
 
 Minor fixes:
 * Fix an artifect in perspective mode due to texture coordinate interpolation.
+* Make shadow smoother using bilerp.
 
 
 TODO list
@@ -81,7 +82,6 @@ Minor fixes:
 * Support non-equal width and height in camera.
 * Fix black-pixels artifect in `ms_cloth.py`.
 * Fix color artifects due to interpolation.
-* Make shadow smoother using bilerp.
 * ...
 
 Major steps:

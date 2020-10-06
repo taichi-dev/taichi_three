@@ -58,10 +58,11 @@ class Camera(AutoInit):
         self.type = self.TAN_FOV
         self.fov = math.radians(fov or 30)
 
-        self.cx = cx or self.res[0] // 2
-        self.cy = cy or self.res[1] // 2
-        self.fx = fx or self.cx / math.tan(self.fov)
-        self.fy = fy or self.cy / math.tan(self.fov)
+        minres = min(self.res)
+        self.cx = cx or self.res[0] / 2
+        self.cy = cy or self.res[1] / 2
+        self.fx = fx or minres / (2 * math.tan(self.fov))
+        self.fy = fy or minres / (2 * math.tan(self.fov))
         # python scope camera transformations
         self.pos_py = pos or [0, 0, -2]
         self.target_py = target or [0, 0, 0]
