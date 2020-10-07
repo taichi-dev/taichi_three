@@ -7,11 +7,11 @@ import math
 @ti.data_oriented
 class Shading:
     @ti.func
-    def render_func(self, pos, normal, viewdir, light, color):
+    def render_func(self, pos, normal, viewdir, light):
         raise NotImplementedError
 
     @ti.func
-    def pre_process(self, color):
+    def post_process(self, color):
         if ti.static(1):
             return color
         blue = ts.vec3(0.00, 0.01, 0.05)
@@ -19,55 +19,45 @@ class Shading:
         return ti.sqrt(ts.mix(blue, orange, color))
 
     @ti.func
-    def colorize(self, pos, normal, color):
+    def colorize(self, pos, normal):
         res = ts.vec3(0.0)
         viewdir = pos.normalized()
-        wpos = self.model.scene.cameras[-1].trans_pos(pos)
+        wpos = self.model.scene.cameras[-1].trans_pos(pos)  # TODO: curr_camera
         if ti.static(self.model.scene.lights):
             for light in ti.static(self.model.scene.lights):
                 strength = light.shadow_occlusion(wpos)
                 if strength != 0:
-                    subclr = self.render_func(pos, normal, viewdir, light, color)
+                    subclr = self.render_func(pos, normal, viewdir, light)
                     res += strength * subclr
-        res = self.pre_process(res)
+        res = self.post_process(res)
         return res
 
+    @ti.func
+    def render_func(self, pos, normal, viewdir, light):
+        lightdir = light.get_dir(pos)
+        costheta = max(0, ts.dot(normal, lightdir))
+        l_out = ts.vec3(0.0)
+        if costheta > 0:
+            l_out = light.get_color(pos)
+            l_out *= costheta * self.brdf(normal, -viewdir, lightdir)
+        return l_out
 
-class LambertPhong(Shading):
-    lambert = 0.75
-    half_lambert = 0.0
-    blinn_phong = 2.9
-    phong = 0.0
+
+class BlinnPhong(Shading):
     shineness = 10
-    ambient = 0.05
-    specular = 0.04
+    specular = 0.5
+    diffuse = 0.5
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
     @ti.func
-    def render_func(self, pos, normal, viewdir, light, color):
-        light_dir = light.get_dir(pos)
-        half_lambert = ts.dot(normal, light_dir) * 0.5 + 0.5
-        lambert = max(0, ts.dot(normal, light_dir))
-        blinn_phong = ts.dot(normal, ts.mix(light_dir, -viewdir, 0.5))
-        blinn_phong = pow(max(blinn_phong, 0), self.shineness)
-        refl_dir = ts.reflect(light_dir, normal)
-        phong = -ts.dot(normal, refl_dir)
-        phong = pow(max(phong, 0), self.shineness)
-
-        strength = ts.vec3(0.0)
-        if ti.static(self.lambert != 0.0):
-            strength += lambert * self.lambert * color
-        if ti.static(self.half_lambert != 0.0):
-            strength += half_lambert * self.half_lambert * color
-        if ti.static(self.blinn_phong != 0.0):
-            strength += blinn_phong * self.blinn_phong * self.specular
-        if ti.static(self.phong != 0.0):
-            strength += phong * self.phong * self.specular
-        #strength += self.ambient * color
-
-        return strength * light.get_color(pos)
+    def brdf(self, normal, lightdir, viewdir):
+        NoH = ts.dot(normal, ts.normalize(lightdir + viewdir))
+        NoH = pow(max(NoH, 0), self.shineness)
+        strength = self.diffuse
+        strength += (self.shineness + 8) / 8 * self.specular * NoH
+        return strength / math.pi
 
 
 # References at https://learnopengl.com/PBR/Theory

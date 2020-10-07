@@ -19,3 +19,5 @@
   - [Customizing shaders](customizing_shaders.md)
   - [Deferred shading](deferred_shading.md)
   - [Scatter models](scatter_models.md)
+
+- [Miscellaneous](miscellaneous.md)

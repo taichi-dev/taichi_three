@@ -95,12 +95,12 @@ class ModelLow(ModelBase):
         else:
             return default
 
-    def colorize(self, pos, texcoor, normal, color):
-        ambient = self.sample('ambient', texcoor, LambertPhong.ambient)
-        specular = self.sample('specular', texcoor, LambertPhong.specular)
-        opt = LambertPhong(ambient=ambient, specular=specular)
+    def colorize(self, pos, texcoor, normal):
+        opt = BlinnPhong()
         opt.model = ti.static(self)
-        return opt.colorize(pos, normal, color)
+        opt.specular = self.sample('specular', texcoor, opt.specular)
+        opt.diffuse = self.sample('diffuse', texcoor, opt.diffuse)
+        return opt.colorize(pos, normal)
 
     @ti.func
     def pixel_shader(self, pos, color, texcoor, normal):
@@ -109,8 +109,7 @@ class ModelLow(ModelBase):
 
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
-        color = ts.vec3(1.0)
-        color = self.colorize(pos, texcoor, normal, color)
+        color = self.colorize(pos, texcoor, normal)
         return pos, color, texcoor, normal
 
 
@@ -156,10 +155,12 @@ class Model(ModelLow):
     def pixel_shader(self, pos, texcoor, normal, tangent, bitangent):
         ndir = self.sample('normal', texcoor, ts.vec3(0.0, 0.0, 1.0))
         normal = ti.Matrix.cols([tangent, bitangent, normal]) @ ndir
+        # normal has been no longer normalized due to lerp and ndir errors.
+        # so here we re-enforce normalization to get slerp.
         normal = normal.normalized()
 
         color = self.sample('color', texcoor, ts.vec3(1.0))
-        color = self.colorize(pos, texcoor, normal, color)
+        color = self.colorize(pos, texcoor, normal)
         return dict(img=color, pos=pos, normal=normal,
                     tangent=tangent, bitangent=bitangent)
 
