@@ -48,7 +48,7 @@ The good news is that we've already intergrated a simple GUI system that is able
 gui = t3.GUI('Hello Triangle')
 while gui.running:
     scene.render()
-    gui.set_image(camera.img)  # blit the image captured by `camera`
+    gui.set_image(camera.img)  # blit the image captured by `camera` to screen
     gui.show()
 ```
 
@@ -133,4 +133,4 @@ model.faces[1] = [0, 2, 1]  # looks clockwise from +Z
 
 And here's the final code of this section:
 
-[hello_triangle.py](/_media/hello_triangle.py ':include :type=code')
+[hello_triangle.py](_media/hello_triangle.py ':include :type=code')

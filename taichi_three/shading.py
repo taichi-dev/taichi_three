@@ -12,6 +12,8 @@ class Shading:
 
     @ti.func
     def pre_process(self, color):
+        if ti.static(1):
+            return color
         blue = ts.vec3(0.00, 0.01, 0.05)
         orange = ts.vec3(1.19, 1.04, 0.98)
         return ti.sqrt(ts.mix(blue, orange, color))
@@ -32,11 +34,13 @@ class Shading:
 
 
 class LambertPhong(Shading):
-    lambert = 0.58
-    half_lambert = 0.04
-    blinn_phong = 0.3
+    lambert = 0.75
+    half_lambert = 0.0
+    blinn_phong = 3.0
     phong = 0.0
     shineness = 10
+    ambient = 0.02
+    specular = 0.1
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -44,26 +48,26 @@ class LambertPhong(Shading):
     @ti.func
     def render_func(self, pos, normal, viewdir, light, color):
         light_dir = light.get_dir(pos)
-        shineness = self.shineness
         half_lambert = ts.dot(normal, light_dir) * 0.5 + 0.5
         lambert = max(0, ts.dot(normal, light_dir))
         blinn_phong = ts.dot(normal, ts.mix(light_dir, -viewdir, 0.5))
-        blinn_phong = pow(max(blinn_phong, 0), shineness)
+        blinn_phong = pow(max(blinn_phong, 0), self.shineness)
         refl_dir = ts.reflect(light_dir, normal)
         phong = -ts.dot(normal, refl_dir)
-        phong = pow(max(phong, 0), shineness)
+        phong = pow(max(phong, 0), self.shineness)
 
-        strength = 0.0
+        strength = ts.vec3(0.0)
         if ti.static(self.lambert != 0.0):
-            strength += lambert * self.lambert
+            strength += lambert * self.lambert * color
         if ti.static(self.half_lambert != 0.0):
-            strength += half_lambert * self.half_lambert
+            strength += half_lambert * self.half_lambert * color
         if ti.static(self.blinn_phong != 0.0):
-            strength += blinn_phong * self.blinn_phong
+            strength += blinn_phong * self.blinn_phong * self.specular
         if ti.static(self.phong != 0.0):
-            strength += phong * self.phong
+            strength += phong * self.phong * self.specular
+        strength += self.ambient
 
-        return strength * color * light.get_color(pos)
+        return strength * light.get_color(pos)
 
 
 # References at https://learnopengl.com/PBR/Theory

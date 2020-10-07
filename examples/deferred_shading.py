@@ -6,7 +6,7 @@ ti.init(ti.cpu)
 
 scene = t3.Scene()
 obj = t3.readobj('assets/torus.obj', scale=0.8)
-model = t3.ModelPP.from_obj(obj)
+model = t3.ModelPBR.from_obj(obj)
 model.add_texture('color', ti.imread('assets/cloth.jpg'))
 model.add_texture('roughness', 1 - ti.imread('assets/pattern.jpg'))
 model.add_texture('metallic', np.array([[0.8]]))

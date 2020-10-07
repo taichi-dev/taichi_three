@@ -4,9 +4,9 @@
   - [Hello triangle](hello_triangle.md)
   - [Loading models](loading_models.md)
   - [Shading models](shading_models.md)
+  - [Binding textures](binding_textures.md)
   ----
   - **Sections below are WIP:**
-  - [Binding textures](binding_textures.md)
   - [Coordinate system](coordinate_system.md)
   - [Camera control](camera_control.md)
 

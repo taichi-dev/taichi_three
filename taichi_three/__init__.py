@@ -23,6 +23,6 @@ from .light import *
 
 print(f'[Tai3D] Camera control hints: LMB to orbit, MMB to move, RMB to scale')
 
-from taichi import GUI, Vector, Matrix, kernel, func, random, init
+from taichi import GUI, Vector, Matrix, kernel, func, random, init, imread, imwrite
 from taichi_glsl import sin, cos, tan, asin, acos, atan, bilerp, vec, vec2, vec3, vec4, isnan
 from taichi_glsl import clamp, smoothstep, mix, sign, floor, ceil, fract, reflect, refract

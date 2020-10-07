@@ -20,7 +20,7 @@ class ModelBase(AutoInit):
             cb()
 
 
-class Model(ModelBase):
+class ModelLow(ModelBase):
     def __init__(self, faces_n, pos_n, tex_n, nrm_n):
         super().__init__()
 
@@ -96,9 +96,9 @@ class Model(ModelBase):
             return default
 
     def colorize(self, pos, texcoor, normal, color):
-        roughness = self.sample('roughness', texcoor, CookTorrance.roughness)
-        metallic = self.sample('metallic', texcoor, CookTorrance.metallic)
-        opt = CookTorrance(roughness=roughness, metallic=metallic)
+        ambient = self.sample('ambient', texcoor, LambertPhong.ambient)
+        specular = self.sample('specular', texcoor, LambertPhong.specular)
+        opt = LambertPhong(ambient=ambient, specular=specular)
         opt.model = ti.static(self)
         return opt.colorize(pos, normal, color)
 
@@ -151,7 +151,7 @@ class SimpleModel(ModelBase):
         return pos, color
 
 
-class ModelPP(Model):
+class Model(ModelLow):
     @ti.func
     def pixel_shader(self, pos, texcoor, normal, tangent, bitangent):
         ndir = self.sample('normal', texcoor, ts.vec3(0.0, 0.0, 1.0))
@@ -168,16 +168,10 @@ class ModelPP(Model):
         return pos, texcoor, normal, tangent, bitangent
 
 
-class ModelDS(Model):
-    @ti.func
-    def pixel_shader(self, pos, texcoor, normal, tangent, bitangent):
-        ndir = self.sample('normal', texcoor, ts.vec3(0.0, 0.0, 1.0))
-        normal = ti.Matrix.cols([tangent, bitangent, normal]) @ ndir
-        normal = normal.normalized()
-
-        return dict(pos=pos, texcoor=texcoor, normal=normal,
-                    tangent=tangent, bitangent=bitangent)
-
-    @ti.func
-    def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
-        return pos, texcoor, normal, tangent, bitangent
+class ModelPBR(Model):
+    def colorize(self, pos, texcoor, normal, color):
+        roughness = self.sample('roughness', texcoor, CookTorrance.roughness)
+        metallic = self.sample('metallic', texcoor, CookTorrance.metallic)
+        opt = CookTorrance(roughness=roughness, metallic=metallic)
+        opt.model = ti.static(self)
+        return opt.colorize(pos, normal, color)

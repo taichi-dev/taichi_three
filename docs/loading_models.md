@@ -5,16 +5,16 @@ It's a handy function that allows you load OBJ files from disk.
 
 Let's get started with a simple cube model ``cube.obj``. OBJ files are simply text files, copy and paste these contents:
 
-[cube.obj](/_media/cube.obj ':include :type=code')
+[cube.obj](_media/cube.obj ':include :type=code')
 
-Save it to `assets/cube.obj`, or any other paths you'd like.
+Save it to `cube.obj`, in the same directory your Python code is in.
 
 Or feel free to use your own OBJ files.
 
 ## Using `t3.readobj`
 
 ```py
-obj = t3.readobj('assets/cube.obj')  # path to your cube.obj
+obj = t3.readobj('/path/to/cube.obj')  # path to your cube.obj here
 ```
 
 Its return value ``obj``, is a ``dict`` with these keys:
@@ -80,7 +80,7 @@ Combining with the knowledge from [previous section](hello_triangle.md), we have
 ```py
 import taichi_three as t3
 
-obj = t3.readobj('assets/cube.obj')
+obj = t3.readobj('cube.obj')
 
 scene = t3.Scene()
 camera = t3.Camera()
@@ -104,7 +104,7 @@ while gui.running:
 Your screen is completely filled with white? Well, that's because the cube is so large that it takes up the whole screen, consider specify a `scale=` argument to scale it down:
 
 ```py
-obj = t3.readobj('assets/cube.obj', scale=0.6)
+obj = t3.readobj('cube.obj', scale=0.6)
 ```
 
 Or equivalently:
@@ -135,4 +135,4 @@ Running it and move camera around by LMB, enjoy this beautiful cube!
 
 And here's the final code of this section:
 
-[loading_models.py](/_media/loading_models.py ':include :type=code')
+[loading_models.py](_media/loading_models.py ':include :type=code')

@@ -15,7 +15,7 @@ Therefore it can utilize the data fields like `vt` and `vn` from OBJ files, to o
 To load OBJ files into `t3.Model` properly:
 
 ```py
-obj = t3.readobj('assets/cube.obj')
+obj = t3.readobj('cube.obj')
 model = t3.Model(faces_n=len(obj['f']), pos_n=len(obj['vp']), tex_n=len(obj['vt']), nrm_n=len(obj['vn']))
 scene.add_model(model)
 
@@ -71,4 +71,4 @@ light = t3.PointLight(position=[0.6, -0.8, -1.2], color=[1.0, 1.0, 0.0])
 
 And here's the final code of this section:
 
-[shading_models.py](/_media/shading_models.py ':include :type=code')
+[shading_models.py](_media/shading_models.py ':include :type=code')

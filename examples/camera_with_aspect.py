@@ -6,7 +6,7 @@ ti.init(ti.cpu)
 
 scene = t3.Scene()
 obj = t3.readobj('assets/torus.obj', scale=0.8)
-model = t3.ModelPP.from_obj(obj)
+model = t3.Model.from_obj(obj)
 scene.add_model(model)
 camera = t3.Camera(pos=[0, 1, -1.8], res=(600, 400))
 scene.add_camera(camera)

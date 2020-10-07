@@ -1,6 +1,6 @@
 import taichi_three as t3
 
-obj = t3.readobj('assets/cube.obj')
+obj = t3.readobj('cube.obj')
 
 scene = t3.Scene()
 camera = t3.Camera()
