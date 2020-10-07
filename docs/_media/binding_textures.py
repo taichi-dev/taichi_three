@@ -3,10 +3,8 @@ import taichi_three as t3
 scene = t3.Scene()
 camera = t3.Camera()
 scene.add_camera(camera)
-light = t3.Light([0.4, -1.5, 1.8])
-scene.add_light(light)
 
-light = t3.Light(dir=[0.3, -1.0, 0.8])
+light = t3.Light(dir=[-0.2, -0.6, 1.0])
 scene.add_light(light)
 
 obj = t3.readobj('cube.obj', scale=0.8)

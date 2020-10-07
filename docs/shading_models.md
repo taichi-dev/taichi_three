@@ -44,7 +44,7 @@ You should also get an eye-catching warning message `Warning: no lights` in this
 So, to make `t3.Model` visible and good-looking, we should add a light source:
 
 ```py
-light = t3.Light(dir=[0.3, -1.0, 0.8])   # parallel light with a specific direction
+light = t3.Light(dir=[-0.2, -0.6, 1.0])  # parallel light with a specific direction
 scene.add_light(light)
 ```
 
@@ -64,7 +64,7 @@ Or a point source light:
 light = t3.PointLight(position=[0.6, -0.8, -1.2], color=[1.0, 1.0, 0.0])
 ```
 
-?> Also note that you may have multiple lights in a single scene.
+?> Also note that you may have multiple lights in a single scene. Have a try :)
 
 
 ## Appendix

@@ -39,7 +39,7 @@ class LambertPhong(Shading):
     blinn_phong = 3.0
     phong = 0.0
     shineness = 10
-    ambient = 0.02
+    ambient = 0.05
     specular = 0.1
 
     def __init__(self, **kwargs):
@@ -65,7 +65,7 @@ class LambertPhong(Shading):
             strength += blinn_phong * self.blinn_phong * self.specular
         if ti.static(self.phong != 0.0):
             strength += phong * self.phong * self.specular
-        strength += self.ambient
+        strength += self.ambient * color
 
         return strength * light.get_color(pos)
 
@@ -77,7 +77,7 @@ class CookTorrance(Shading):
     eps = 1e-4
 
     specular = 0.6
-    kd = 1.5
+    kd = 1.6
     ks = 2.0
     roughness = 0.8
     metallic = 0.0

@@ -4,7 +4,7 @@ scene = t3.Scene()
 camera = t3.Camera()
 scene.add_camera(camera)
 
-light = t3.Light(dir=[0.3, -1.0, 0.8])
+light = t3.Light(dir=[-0.2, -0.6, 1.0])
 scene.add_light(light)
 
 obj = t3.readobj('cube.obj', scale=0.8)
