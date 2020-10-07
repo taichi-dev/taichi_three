@@ -122,8 +122,8 @@ class Main:
     @register
     def info(self, arguments: list = sys.argv[2:]):
         """Display informations of an OBJ/NPZ model"""
-        parser = argparse.ArgumentParser(prog='t3 show',
-                                         description=f"{self.show.__doc__}")
+        parser = argparse.ArgumentParser(prog='t3 info',
+                                         description=f"{self.info.__doc__}")
         parser.add_argument(
             'filename',
             help='File name of the OBJ/NPZ model to visualize, e.g. monkey.obj')
@@ -147,10 +147,22 @@ class Main:
             help='File name of the OBJ/NPZ model to visualize, e.g. monkey.obj')
         parser.add_argument('-s', '--scale', default=0.75,
                 type=float, help='Specify a scale parameter')
+        parser.add_argument('-u', '--resx', default=512,
+                type=int, help='Specify window width')
+        parser.add_argument('-v', '--resy', default=512,
+                type=int, help='Specify window height')
         parser.add_argument('-o', '--ortho',
                 action='store_true', help='Display in orthogonal mode')
         parser.add_argument('-l', '--lowp',
                 action='store_true', help='Shade faces by interpolation')
+        parser.add_argument('-x', '--flipx',
+                action='store_true', help='Flip X axis of model when display')
+        parser.add_argument('-y', '--flipy',
+                action='store_true', help='Flip Y axis of model when display')
+        parser.add_argument('-z', '--flipz',
+                action='store_true', help='Flip Z axis of model when display')
+        parser.add_argument('-f', '--flatnorm',
+                action='store_true', help='Reset normal vectors to flat')
         parser.add_argument('-t', '--texture',
                 type=str, help='Path to texture to bind')
         parser.add_argument('-n', '--normtex',
@@ -171,7 +183,11 @@ class Main:
 
         scene = t3.Scene()
         obj = t3.readobj(args.filename, scale=args.scale)
-        model = (t3.Model if args.lowp else t3.ModelPP).from_obj(obj)
+        t3.objflip(obj, args.flipx, args.flipy, args.flipz)
+        if args.flatnorm:
+            t3.objmknorm(obj)
+
+        model = (t3.ModelLow if args.lowp else t3.Model).from_obj(obj)
         if args.texture is not None:
             model.add_texture('color', ti.imread(args.texture))
         if args.normtex is not None:
@@ -181,7 +197,7 @@ class Main:
         if args.roughness is not None:
             model.add_texture('roughness', ti.imread(args.roughness))
         scene.add_model(model)
-        camera = t3.Camera()
+        camera = t3.Camera(res=(args.resx, args.resy))
         if args.ortho:
             camera.type = camera.ORTHO
         scene.add_camera(camera)

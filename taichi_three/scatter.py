@@ -32,7 +32,7 @@ class ScatterModel(ModelBase):
             render_particle(self, camera, i)
 
     @ti.func
-    def colorize(self, pos, normal, color):
+    def colorize(self, pos, normal):
         opt = CookTorrance()
         opt.model = ti.static(self)
-        return opt.colorize(pos, normal, color)
+        return opt.colorize(pos, normal)

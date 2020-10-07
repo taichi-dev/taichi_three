@@ -58,7 +58,7 @@ scene = t3.Scene()
 camera = t3.Camera(fov=24, pos=[0, 1.1, -1.5], target=[0, 0.25, 0])
 scene.add_camera(camera)
 light = t3.Light(dir=[0.4, -1.5, 1.8])
-scene.add_shadow_camera(light.make_shadow_camera())
+scene.add_shadow_camera(light.make_shadow_camera())  # comment this if you get too poor FPS
 scene.add_light(light)
 
 model = t3.Model(faces_n=N**2 * 4, pos_n=N**2, tex_n=N**2, nrm_n=N**2 * 2)

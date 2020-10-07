@@ -69,6 +69,7 @@ New in latest master
 Notable changes:
 * Preview our WIP documentation at https://t3.142857.red.
 * Add `t3.SimpleModel` that simply do color interpolation between vertices.
+* Refactor `t3.CookTorrance`, now use `model.shading_type = t3.BlinnPhong` if you want non-PBR shading.
 
 Minor fixes:
 * Fix an artifect in perspective mode due to texture coordinate interpolation.
@@ -81,22 +82,24 @@ TODO list
 
 Minor fixes:
 * Fix black-pixels artifect in `ms_cloth.py`.
+* Fix the coordinate system to be right-handed.
 * Fix color artifects on edges due to interpolation.
-* Fix shadow artifects on 90 degree faces.
-* Standardize PBR texture system.
-* Camera activation - single camera.
+* Refactor field initialization before materialization.
+* Fix shadow artifects on 90-deg faces.
 
 Major steps:
-* Fix the coordinate system to be right-handed.
-* Refactor field initialization before materialization.
+* Standardize camera affine system - L2W, W2C, C2D.
 * Support `t3.AmbientLight` and ambient occulsion.
 * Separate camera control logic from `t3.Camera`.
+* Add some helpers fo creating primitive geometries.
 * Support shadow mapping for `t3.SpotLight`.
+* Support `t3.CutoffLight` for light cones.
 
 Ambitions:
-* Support deferred shading and SSAO.
 * Path tracing scheme, e.g. cornell box.
+* Framebuffered model ID - get model surface coordinate by mouse.
 * Support image-based lighting and environment maps (skybox).
+* Support deferred shading and SSAO.
 * Support screen-space reflection.
 * Differentiable rendering (#18).
 

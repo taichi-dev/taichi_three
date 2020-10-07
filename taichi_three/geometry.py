@@ -126,8 +126,7 @@ def render_particle(model, camera, index):
         n = ts.vec3(dp.xy, -dz)
         normal = ts.normalize(n)
         view = ts.normalize(a + n)
-        color = ts.vec3(1.0)
 
-        color = model.colorize(pos, normal, color)
+        color = model.colorize(pos, normal)
         camera.fb['img'][X] = color
         camera.fb['normal'][X] = normal
