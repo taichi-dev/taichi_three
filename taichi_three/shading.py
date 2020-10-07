@@ -9,17 +9,19 @@ EPS = 1e-4
 
 @ti.data_oriented
 class Shading:
+    use_postp = False
+
     @ti.func
     def render_func(self, pos, normal, viewdir, light):
         raise NotImplementedError
 
     @ti.func
     def post_process(self, color):
-        if ti.static(1):
+        if ti.static(not self.use_postp):
             return color
         blue = ts.vec3(0.00, 0.01, 0.05)
         orange = ts.vec3(1.19, 1.04, 0.98)
-        return ti.sqrt(ts.mix(blue, orange, color))
+        return ts.mix(blue, orange, ti.sqrt(color))
 
     @ti.func
     def colorize(self, pos, normal):
@@ -64,17 +66,19 @@ class BlinnPhong(Shading):
         NoH = max(0, ts.dot(normal, ts.normalize(lightdir + viewdir)))
         ndf = (self.shineness + 8) / 8 * pow(NoH, self.shineness)
         strength = self.color + ndf * self.specular
-        return strength / math.pi
+        return strength
 
 
 # https://zhuanlan.zhihu.com/p/37639418
 class CookTorrance(Shading):
     color = 1.0
-    specular = 1.0
-    roughness = 0.5
+    roughness = 0.3
     metallic = 0.0
+    specular = 0.04
+    kd = 1.0
+    ks = 1.0
 
-    parameters = ['color', 'specular', 'roughness', 'metallic']
+    parameters = ['color', 'roughness', 'metallic']
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -97,11 +101,11 @@ class CookTorrance(Shading):
         HoV = min(1 - EPS, max(EPS, ts.dot(halfway, viewdir)))
         ndf = self.roughness**2 / (NoH**2 * (self.roughness**2 - 1) + 1)**2
         vdf = 0.25 / (self.ischlick(NoL) * self.ischlick(NoV))
-        f0 = self.metallic * self.specular + (1 - self.metallic) * 0.04
-        ks, kd = f0, (1 - f0) * (1 - self.metallic)
+        f0 = self.metallic * self.color + (1 - self.metallic) * self.specular
+        ks, kd = self.ks * f0, self.kd * (1 - f0) * (1 - self.metallic)
         fdf = self.fresnel(f0, NoV)
-        strength = kd * self.color + ks * fdf * vdf * ndf
-        return strength / math.pi
+        strength = kd * self.color + ks * fdf * vdf * ndf / math.pi
+        return strength
 
 
 # References at https://learnopengl.com/PBR/Theory

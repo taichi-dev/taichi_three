@@ -88,6 +88,9 @@ class ModelLow(ModelBase):
 
         self.init_cbs.append(other_init_cb)
 
+    def add_uniform(self, name, value):
+        self.add_texture(name, np.array([[value]]))
+
     @ti.func
     def sample(self, name: ti.template(), texcoor, default):
         if ti.static(name in self.textures.keys()):
@@ -160,7 +163,6 @@ class Model(ModelLow):
         # so here we re-enforce normalization to get slerp.
         normal = normal.normalized()
 
-        color = self.sample('color', texcoor, ts.vec3(1.0))
         color = self.colorize(pos, texcoor, normal)
         return dict(img=color, pos=pos, normal=normal,
                     tangent=tangent, bitangent=bitangent)
