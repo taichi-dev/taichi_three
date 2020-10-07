@@ -84,6 +84,7 @@ Minor fixes:
 * Fix color artifects on edges due to interpolation.
 * Fix shadow artifects on 90 degree faces.
 * Standardize PBR texture system.
+* Camera activation - single camera.
 
 Major steps:
 * Fix the coordinate system to be right-handed.

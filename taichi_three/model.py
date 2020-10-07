@@ -30,6 +30,7 @@ class ModelLow(ModelBase):
         self.nrm = ti.Vector.field(3, float, nrm_n)
 
         self.textures = {}
+        self.shading_type = CookTorrance
 
     @ti.func
     def render(self, camera):
@@ -96,10 +97,10 @@ class ModelLow(ModelBase):
             return default
 
     def colorize(self, pos, texcoor, normal):
-        opt = BlinnPhong()
-        opt.model = ti.static(self)
-        opt.specular = self.sample('specular', texcoor, opt.specular)
-        opt.diffuse = self.sample('diffuse', texcoor, opt.diffuse)
+        opt = self.shading_type()
+        opt.model = self
+        for key in opt.parameters:
+            setattr(opt, key, self.sample(key, texcoor, getattr(opt, key)))
         return opt.colorize(pos, normal)
 
     @ti.func
@@ -167,12 +168,3 @@ class Model(ModelLow):
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
         return pos, texcoor, normal, tangent, bitangent
-
-
-class ModelPBR(Model):
-    def colorize(self, pos, texcoor, normal, color):
-        roughness = self.sample('roughness', texcoor, CookTorrance.roughness)
-        metallic = self.sample('metallic', texcoor, CookTorrance.metallic)
-        opt = CookTorrance(roughness=roughness, metallic=metallic)
-        opt.model = ti.static(self)
-        return opt.colorize(pos, normal, color)

@@ -4,6 +4,9 @@ from .transform import *
 import math
 
 
+EPS = 1e-4
+
+
 @ti.data_oriented
 class Shading:
     @ti.func
@@ -35,36 +38,77 @@ class Shading:
     @ti.func
     def render_func(self, pos, normal, viewdir, light):
         lightdir = light.get_dir(pos)
-        costheta = max(0, ts.dot(normal, lightdir))
+        NoL = ts.dot(normal, lightdir)
         l_out = ts.vec3(0.0)
-        if costheta > 0:
+        if NoL > EPS:
             l_out = light.get_color(pos)
-            l_out *= costheta * self.brdf(normal, -viewdir, lightdir)
+            l_out *= NoL * self.brdf(normal, -viewdir, lightdir)
         return l_out
+
+    def brdf(self, normal, lightdir, viewdir):
+        raise NotImplementedError
 
 
 class BlinnPhong(Shading):
-    shineness = 10
-    specular = 0.5
-    diffuse = 0.5
+    color = 1.0
+    specular = 1.0
+    shineness = 15
+
+    parameters = ['color', 'specular', 'shineness']
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
     @ti.func
     def brdf(self, normal, lightdir, viewdir):
-        NoH = ts.dot(normal, ts.normalize(lightdir + viewdir))
-        NoH = pow(max(NoH, 0), self.shineness)
-        strength = self.diffuse
-        strength += (self.shineness + 8) / 8 * self.specular * NoH
+        NoH = max(0, ts.dot(normal, ts.normalize(lightdir + viewdir)))
+        ndf = (self.shineness + 8) / 8 * pow(NoH, self.shineness)
+        strength = self.color + ndf * self.specular
+        return strength / math.pi
+
+
+# https://zhuanlan.zhihu.com/p/37639418
+class CookTorrance(Shading):
+    color = 1.0
+    specular = 1.0
+    roughness = 0.5
+    metallic = 0.0
+
+    parameters = ['color', 'specular', 'roughness', 'metallic']
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+    @ti.func
+    def ischlick(self, cost):
+        k = (self.roughness + 1)**2 / 8
+        return k + (1 - k) * cost
+
+    @ti.func
+    def fresnel(self, f0, HoV):
+        return f0 + (1 - f0) * (1 - HoV)**5
+
+    @ti.func
+    def brdf(self, normal, lightdir, viewdir):
+        halfway = ts.normalize(lightdir + viewdir)
+        NoH = max(EPS, ts.dot(normal, halfway))
+        NoL = max(EPS, ts.dot(normal, lightdir))
+        NoV = max(EPS, ts.dot(normal, viewdir))
+        HoV = min(1 - EPS, max(EPS, ts.dot(halfway, viewdir)))
+        ndf = self.roughness**2 / (NoH**2 * (self.roughness**2 - 1) + 1)**2
+        vdf = 0.25 / (self.ischlick(NoL) * self.ischlick(NoV))
+        f0 = self.metallic * self.specular + (1 - self.metallic) * 0.04
+        ks, kd = f0, (1 - f0) * (1 - self.metallic)
+        fdf = self.fresnel(f0, NoV)
+        strength = kd * self.color + ks * fdf * vdf * ndf
         return strength / math.pi
 
 
 # References at https://learnopengl.com/PBR/Theory
 # Borrowed from https://github.com/victoriacity/taichimd/blob/1dba9dd825cea33f468ed8516b7e2dc6b8995c41/taichimd/graphics.py#L409
 # All credits by @victoriacity
-class CookTorrance(Shading):
-    eps = 1e-4
+class VictoriaCookTorrance(Shading):
+    eps = EPS
 
     specular = 0.6
     kd = 1.6
