@@ -9,10 +9,10 @@
   - **Sections below are WIP:**
   - [Coordinate system](coordinate_system.md)
   - [Camera control](camera_control.md)
-  - [Physically-based rendering](physically_based_rendering.md)
 
 - Advanced topics
 
+  - [Physically-based rendering](physically_based_rendering.md)
   - [Light and shadows](light_and_shadows.md)
   - [Mesh deformation](mesh_deformation.md)
   - [Using normal maps](using_normal_maps.md)

@@ -81,8 +81,9 @@ TODO list
 
 Minor fixes:
 * Fix black-pixels artifect in `ms_cloth.py`.
-* Fix color artifects due to interpolation.
-* Fix shadow map causing `ms_cloth.py` too dark.
+* Fix color artifects on edges due to interpolation.
+* Fix shadow artifects on 90 degree faces.
+* Standardize PBR texture system.
 
 Major steps:
 * Fix the coordinate system to be right-handed.
