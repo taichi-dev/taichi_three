@@ -3,6 +3,52 @@ import taichi as ti
 import taichi_glsl as ts
 
 
+@ti.func
+def plucker(a, b):
+    l0 = a[0] * b[1] - b[0] * a[1]
+    l1 = a[0] * b[2] - b[0] * a[2]
+    l2 = a[0] - b[0]
+    l3 = a[1] * b[2] - b[1] * a[2]
+    l4 = a[2] - b[2]
+    l5 = b[1] - a[1]
+    return l0, l1, l2, l3, l4, l5
+
+@ti.func
+def plucker_sideop(a, b):
+    res = a[0] * b[4] + a[1] * b[5] + a[2] * b[3] + a[3] * b[2] + a[4 ] * b[0] + a[5] * b[1]
+    return res
+
+# https://members.loria.fr/SLazard/ARC-Visi3D/Pant-project/files/Line_Triangle.html
+# https://www.cnblogs.com/flyuz/p/9471031.html
+def plucker_bcoor(u, v, a, b, c):
+    ea = plucker(c, b)
+    eb = plucker(a, c)
+    ec = plucker(b, a)
+    L = plucker(u, v)
+    sa = plucker_sideop(L, ea)
+    sb = plucker_sideop(L, eb)
+    sc = plucker_sideop(L, ec)
+    return sa, sb, sc
+
+
+@ti.func
+def intersect_triangle(model, camera, I, orig, dir, face):
+    posa, posb, posc = model.pos[face[0, 0]], model.pos[face[1, 0]], model.pos[face[2, 0]]
+    texa, texb, texc = model.tex[face[0, 1]], model.tex[face[1, 1]], model.tex[face[2, 1]]
+    nrma, nrmb, nrmc = model.nrm[face[0, 2]], model.nrm[face[1, 2]], model.nrm[face[2, 2]]
+
+    posa = model.L2W @ posa
+    posb = model.L2W @ posb
+
+    sa, sb, sc = plucker_bcoor(orig, orig + dir, posa, posb, posc)
+    if sa >= 0 and sb >= 0 and sc >= 0:
+        pos = posa * sa + posb * sb + posc * sc
+        tex = texa * sa + texb * sb + texc * sc
+        nrm = nrma * sa + nrmb * sb + nrmc * sc
+        # TODO: depth-test
+        camera.fb.update(I, model.pixel_shader(pos, tex, nrm, nrm, nrm))
+
+
 # http://www.opengl-tutorial.org/cn/intermediate-tutorials/tutorial-13-normal-mapping/
 @ti.func
 def compute_tangent(dp1, dp2, duv1, duv2):

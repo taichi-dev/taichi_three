@@ -279,25 +279,3 @@ class Camera(AutoInit):
         for i in range(3):
             extrinsic[i][3] = pos[i]
         return extrinsic
-
-    @ti.func
-    def generate(self, coor):
-        fov = ti.static(self.fov)
-        tan_fov = ti.static(math.tan(fov))
-
-        orig = ts.vec3(0.0)
-        dir  = ts.vec3(0.0, 0.0, 1.0)
-
-        if ti.static(self.type == self.ORTHO):
-            orig = ts.vec3(coor, 0.0)
-        elif ti.static(self.type == self.TAN_FOV):
-            uv = coor * fov
-            dir = ts.normalize(ts.vec3(uv, 1))
-        elif ti.static(self.type == self.COS_FOV):
-            uv = coor * fov
-            dir = ts.vec3(ti.sin(uv), ti.cos(uv.norm()))
-
-        orig = self.trans_pos(orig)
-        dir = self.trans_dir(dir)
-
-        return orig, dir

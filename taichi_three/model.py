@@ -38,6 +38,11 @@ class ModelLow(ModelBase):
             # assume all elements to be triangle
             render_triangle(self, camera, self.faces[i])
 
+    @ti.func
+    def intersect(self, camera, I, orig, dir):
+        for i in range(self.faces.shape[0]):
+            intersect_triangle(self, camera, I, orig, dir, self.faces[i])
+
     @classmethod
     def from_obj(cls, obj, texture=None, normtex=None):
         model = cls(len(obj['f']), len(obj['vp']), len(obj['vt']), len(obj['vn']))

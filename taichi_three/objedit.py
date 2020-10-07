@@ -6,8 +6,20 @@ def objflip(obj, *flips):
         if flip:
             obj['vp'][:, i] = -obj['vp'][:, i]
             obj['vn'][:, i] = -obj['vn'][:, i]
-    if (flips[0] != flips[1]) != flips[2]:  # FIXME
-        obj['f'] = np.roll(obj['f'], 1, axis=1)
+    if (flips[0] != flips[1]) != flips[2]:
+        obj['f'][:, ::-1, :] = obj['f'][:, :, :]
+
+
+def objflipface(obj):
+    obj['f'][:, ::-1, :] = obj['f'][:, :, :]
+    obj['vn'] = -obj['vn']
+
+
+def objbothface(obj):
+    morefaces = np.array(obj['f'])
+    morefaces[:, ::-1, :] = obj['f'][:, :, :]
+    obj['f'] = np.concatenate([obj['f'], morefaces], axis=0)
+    obj['vn'] = np.concatenate([obj['vn'], -obj['vn']], axis=0)
 
 
 def objmknorm(obj):

@@ -81,7 +81,7 @@ class Scene(AutoInit):
         # sets up light directions
         if ti.static(len(self.lights)):
             for light in ti.static(self.lights):
-                light.set_view(camera)
+                light.set_view(camera)  # TODO: model.set_view too?
         else:
             ti.static_print('Warning: no lights')
 

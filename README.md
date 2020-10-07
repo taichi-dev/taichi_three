@@ -85,6 +85,7 @@ Minor fixes:
 * Fix the coordinate system to be right-handed.
 * Fix color artifects on edges due to interpolation.
 * Refactor field initialization before materialization.
+* Fix PBR material ball cartoon artifect.
 * Fix shadow artifects on 90-deg faces.
 
 Major steps:
