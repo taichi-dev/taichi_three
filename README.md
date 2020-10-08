@@ -89,6 +89,7 @@ Minor fixes:
 * Fix color artifects on edges due to interpolation.
 * Refactor field initialization before materialization.
 * Fix PBR material ball cartoon artifect.
+* Shadow mapping is broken.
 * Fix shadow artifects on 90-deg faces.
 
 Major steps:

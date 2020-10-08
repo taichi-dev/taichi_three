@@ -2,7 +2,7 @@ import taichi as ti
 import taichi_three as t3
 import numpy as np
 
-ti.init(ti.gpu)
+ti.init(ti.cpu)
 
 scene = t3.Scene()
 obj1 = t3.readobj('assets/torus.obj', scale=0.8)
