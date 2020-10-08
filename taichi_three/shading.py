@@ -12,13 +12,6 @@ EPS = 1e-4
 class Shading:
     use_postp = False
 
-    color = 1.0
-    ambient = 1.0
-
-    @ti.func
-    def render_func(self, pos, normal, viewdir, light):
-        raise NotImplementedError
-
     @ti.func
     def post_process(self, color):
         if ti.static(not self.use_postp):
@@ -44,7 +37,7 @@ class Shading:
     @ti.func
     def render_func(self, pos, normal, viewdir, light):  # TODO: move render_func to Light.render_func?
         if ti.static(isinstance(light, AmbientLight)):
-            return light.get_color(pos) * self.color * self.ambient
+            return light.get_color(pos) * self.get_ambient()
         lightdir = light.get_dir(pos)
         NoL = ts.dot(normal, lightdir)
         l_out = ts.vec3(0.0)
@@ -56,8 +49,14 @@ class Shading:
     def brdf(self, normal, lightdir, viewdir):
         raise NotImplementedError
 
+    @ti.func
+    def get_ambient(self):
+        raise NotImplementedError
+
 
 class BlinnPhong(Shading):
+    color = 1.0
+    ambient = 1.0
     specular = 1.0
     shineness = 15
 
@@ -67,6 +66,10 @@ class BlinnPhong(Shading):
         self.__dict__.update(kwargs)
 
     @ti.func
+    def get_ambient(self):
+        return self.ambient * self.color
+
+    @ti.func
     def brdf(self, normal, lightdir, viewdir):
         NoH = max(0, ts.dot(normal, ts.normalize(lightdir + viewdir)))
         ndf = (self.shineness + 8) / 8 * pow(NoH, self.shineness)
@@ -74,9 +77,34 @@ class BlinnPhong(Shading):
         return strength
 
 
+class StdMtl(Shading):
+    Ns = 1.0
+    Ka = 1.0
+    Kd = 1.0
+    Ks = 0.0
+    Ke = 0.0
+
+    parameters = ['Ka', 'Kd', 'Ks', 'Ke', 'Ns']
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+    @ti.func
+    def get_ambient(self):
+        return self.Ka
+
+    @ti.func
+    def brdf(self, normal, lightdir, viewdir):
+        NoH = max(0, ts.dot(normal, ts.normalize(lightdir + viewdir)))
+        ndf = (self.Ns + 8) / 8 * pow(NoH, self.Ns)
+        strength = self.Ka + ndf * self.Ks
+        return strength
+
+
 # https://zhuanlan.zhihu.com/p/37639418
 class CookTorrance(Shading):
     color = 1.0
+    ambient = 1.0
     roughness = 0.3
     metallic = 0.0
     specular = 0.04
@@ -111,6 +139,10 @@ class CookTorrance(Shading):
         fdf = self.fresnel(f0, NoV)
         strength = kd * self.color + ks * fdf * vdf * ndf / math.pi
         return strength
+
+    @ti.func
+    def get_ambient(self):
+        return self.ambient * self.color
 
 
 # References at https://learnopengl.com/PBR/Theory

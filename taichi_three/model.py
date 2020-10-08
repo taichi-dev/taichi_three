@@ -61,7 +61,7 @@ class ModelLow(ModelBase):
             model.add_texture('normal', normtex)
         return model
 
-    def add_texture(self, name, texture):
+    def add_texture(self, name, texture, scale=None):
         assert name not in self.textures, name
 
         # convert UInt8 into Float32 for storage:
@@ -85,6 +85,8 @@ class ModelLow(ModelBase):
             assert len(texture.shape) == 3, texture.shape
             texture = texture[:, :, :3]
             assert texture.shape[2] == 3, texture.shape
+            if scale is not None:
+                texture *= np.array(scale)[None, None, ...]
 
             self.textures[name] = ti.Vector.field(3, float, texture.shape[:2])
 

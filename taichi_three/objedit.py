@@ -38,7 +38,7 @@ def objmknorm(obj):
     obj['f'] = newf
 
 
-def objshow(obj, visual='color', res=(512, 512), ortho=False, showball=True, lightdir=[0.4, -1.5, 0.8]):
+def objshow(obj, visual='color', res=(512, 512), ortho=False, showball=False, lightdir=[0.4, -1.5, 0.8]):
     import taichi_three as t3
 
     t3.reset()

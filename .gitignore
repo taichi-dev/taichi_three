@@ -13,3 +13,4 @@ node_modules/
 /docs/_media/container*.png
 package-lock.json
 /games
+/t3editor

@@ -151,6 +151,8 @@ class Main:
                 type=int, help='Specify window width')
         parser.add_argument('-v', '--resy', default=512,
                 type=int, help='Specify window height')
+        parser.add_argument('-A', '--ambient', default=0,
+                type=float, help='Specify ambient light strength')
         parser.add_argument('-o', '--ortho',
                 action='store_true', help='Display in orthogonal mode')
         parser.add_argument('-l', '--lowp',
@@ -219,7 +221,10 @@ class Main:
         if args.ortho:
             camera.type = camera.ORTHO
         scene.add_camera(camera)
-        light = t3.Light([0.4, -1.5, 0.8])
+        if args.ambient:
+            light = t3.AmbientLight(args.ambient)
+        else:
+            light = t3.Light([0.4, -1.5, 0.8])
         scene.add_light(light)
 
         gui = ti.GUI('Model', camera.res)
