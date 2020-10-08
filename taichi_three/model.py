@@ -169,7 +169,7 @@ class Model(ModelLow):
         normal = normal.normalized()
 
         color = self.colorize(pos, texcoor, normal)
-        return dict(img=color, pos=pos, normal=normal,
+        return dict(img=color, pos=pos, texcoor=texcoor, normal=normal,
                     tangent=tangent, bitangent=bitangent)
 
     @ti.func

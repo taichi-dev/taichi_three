@@ -169,6 +169,8 @@ class Main:
                 action='store_true', help='Including both face, no culling')
         parser.add_argument('-N', '--renorm',
                 action='store_true', help='Reset normal vectors to flat')
+        parser.add_argument('-S', '--showhints',
+                action='store_true', help='Show information about pixel under cursor')
         parser.add_argument('-t', '--texture',
                 type=str, help='Path to texture to bind')
         parser.add_argument('-n', '--normtex',
@@ -210,6 +212,10 @@ class Main:
             model.add_texture('roughness', ti.imread(args.roughness))
         scene.add_model(model)
         camera = t3.Camera(res=(args.resx, args.resy))
+        if args.showhints:
+            camera.fb.add_buffer('pos', 3)
+            camera.fb.add_buffer('texcoor', 2)
+            camera.fb.add_buffer('normal', 3)
         if args.ortho:
             camera.type = camera.ORTHO
         scene.add_camera(camera)
@@ -223,6 +229,14 @@ class Main:
             camera.from_mouse(gui)
             scene.render()
             gui.set_image(camera.img)
+            if args.showhints:
+                coor = gui.get_cursor_pos()
+                pos = camera.fb.fetchpixelinfo('pos', coor)
+                color = camera.fb.fetchpixelinfo('img', coor)
+                texcoor = camera.fb.fetchpixelinfo('texcoor', coor)
+                normal = camera.fb.fetchpixelinfo('normal', coor)
+                gui.text(f'color: [{color.x:.2f} {color.y:.2f} {color.z:.2f}]; pos: [{pos.x:+.2f} {pos.y:+.2f} {pos.z:+.2f}]', (0, 1))
+                gui.text(f'texcoor: [{texcoor.x:.2f} {texcoor.y:.2f}]; normal: [{normal.x:+.2f} {normal.y:+.2f} {normal.z:+.2f}]', (0, 1 - 16 / camera.res[1]))
             gui.show()
 
     @register
