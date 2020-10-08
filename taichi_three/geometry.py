@@ -131,8 +131,8 @@ def render_triangle(model, camera, face):
                 is_inside = w_A >= -eps and w_B >= -eps and w_C >= -eps
                 if not is_inside:
                     continue
-                zindex = 1 / (posa.z * w_A + posb.z * w_B + posc.z * w_C)
-                if zindex < ti.atomic_max(camera.fb['idepth'][X], zindex):
+                depth = (posa.z * w_A + posb.z * w_B + posc.z * w_C)
+                if camera.fb.atomic_depth(X, depth):
                     continue
 
                 clr = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
@@ -164,9 +164,7 @@ def render_particle(model, camera, index):
             continue
 
         dz = ti.sqrt(r**2 - dp2)
-        zindex = 1 / (a.z - dz)
-
-        if zindex < ti.atomic_max(camera.fb['idepth'][X], zindex):
+        if camera.fb.atomic_depth(X, a.z - dz):
             continue
 
         n = ts.vec3(dp.xy, -dz)

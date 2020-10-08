@@ -11,7 +11,6 @@ class Scene(AutoInit):
         self.cameras = []
         self.shadows = []
         self.models = []
-        self.curr_camera = None
 
     def set_light_dir(self, ldir):
         # changes light direction input to the direction
@@ -67,12 +66,10 @@ class Scene(AutoInit):
     def _render(self):
         if ti.static(len(self.cameras)):
             for camera in ti.static(self.cameras):
-                self.curr_camera = ti.static(camera)
                 self._render_camera(camera)
 
         else:
             ti.static_print('Warning: no cameras')
-        self.curr_camera = ti.static(None)
 
     @ti.func
     def _render_camera(self, camera):

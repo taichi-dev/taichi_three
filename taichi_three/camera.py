@@ -11,7 +11,16 @@ class FrameBuffer:
         self.res = res or (512, 512)
         self.buffers = {}
         self.add_buffer('img', 3)
-        self.add_buffer('idepth', 0)
+        self.add_buffer('idepth', 0, int)
+
+    @ti.func
+    def atomic_depth(self, X, depth):
+        r = ti.static(None)
+        if ti.static(ti.core.is_integral(self['idepth'].dtype)):
+            r = ti.static(ti.cast(2**24 / depth, int))
+        else:
+            r = ti.static(1 / depth)
+        return r < ti.atomic_max(self['idepth'][X], r)
 
     def add_buffer(self, name, dim, dtype=float):
         if dim == 0:

@@ -24,7 +24,7 @@ class Shading:
     def colorize(self, pos, normal):
         res = ts.vec3(0.0)
         viewdir = pos.normalized()
-        wpos = self.model.scene.curr_camera.trans_pos(pos)
+        wpos = self.model.scene.cameras[-1].trans_pos(pos)  # TODO: get curr camera?
         if ti.static(self.model.scene.lights):
             for light in ti.static(self.model.scene.lights):
                 strength = light.shadow_occlusion(wpos)
