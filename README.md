@@ -95,11 +95,11 @@ Major steps:
 * Separate camera control logic from `t3.Camera`.
 * Add some helpers fo creating primitive geometries.
 * Support shadow mapping for `t3.SpotLight`.
+* Framebuffered texcoor - get model surface coordinate by mouse.
 * Support `t3.CutoffLight` for light cones.
 
 Ambitions:
 * Path tracing scheme, e.g. cornell box.
-* Framebuffered model ID - get model surface coordinate by mouse.
 * Support image-based lighting and environment maps (skybox).
 * Support deferred shading and SSAO.
 * Support screen-space reflection.

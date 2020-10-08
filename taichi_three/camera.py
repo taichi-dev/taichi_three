@@ -29,9 +29,16 @@ class FrameBuffer:
             return dummy_expression()
 
     @ti.func
-    def update(self, I, res: ti.template()):
-        for k, v in ti.static(res.items()):
+    def update(self, I, data: ti.template()):
+        for k, v in ti.static(data.items()):
             self[k][I] = v
+
+    def fetchpixelinfo(self, name, pos):
+        if name in self.buffers:
+            I = int(pos[0] * self.res[0]), int(pos[1] * self.res[1])
+            return self[name][I].value
+        else:
+            return None
 
     @ti.func
     def clear_buffer(self):
