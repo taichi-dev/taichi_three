@@ -14,6 +14,7 @@
 
   - [Physically-based rendering](physically_based_rendering.md)
   - [Light and shadows](light_and_shadows.md)
+  - [Ambient occlusion](ambient_occlusion.md)
   - [Mesh deformation](mesh_deformation.md)
   - [Using normal maps](using_normal_maps.md)
   - [Customizing shaders](customizing_shaders.md)

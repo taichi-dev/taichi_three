@@ -71,6 +71,7 @@ Notable changes:
 * Add `t3.SimpleModel` that simply do color interpolation between vertices.
 * Refactor `t3.CookTorrance`, now use `model.shading_type = t3.BlinnPhong` if you want non-PBR shading.
 * Add OBJ edit helpers, `t3.objflipaxis`, `t3.objmknorm`, `t3.objflipface`, `t3.objshow`.
+* Framebuffered texcoor - get model surface coordinate by mouse, see `examples/screen_to_texcoor.py`.
 
 Minor fixes:
 * Fix an artifect in perspective mode due to texture coordinate interpolation.
@@ -95,7 +96,6 @@ Major steps:
 * Separate camera control logic from `t3.Camera`.
 * Add some helpers fo creating primitive geometries.
 * Support shadow mapping for `t3.SpotLight`.
-* Framebuffered texcoor - get model surface coordinate by mouse.
 * Support `t3.CutoffLight` for light cones.
 
 Ambitions:

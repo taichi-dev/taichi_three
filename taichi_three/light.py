@@ -3,6 +3,30 @@ import taichi_glsl as ts
 from .common import *
 from .camera import *
 import math
+'''
+The base light class represents an ambient light.
+'''
+@ti.data_oriented
+class AmbientLight(AutoInit):
+    def __init__(self, color=None):
+        self.color_py = color or [1, 1, 1]
+        if not isinstance(self.color_py, (list, tuple)):
+            self.color_py = [self.color_py for i in range(3)]
+        self.color = ti.Vector.field(3, ti.float32, ())
+
+    def _init(self):
+        self.color[None] = self.color_py
+
+    def set_view(self, camera):
+        pass
+
+    @ti.func
+    def get_color(self, pos):
+        return self.color[None]
+
+    def shadow_occlusion(self, wpos):
+        return 1
+
 
 '''
 The base light class represents a directional light.

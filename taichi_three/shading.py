@@ -1,5 +1,6 @@
 import taichi as ti
 import taichi_glsl as ts
+from .light import AmbientLight
 from .transform import *
 import math
 
@@ -10,6 +11,9 @@ EPS = 1e-4
 @ti.data_oriented
 class Shading:
     use_postp = False
+
+    color = 1.0
+    ambient = 1.0
 
     @ti.func
     def render_func(self, pos, normal, viewdir, light):
@@ -31,14 +35,16 @@ class Shading:
         if ti.static(self.model.scene.lights):
             for light in ti.static(self.model.scene.lights):
                 strength = light.shadow_occlusion(wpos)
-                if strength != 0:
+                if strength >= 1e-3:
                     subclr = self.render_func(pos, normal, viewdir, light)
                     res += strength * subclr
         res = self.post_process(res)
         return res
 
     @ti.func
-    def render_func(self, pos, normal, viewdir, light):
+    def render_func(self, pos, normal, viewdir, light):  # TODO: move render_func to Light.render_func?
+        if ti.static(isinstance(light, AmbientLight)):
+            return light.get_color(pos) * self.color * self.ambient
         lightdir = light.get_dir(pos)
         NoL = ts.dot(normal, lightdir)
         l_out = ts.vec3(0.0)
@@ -52,11 +58,10 @@ class Shading:
 
 
 class BlinnPhong(Shading):
-    color = 1.0
     specular = 1.0
     shineness = 15
 
-    parameters = ['color', 'specular', 'shineness']
+    parameters = ['color', 'ambient', 'specular', 'shineness']
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -78,7 +83,7 @@ class CookTorrance(Shading):
     kd = 1.0
     ks = 1.0
 
-    parameters = ['color', 'roughness', 'metallic']
+    parameters = ['color', 'ambient', 'roughness', 'metallic']
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
