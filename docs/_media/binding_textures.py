@@ -11,7 +11,7 @@ obj = t3.readobj('cube.obj', scale=0.8)
 model = t3.Model.from_obj(obj)
 model.shading_type = t3.BlinnPhong
 model.add_texture('color', t3.imread('container2.png'))
-model.add_uniform('specular', 1.0)
+model.add_texture('specular', t3.imread('container2_specular.png'))
 scene.add_model(model)
 
 gui = t3.GUI('Binding Textures')

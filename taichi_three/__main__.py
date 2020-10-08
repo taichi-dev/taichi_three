@@ -161,7 +161,13 @@ class Main:
                 action='store_true', help='Flip Y axis of model when display')
         parser.add_argument('-z', '--flipz',
                 action='store_true', help='Flip Z axis of model when display')
-        parser.add_argument('-f', '--flatnorm',
+        parser.add_argument('-f', '--flipface',
+                action='store_true', help='Flip face culling direction')
+        parser.add_argument('-F', '--flipnorm',
+                action='store_true', help='Flip face normal direction')
+        parser.add_argument('-b', '--bothface',
+                action='store_true', help='Including both face, no culling')
+        parser.add_argument('-N', '--renorm',
                 action='store_true', help='Reset normal vectors to flat')
         parser.add_argument('-t', '--texture',
                 type=str, help='Path to texture to bind')
@@ -183,9 +189,15 @@ class Main:
 
         scene = t3.Scene()
         obj = t3.readobj(args.filename, scale=args.scale)
-        t3.objflip(obj, args.flipx, args.flipy, args.flipz)
-        if args.flatnorm:
+        t3.objflipaxis(obj, args.flipx, args.flipy, args.flipz)
+        if args.flipface:
+            t3.objflipface(obj)
+        if args.flipnorm:
+            t3.objflipnorm(obj)
+        if args.renorm:
             t3.objmknorm(obj)
+        if args.bothface:
+            t3.objbothface(obj)
 
         model = (t3.ModelLow if args.lowp else t3.Model).from_obj(obj)
         if args.texture is not None:

@@ -1,39 +1,39 @@
 import numpy as np
 
 
-def objflip(obj, *flips):
+def objflipaxis(obj, *flips):
     for i, flip in enumerate(flips):
         if flip:
             obj['vp'][:, i] = -obj['vp'][:, i]
             obj['vn'][:, i] = -obj['vn'][:, i]
     if (flips[0] != flips[1]) != flips[2]:
-        obj['f'][:, ::-1, :] = obj['f'][:, :, :]
+        objflipface(obj)
 
 
 def objflipface(obj):
     obj['f'][:, ::-1, :] = obj['f'][:, :, :]
+
+
+def objflipnorm(obj):
     obj['vn'] = -obj['vn']
 
 
 def objbothface(obj):
-    morefaces = np.array(obj['f'])
-    morefaces[:, ::-1, :] = obj['f'][:, :, :]
-    obj['f'] = np.concatenate([obj['f'], morefaces], axis=0)
-    obj['vn'] = np.concatenate([obj['vn'], -obj['vn']], axis=0)
+    tmp = np.array(obj['f'])
+    tmp[:, ::-1, :] = obj['f'][:, :, :]
+    obj['f'] = np.concatenate([obj['f'], tmp])
+    obj['vn'] = np.concatenate([obj['vn'], -obj['vn']])
 
 
 def objmknorm(obj):
-    nrm = np.zeros((len(obj['f']), 3), dtype=np.float32)
-    newf = np.zeros((len(obj['f']), len(obj['f'][0]), 3), dtype=np.int32)
-    for i in range(len(obj['f'])):
-        fip = obj['f'][i, :, 0]
-        fit = obj['f'][i, :, 1]
-        p = obj['vp'][fip]
-        n = np.cross(p[1] - p[0], p[2] - p[0])
-        n /= np.sqrt(np.sum(n**2))
-        nrm[i] = n
-        fin = np.array([i, i, i])
-        newf[i] = np.array([fip, fit, fin]).swapaxes(0, 1)
+    fip = obj['f'][:, :, 0]
+    fit = obj['f'][:, :, 1]
+    p = obj['vp'][fip]
+    nrm = np.cross(p[:, 1] - p[:, 0], p[:, 2] - p[:, 0])
+    nrm /= np.linalg.norm(nrm, axis=1, keepdims=True)
+    fin = np.arange(obj['f'].shape[0])[:, np.newaxis]
+    fin = np.concatenate([fin for i in range(3)], axis=1)
+    newf = np.array([fip, fit, fin]).swapaxes(1, 2).swapaxes(0, 2)
     obj['vn'] = nrm
     obj['f'] = newf
 
