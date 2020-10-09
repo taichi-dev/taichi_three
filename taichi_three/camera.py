@@ -206,8 +206,8 @@ class CameraCtl:
         # python scope camera transformations
         self.pos = pos or [0, 0, -2]
         self.target = target or [0, 0, 0]
-        self.trans = None
         self.up = up or [0, 1, 0]
+        self.trans = None
         self.set()
         # mouse position for camera control
         self.mpos = (0, 0)

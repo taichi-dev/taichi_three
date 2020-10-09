@@ -39,12 +39,7 @@ class Scene(AutoInit):
         self.lights.append(light)
 
     def _init(self):
-        for light in self.lights:
-            light.init()
-        for shadow in self.shadows:
-            shadow.init()
-        for model in self.models:
-            model.init()
+        pass
 
     def render(self):
         self.init()

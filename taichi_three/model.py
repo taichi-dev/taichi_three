@@ -9,10 +9,11 @@ import math
 
 
 @ti.data_oriented
-class ModelBase(AutoInit):
+class ModelBase:
     def __init__(self):
         self.L2W = ti.Matrix.field(4, 4, float, ())
         self.L2C = ti.Matrix.field(4, 4, float, ())
+
         @ti.materialize_callback
         @ti.kernel
         def init_L2W():
@@ -24,10 +25,6 @@ class ModelBase(AutoInit):
     @ti.func
     def set_view(self, camera):
         self.L2C[None] = camera.L2W[None].inverse() @ self.L2W[None]
-
-    def _init(self):
-        for cb in self.init_cbs:
-            cb()
 
 
 class ModelLow(ModelBase):
@@ -57,13 +54,12 @@ class ModelLow(ModelBase):
     def from_obj(cls, obj, texture=None, normtex=None):
         model = cls(len(obj['f']), len(obj['vp']), len(obj['vt']), len(obj['vn']))
 
-        def obj_init_cb():
+        @ti.materialize_callback
+        def init_mesh_data():
             model.faces.from_numpy(obj['f'])
             model.pos.from_numpy(obj['vp'])
             model.tex.from_numpy(obj['vt'])
             model.nrm.from_numpy(obj['vn'])
-
-        model.init_cbs.append(obj_init_cb)
 
         if texture is not None:
             model.add_texture('color', texture)
@@ -100,10 +96,9 @@ class ModelLow(ModelBase):
 
             self.textures[name] = ti.Vector.field(3, float, texture.shape[:2])
 
-        def other_init_cb():
+        @ti.materialize_callback
+        def init_texture():
             self.textures[name].from_numpy(texture)
-
-        self.init_cbs.append(other_init_cb)
 
     def add_uniform(self, name, value):
         self.add_texture(name, np.array([[value]]))

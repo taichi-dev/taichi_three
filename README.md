@@ -92,7 +92,7 @@ Minor fixes:
 * Fix color artifects on edges due to interpolation.
 * Refactor field initialization before materialization.
 * Fix shadow artifects on 90-deg faces.
-* Make shadow camera less ad-hoc.
+* Make camera buffer update less ad-hoc.
 
 Major steps:
 * Standardize affine system - L2W, W2C, C2D.

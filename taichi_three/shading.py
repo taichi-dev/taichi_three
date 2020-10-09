@@ -31,6 +31,7 @@ class Shading:
                 if strength >= 1e-3:
                     subclr = self.render_func(pos, normal, viewdir, light)
                     res += strength * subclr
+        res += self.get_emission()
         res = self.post_process(res)
         return res
 
@@ -50,17 +51,22 @@ class Shading:
         raise NotImplementedError
 
     @ti.func
+    def get_emission(self):
+        return 0
+
+    @ti.func
     def get_ambient(self):
-        raise NotImplementedError
+        return 0
 
 
 class BlinnPhong(Shading):
     color = 1.0
     ambient = 1.0
     specular = 1.0
+    emission = 0.0
     shineness = 15
 
-    parameters = ['color', 'ambient', 'specular', 'shineness']
+    parameters = ['color', 'ambient', 'specular', 'emission', 'shineness']
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -68,6 +74,10 @@ class BlinnPhong(Shading):
     @ti.func
     def get_ambient(self):
         return self.ambient * self.color
+
+    @ti.func
+    def get_emission(self):
+        return self.emission
 
     @ti.func
     def brdf(self, normal, lightdir, viewdir):
@@ -78,11 +88,11 @@ class BlinnPhong(Shading):
 
 
 class StdMtl(Shading):
-    Ns = 1.0
     Ka = 1.0
     Kd = 1.0
     Ks = 0.0
     Ke = 0.0
+    Ns = 1.0
 
     parameters = ['Ka', 'Kd', 'Ks', 'Ke', 'Ns']
 
@@ -92,6 +102,10 @@ class StdMtl(Shading):
     @ti.func
     def get_ambient(self):
         return self.Ka
+
+    @ti.func
+    def get_emission(self):
+        return self.Ke
 
     @ti.func
     def brdf(self, normal, lightdir, viewdir):
@@ -105,13 +119,14 @@ class StdMtl(Shading):
 class CookTorrance(Shading):
     color = 1.0
     ambient = 1.0
+    emission = 0.0
     roughness = 0.3
     metallic = 0.0
     specular = 0.04
     kd = 1.0
     ks = 1.0
 
-    parameters = ['color', 'ambient', 'roughness', 'metallic']
+    parameters = ['color', 'ambient', 'emission', 'roughness', 'metallic']
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -143,6 +158,10 @@ class CookTorrance(Shading):
     @ti.func
     def get_ambient(self):
         return self.ambient * self.color
+
+    @ti.func
+    def get_emission(self):
+        return self.emission
 
 
 # References at https://learnopengl.com/PBR/Theory
