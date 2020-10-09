@@ -77,6 +77,7 @@ Notable changes:
 
 Minor fixes:
 * Fix an artifect in perspective mode due to texture coordinate interpolation.
+* Deprecate `t3.AutoInit`, use `ti.materialize_callback` for better initializaion.
 * Use fixed point number in depth buffer for better atomic performance.
 * Use ModelView matrix for pre-calculated camera + model transform.
 * Support non-equal width and height in camera.
@@ -90,13 +91,12 @@ Minor fixes:
 * Fix black-pixels artifect in `ms_cloth.py`.
 * Fix the coordinate system to be right-handed.
 * Fix color artifects on edges due to interpolation.
-* Refactor field initialization before materialization.
 * Fix shadow artifects on 90-deg faces.
 * Make camera buffer update less ad-hoc.
 
 Major steps:
 * Standardize affine system - L2W, W2C, C2D.
-* Add some helpers fo creating primitive geometries.
+* Add some helpers for creating primitive geometries.
 * Support shadow mapping for `t3.PointLight`.
 * Support `t3.CutoffLight` for light cones.
 * Support anti-aliasing.

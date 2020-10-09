@@ -59,7 +59,6 @@ class FrameBuffer:
                 buf[I] *= 0
 
 
-# TODO: separate intrinsic to FrameBuffer, leave extrinsic to Camera?
 @ti.data_oriented
 class Camera:
     ORTHO = 'Orthogonal'
@@ -85,6 +84,7 @@ class Camera:
         @ti.materialize_callback
         @ti.kernel
         def init_intrinsic():
+            # TODO: intrinsic as 3x3 projection matrix?
             self.intrinsic[None][0, 0] = self.fx
             self.intrinsic[None][0, 2] = self.cx
             self.intrinsic[None][1, 1] = self.fy

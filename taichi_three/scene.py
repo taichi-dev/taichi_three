@@ -5,7 +5,7 @@ from .light import *
 
 
 @ti.data_oriented
-class Scene(AutoInit):
+class Scene:
     def __init__(self):
         self.lights = []
         self.cameras = []
@@ -37,9 +37,6 @@ class Scene(AutoInit):
     def add_light(self, light):
         light.scene = self
         self.lights.append(light)
-
-    def _init(self):
-        pass
 
     def render(self):
         self.init()
