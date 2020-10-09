@@ -85,7 +85,7 @@ class Light(AutoInit):
     @ti.func
     def _sub_SO(self, cur_idepth, lscoor):
         lst_idepth = ts.sample(self.shadow.fb['idepth'], lscoor)
-        return 1 if lst_idepth < cur_idepth + 1e-3 else 0
+        return 1 if lst_idepth < cur_idepth + self.shadow.fb.idepth_fixp(1e-3) else 0
 
     @ti.func
     def _sub_SDlerp(self, cur_idepth, lscoor, D):
@@ -106,7 +106,7 @@ class Light(AutoInit):
         lspos = self.shadow.untrans_pos(wpos)
         lscoor = self.shadow.uncook(lspos)
 
-        cur_idepth = 1 / lspos.z
+        cur_idepth = self.shadow.fb.idepth_fixp(1 / lspos.z)
 
         l = self._sub_SDlerp(cur_idepth, lscoor, ts.D.X_)
         r = self._sub_SDlerp(cur_idepth, lscoor, ts.D.x_)

@@ -14,13 +14,16 @@ class FrameBuffer:
         self.add_buffer('idepth', 0, int)
 
     @ti.func
-    def atomic_depth(self, X, depth):
-        r = ti.static(None)
+    def idepth_fixp(self, z):
         if ti.static(ti.core.is_integral(self['idepth'].dtype)):
-            r = ti.static(ti.cast(2**24 / depth, int))
+            return int(2**24 * z)
         else:
-            r = ti.static(1 / depth)
-        return r < ti.atomic_max(self['idepth'][X], r)
+            return z
+
+    @ti.func
+    def atomic_depth(self, X, depth):
+        idepth = self.idepth_fixp(1 / depth)
+        return idepth < ti.atomic_max(self['idepth'][X], idepth)
 
     def add_buffer(self, name, dim, dtype=float):
         if dim == 0:
@@ -53,7 +56,7 @@ class FrameBuffer:
     def clear_buffer(self):
         for I in ti.grouped(next(iter(self.buffers.values()))):
             for buf in ti.static(self.buffers.values()):
-                buf[I] *= 0.0
+                buf[I] *= 0
 
 
 # TODO: separate intrinsic to FrameBuffer, leave extrinsic to Camera?
