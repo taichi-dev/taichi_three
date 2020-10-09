@@ -65,19 +65,19 @@ class Camera:
     TAN_FOV = 'Tangent Perspective' # rectilinear perspective
     COS_FOV = 'Cosine Perspective' # curvilinear perspective, see en.wikipedia.org/wiki/Curvilinear_perspective
 
-    def __init__(self, res=None, fx=None, fy=None, cx=None, cy=None, fov=None):
+    def __init__(self, res=None):
         self.res = res or (512, 512)
         self.fb = FrameBuffer(self.res)
         self.L2W = ti.Matrix.field(4, 4, float, ())
         self.intrinsic = ti.Matrix.field(3, 3, float, ())
         self.type = self.TAN_FOV
-        self.fov = math.radians(fov or 30)
+        self.fov = math.radians(30)
 
         minres = min(self.res)
-        self.cx = cx or self.res[0] / 2
-        self.cy = cy or self.res[1] / 2
-        self.fx = fx or minres / (2 * math.tan(self.fov))
-        self.fy = fy or minres / (2 * math.tan(self.fov))
+        self.cx = self.res[0] / 2
+        self.cy = self.res[1] / 2
+        self.fx = minres / (2 * math.tan(self.fov))
+        self.fy = minres / (2 * math.tan(self.fov))
 
         self.ctl = CameraCtl()
 
@@ -113,14 +113,6 @@ class Camera:
                 model.render(self)
         else:
             ti.static_print('Warning: no models')
-
-    @property
-    def pos(self):
-        return ti.Vector([self.L2W[None][i, 3] for i in range(3)])
-
-    @property
-    def trans(self):
-        return ti.Matrix([[self.L2W[None][i, j] for j in range(3)] for i in range(3)])
 
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
         # see http://ais.informatik.uni-freiburg.de/teaching/ws09/robotics2/pdfs/rob2-08-camera-calibration.pdf
@@ -176,30 +168,6 @@ class Camera:
 
         return ts.vec2(pos[0], pos[1])
 
-    def export_intrinsic(self):
-        import numpy as np
-        intrinsic = np.zeros((3, 3))
-        intrinsic[0, 0] = self.fx
-        intrinsic[1, 1] = self.fy
-        intrinsic[0, 2] = self.cx
-        intrinsic[1, 2] = self.cy
-        intrinsic[2, 2] = 1
-        return intrinsic
-
-    def export_extrinsic(self):
-        import numpy as np
-        trans = np.array(self.trans_py)
-        pos = np.array(self.pos_py)
-        extrinsic = np.zeros((3, 4))
-
-        trans = np.transpose(trans)
-        for i in range(3):
-            for j in range(3):
-                extrinsic[i][j] = trans[i, j]
-        pos = -trans @ pos
-        for i in range(3):
-            extrinsic[i][3] = pos[i]
-        return extrinsic
 
 class CameraCtl:
     def __init__(self, pos=None, target=None, up=None):

@@ -29,7 +29,7 @@ def plucker_bcoor(u, v, a, b, c):
     sa = plucker_sideop(L, ea)
     sb = plucker_sideop(L, eb)
     sc = plucker_sideop(L, ec)
-    return sa, sb, sc
+    return -sa, -sb, -sc
 
 
 @ti.func
@@ -38,21 +38,32 @@ def intersect_triangle(model, camera, I, orig, dir, face):
     texa, texb, texc = model.tex[face[0, 1]], model.tex[face[1, 1]], model.tex[face[2, 1]]
     nrma, nrmb, nrmc = model.nrm[face[0, 2]], model.nrm[face[1, 2]], model.nrm[face[2, 2]]
 
-    posa = model.L2W @ posa
-    posb = model.L2W @ posb
+    L2C = model.L2W[None]
+    posa = (L2C @ ts.vec4(posa, 1)).xyz
+    posb = (L2C @ ts.vec4(posb, 1)).xyz
+    posc = (L2C @ ts.vec4(posc, 1)).xyz
+    nrma = (L2C @ ts.vec4(nrma, 0)).xyz
+    nrmb = (L2C @ ts.vec4(nrmb, 0)).xyz
+    nrmc = (L2C @ ts.vec4(nrmc, 0)).xyz
 
     sa, sb, sc = plucker_bcoor(orig, orig + dir, posa, posb, posc)
     if sa >= 0 and sb >= 0 and sc >= 0:
+        snorm = sa + sb + sc
+        sa /= snorm
+        sb /= snorm
+        sc /= snorm
         pos = posa * sa + posb * sb + posc * sc
         tex = texa * sa + texb * sb + texc * sc
         nrm = nrma * sa + nrmb * sb + nrmc * sc
-        # TODO: depth-test
-        camera.fb.update(I, model.pixel_shader(pos, tex, nrm, nrm, nrm))
+        nrm = -nrm
+        camera.img[I].fill(nrm * 0.5 + 0.5)
 
 
 # http://www.opengl-tutorial.org/cn/intermediate-tutorials/tutorial-13-normal-mapping/
 @ti.func
 def compute_tangent(dp1, dp2, duv1, duv2):
+    if ti.static(0):
+        return ts.vec3(0.0), ts.vec3(0.0)
     IDUV = ti.Matrix([[duv1.x, duv1.y], [duv2.x, duv2.y]]).inverse()
     DPx = ti.Vector([dp1.x, dp2.x])
     DPy = ti.Vector([dp1.y, dp2.y])

@@ -38,10 +38,6 @@ class Scene:
         light.scene = self
         self.lights.append(light)
 
-    def render(self):
-        self.init()
-        self._render()
-
     def render_shadows(self):
         self.init()
         self._render_shadows()
@@ -53,7 +49,7 @@ class Scene:
                 self._render_camera(shadow)
 
     @ti.kernel
-    def _render(self):
+    def render(self):
         if ti.static(len(self.cameras)):
             for camera in ti.static(self.cameras):
                 camera.render(self)

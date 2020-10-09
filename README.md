@@ -99,9 +99,9 @@ Major steps:
 * Add some helpers for creating primitive geometries.
 * Support shadow mapping for `t3.PointLight`.
 * Support `t3.CutoffLight` for light cones.
-* Support anti-aliasing.
 
 Ambitions:
+* Support anti-aliasing.
 * Use a node system for materials.
 * Path tracing scheme, e.g. cornell box.
 * Support image-based lighting and environment maps (skybox).
