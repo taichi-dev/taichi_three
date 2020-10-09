@@ -6,23 +6,35 @@ import math
 
 def rotationX(angle):
     return [
-            [1,               0,                0],
-            [0, math.cos(angle), -math.sin(angle)],
-            [0, math.sin(angle),  math.cos(angle)],
+            [1,               0,                0, 0],
+            [0, math.cos(angle), -math.sin(angle), 0],
+            [0, math.sin(angle),  math.cos(angle), 0],
+            [0,               0,                0, 1],
            ]
 
 def rotationY(angle):
     return [
-            [ math.cos(angle), 0, math.sin(angle)],
-            [               0, 1,               0],
-            [-math.sin(angle), 0, math.cos(angle)],
+            [ math.cos(angle), 0, math.sin(angle), 0],
+            [               0, 1,               0, 0],
+            [-math.sin(angle), 0, math.cos(angle), 0],
+            [               0, 0,               0, 1],
            ]
 
 def rotationZ(angle):
     return [
-            [math.cos(angle), -math.sin(angle), 0],
-            [math.sin(angle),  math.cos(angle), 0],
-            [              0,                0, 1],
+            [math.cos(angle), -math.sin(angle), 0, 0],
+            [math.sin(angle),  math.cos(angle), 0, 0],
+            [              0,                0, 1, 0],
+            [              0,                0, 0, 1],
+           ]
+
+
+def translate(x, y, z):
+    return [
+            [1, 0, 0, x],
+            [0, 1, 0, y],
+            [0, 0, 1, z],
+            [0, 0, 0, 1],
            ]
 
 
@@ -30,9 +42,10 @@ def scale(x, y=None, z=None):
     y = y or x
     z = z or x
     return [
-            [x, 0, 0],
-            [0, y, 0],
-            [0, 0, z],
+            [x, 0, 0, 0],
+            [0, y, 0, 0],
+            [0, 0, z, 0],
+            [0, 0, 0, 1],
            ]
 
 

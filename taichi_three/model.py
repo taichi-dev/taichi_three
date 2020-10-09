@@ -11,11 +11,15 @@ import math
 @ti.data_oriented
 class ModelBase(AutoInit):
     def __init__(self):
-        self.L2W = Affine.field(())
+        self.L2W = ti.Matrix.field(4, 4, float, ())
+        @ti.materialize_callback
+        @ti.kernel
+        def init_L2W():
+            self.L2W[None] = ti.Matrix.identity(float, 4)
+
         self.init_cbs = []
 
     def _init(self):
-        self.L2W.init()
         for cb in self.init_cbs:
             cb()
 

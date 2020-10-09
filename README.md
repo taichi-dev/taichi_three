@@ -76,6 +76,7 @@ Notable changes:
 
 Minor fixes:
 * Fix an artifect in perspective mode due to texture coordinate interpolation.
+* Use fixed point number in depth buffer for better atomic performance.
 * Support non-equal width and height in camera.
 * Make shadow smoother using bilerp.
 
@@ -88,8 +89,6 @@ Minor fixes:
 * Fix the coordinate system to be right-handed.
 * Fix color artifects on edges due to interpolation.
 * Refactor field initialization before materialization.
-* Fix PBR material ball cartoon artifect.
-* Shadow mapping is broken.
 * Fix shadow artifects on 90-deg faces.
 
 Major steps:
@@ -100,6 +99,7 @@ Major steps:
 * Support `t3.CutoffLight` for light cones.
 
 Ambitions:
+* Use a node system for materials.
 * Path tracing scheme, e.g. cornell box.
 * Support image-based lighting and environment maps (skybox).
 * Support deferred shading and SSAO.
