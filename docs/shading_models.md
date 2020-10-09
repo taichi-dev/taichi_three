@@ -64,6 +64,12 @@ Or a point source light:
 light = t3.PointLight(position=[0.6, -0.8, -1.2], color=[1.0, 1.0, 0.0])
 ```
 
+Or a ambient light, which doesn't care the face orientation:
+
+```py
+light = t3.AmbientLight(color=[1.0, 1.0, 0.0])
+```
+
 ?> Also note that you may have multiple lights in a single scene. Have a try :)
 
 

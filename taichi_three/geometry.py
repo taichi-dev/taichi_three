@@ -121,17 +121,18 @@ def render_triangle(model, camera, face):
                 w_B = ts.cross(A_C, X_A)
                 w_A = 1 - w_C - w_B
 
+                # draw
+                eps = ti.get_rel_eps() * 0.2
+                is_inside = w_A >= -eps and w_B >= -eps and w_C >= -eps
+                if not is_inside:
+                    continue
+
                 # https://gitee.com/zxtree2006/tinyrenderer/blob/master/our_gl.cpp
                 if ti.static(camera.type != camera.ORTHO):
                     bclip = ts.vec3(w_A / posa.z, w_B / posb.z, w_C / posc.z)
                     bclip /= bclip.x + bclip.y + bclip.z
                     w_A, w_B, w_C = bclip
 
-                # draw
-                eps = ti.get_rel_eps() * 0.2
-                is_inside = w_A >= -eps and w_B >= -eps and w_C >= -eps
-                if not is_inside:
-                    continue
                 depth = (posa.z * w_A + posb.z * w_B + posc.z * w_C)
                 if camera.fb.atomic_depth(X, depth):
                     continue
@@ -141,7 +142,7 @@ def render_triangle(model, camera, face):
 
 
 @ti.func
-def render_particle(model, camera, index):
+def render_particle(model, camera, index):  # FIXME: broken after L2C infra
     scene = model.scene
     L2W = model.L2W
     a = model.pos[index]

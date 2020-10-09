@@ -127,9 +127,9 @@ class PointLight(Light):
             self.c2 = c2
         self.pos_py = position
         self.color_py = color or [1, 1, 1]
-        self.pos = ti.Vector.field(3, ti.f32, ())
-        self.color = ti.Vector.field(3, ti.f32, ())
-        self.viewpos = ti.Vector.field(3, ti.f32, ())
+        self.pos = ti.Vector.field(3, float, ())
+        self.color = ti.Vector.field(3, float, ())
+        self.viewpos = ti.Vector.field(3, float, ())
 
     def _init(self):
         self.pos[None] = self.pos_py
@@ -142,7 +142,7 @@ class PointLight(Light):
     @ti.func
     def intensity(self, pos):
         distsq = (self.viewpos[None] - pos).norm_sqr()
-        return 1. / (1. + self.c1 * ti.sqrt(distsq) + self.c2 * distsq)
+        return 1 / (1 + self.c1 * ti.sqrt(distsq) + self.c2 * distsq)
 
     @ti.func
     def get_dir(self, pos):

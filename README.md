@@ -73,10 +73,12 @@ Notable changes:
 * Add OBJ edit helpers, `t3.objflipaxis`, `t3.objmknorm`, `t3.objflipface`, `t3.objshow`.
 * Framebuffered texcoor - get model surface coordinate by mouse, see `examples/screen_to_texcoor.py`.
 * Support `t3.AmbientLight` and ambient occulsion.
+* Separate camera control logic from `t3.Camera`.
 
 Minor fixes:
 * Fix an artifect in perspective mode due to texture coordinate interpolation.
 * Use fixed point number in depth buffer for better atomic performance.
+* Use ModelView matrix for pre-calculated camera + model transform.
 * Support non-equal width and height in camera.
 * Make shadow smoother using bilerp.
 
@@ -90,10 +92,10 @@ Minor fixes:
 * Fix color artifects on edges due to interpolation.
 * Refactor field initialization before materialization.
 * Fix shadow artifects on 90-deg faces.
+* Make shadow camera less ad-hoc.
 
 Major steps:
-* Standardize camera affine system - L2W, W2C, C2D.
-* Separate camera control logic from `t3.Camera`.
+* Standardize affine system - L2W, W2C, C2D.
 * Add some helpers fo creating primitive geometries.
 * Support shadow mapping for `t3.SpotLight`.
 * Support `t3.CutoffLight` for light cones.
