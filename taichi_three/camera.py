@@ -61,7 +61,7 @@ class FrameBuffer:
 
 # TODO: separate intrinsic to FrameBuffer, leave extrinsic to Camera?
 @ti.data_oriented
-class Camera(AutoInit):
+class Camera:
     ORTHO = 'Orthogonal'
     TAN_FOV = 'Tangent Perspective' # rectilinear perspective
     COS_FOV = 'Cosine Perspective' # curvilinear perspective, see en.wikipedia.org/wiki/Curvilinear_perspective
@@ -70,7 +70,6 @@ class Camera(AutoInit):
         self.res = res or (512, 512)
         self.fb = FrameBuffer(self.res)
         self.L2W = ti.Matrix.field(4, 4, float, ())
-        self.target = ti.Vector.field(3, float, ())
         self.intrinsic = ti.Matrix.field(3, 3, float, ())
         self.type = self.TAN_FOV
         self.fov = math.radians(fov or 30)
@@ -82,6 +81,15 @@ class Camera(AutoInit):
         self.fy = fy or minres / (2 * math.tan(self.fov))
 
         self.ctl = CameraCtl()
+
+        @ti.materialize_callback
+        @ti.kernel
+        def init_intrinsic():
+            self.intrinsic[None][0, 0] = self.fx
+            self.intrinsic[None][0, 2] = self.cx
+            self.intrinsic[None][1, 1] = self.fy
+            self.intrinsic[None][1, 2] = self.cy
+            self.intrinsic[None][2, 2] = 1.0
 
     def from_mouse(self, gui):
         self.ctl.from_mouse(gui)
@@ -120,13 +128,6 @@ class Camera(AutoInit):
         self.fy = fy or self.fy
         self.cx = cx or self.cx
         self.cy = cy or self.cy
-
-    def _init(self):
-        self.intrinsic[None][0, 0] = self.fx
-        self.intrinsic[None][0, 2] = self.cx
-        self.intrinsic[None][1, 1] = self.fy
-        self.intrinsic[None][1, 2] = self.cy
-        self.intrinsic[None][2, 2] = 1.0
 
     @property
     def img(self):
@@ -259,8 +260,6 @@ class CameraCtl:
 
     def apply(self, camera):
         camera.L2W[None] = transform(self.trans, self.pos)
-        if hasattr(camera, 'target'):
-            camera.target[None] = self.target
 
     def orbit(self, delta, sensitivity=2.75, pov=False):
         ds, dt = delta

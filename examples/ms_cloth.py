@@ -55,10 +55,11 @@ def substep():
 ### Rendering GUI
 
 scene = t3.Scene()
-camera = t3.Camera(fov=24, pos=[0, 1.1, -1.5], target=[0, 0.25, 0])
+camera = t3.Camera(fov=24)
+camera.ctl = t3.CameraCtl(pos=[0, 1.1, -1.5], target=[0, 0.25, 0])
 scene.add_camera(camera)
 light = t3.Light(dir=[0.4, -1.5, 1.8])
-scene.add_shadow_camera(light.make_shadow_camera())  # comment this if you get too poor FPS
+#scene.add_shadow_camera(light.make_shadow_camera())  # comment this if you get too poor FPS
 scene.add_light(light)
 
 model = t3.Model(faces_n=N**2 * 4, pos_n=N**2, tex_n=N**2, nrm_n=N**2 * 2)
@@ -119,6 +120,7 @@ def update_display():
 init()
 init_display()
 
+sphere.L2W[None] = t3.translate(ball_pos) @ t3.scale(ball_radius)
 with ti.GUI('Mass Spring') as gui:
     while gui.running and not gui.get_event(gui.ESCAPE):
         if not gui.is_pressed(gui.SPACE):
@@ -129,8 +131,6 @@ with ti.GUI('Mass Spring') as gui:
         update_display()
 
         camera.from_mouse(gui)
-        sphere.L2W.offset[None] = ball_pos
-        sphere.L2W.matrix[None] = t3.scale(ball_radius)
 
         scene.render_shadows()
         scene.render()

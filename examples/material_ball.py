@@ -11,15 +11,18 @@ model.add_texture('specular', np.array([[1.0]]))
 model.add_texture('roughness', np.array([[0.5]]))
 model.add_texture('metallic', np.array([[0.0]]))
 scene.add_model(model)
-camera = t3.Camera(pos=[0, 1, -1.8])
+camera = t3.Camera()
+camera.ctl = t3.CameraCtl(pos=[0, 1, -1.8])
 scene.add_camera(camera)
-light = t3.Light([0.9, -1.5, 1.3])
+light = t3.Light(dir=[0.9, -1.5, 1.3], color=[0.78, 0.78, 0.78])
 scene.add_light(light)
+ambient = t3.AmbientLight(color=[0.24, 0.24, 0.24])
+scene.add_light(ambient)
 
 gui = ti.GUI('Material Ball', camera.res)
 roughness = gui.slider('roughness', 0, 1, step=0.05)
 metallic = gui.slider('metallic', 0, 1, step=0.05)
-roughness.value = 0.5
+roughness.value = 0.3
 metallic.value = 0.0
 while gui.running:
     gui.get_event(None)

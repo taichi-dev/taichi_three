@@ -48,7 +48,9 @@ def transform(linear, offset):
            ])
 
 
-def translate(x, y, z):
+def translate(x, y=None, z=None):
+    if y is None or z is None:
+        x, y, z = x
     return ti.Matrix([
             [1, 0, 0, x],
             [0, 1, 0, y],
@@ -66,10 +68,6 @@ def scale(x, y=None, z=None):
             [0, 0, z, 0],
             [0, 0, 0, 1],
            ])
-
-
-def translateScaleRotate(t, s, r, a):
-    return rotateAxis(r, a) @ scale(s[0], s[1], s[2]) @ translate(t[0], t[1], t[2])
 
 
 @ti.data_oriented

@@ -72,8 +72,8 @@ Notable changes:
 * Refactor `t3.CookTorrance`, now use `model.shading_type = t3.BlinnPhong` if you want non-PBR shading.
 * Add OBJ edit helpers, `t3.objflipaxis`, `t3.objmknorm`, `t3.objflipface`, `t3.objshow`.
 * Framebuffered texcoor - get model surface coordinate by mouse, see `examples/screen_to_texcoor.py`.
+* Separate camera control logic from `t3.Camera` to `t3.CameraCtl`.
 * Support `t3.AmbientLight` and ambient occulsion.
-* Separate camera control logic from `t3.Camera`.
 
 Minor fixes:
 * Fix an artifect in perspective mode due to texture coordinate interpolation.
@@ -97,8 +97,9 @@ Minor fixes:
 Major steps:
 * Standardize affine system - L2W, W2C, C2D.
 * Add some helpers fo creating primitive geometries.
-* Support shadow mapping for `t3.SpotLight`.
+* Support shadow mapping for `t3.PointLight`.
 * Support `t3.CutoffLight` for light cones.
+* Support anti-aliasing.
 
 Ambitions:
 * Use a node system for materials.

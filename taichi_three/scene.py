@@ -41,8 +41,6 @@ class Scene(AutoInit):
     def _init(self):
         for light in self.lights:
             light.init()
-        for camera in self.cameras:
-            camera.init()
         for shadow in self.shadows:
             shadow.init()
         for model in self.models:
