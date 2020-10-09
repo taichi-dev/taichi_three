@@ -5,48 +5,59 @@ import math
 
 
 def rotationX(angle):
-    return [
+    return ti.Matrix([
             [1,               0,                0, 0],
             [0, math.cos(angle), -math.sin(angle), 0],
             [0, math.sin(angle),  math.cos(angle), 0],
             [0,               0,                0, 1],
-           ]
+           ])
 
 def rotationY(angle):
-    return [
+    return ti.Matrix([
             [ math.cos(angle), 0, math.sin(angle), 0],
             [               0, 1,               0, 0],
             [-math.sin(angle), 0, math.cos(angle), 0],
             [               0, 0,               0, 1],
-           ]
+           ])
 
 def rotationZ(angle):
-    return [
+    return ti.Matrix([
             [math.cos(angle), -math.sin(angle), 0, 0],
             [math.sin(angle),  math.cos(angle), 0, 0],
             [              0,                0, 1, 0],
             [              0,                0, 0, 1],
-           ]
+           ])
+
+
+def transform(linear, offset):
+    if not isinstance(linear, ti.Matrix):
+        linear = ti.Matrix(linear)
+    return ti.Matrix([
+            [linear[0, 0], linear[0, 1], linear[0, 2], offset[0]],
+            [linear[1, 0], linear[1, 1], linear[1, 2], offset[1]],
+            [linear[2, 0], linear[2, 1], linear[2, 2], offset[2]],
+            [           0,            0,            0,         1],
+           ])
 
 
 def translate(x, y, z):
-    return [
+    return ti.Matrix([
             [1, 0, 0, x],
             [0, 1, 0, y],
             [0, 0, 1, z],
             [0, 0, 0, 1],
-           ]
+           ])
 
 
 def scale(x, y=None, z=None):
     y = y or x
     z = z or x
-    return [
+    return ti.Matrix([
             [x, 0, 0, 0],
             [0, y, 0, 0],
             [0, 0, z, 0],
             [0, 0, 0, 1],
-           ]
+           ])
 
 
 @ti.data_oriented
