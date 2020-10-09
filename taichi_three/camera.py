@@ -71,7 +71,6 @@ class Camera(AutoInit):
         self.res = res or (512, 512)
         self.fb = FrameBuffer(self.res)
         self.L2W = ti.Matrix.field(4, 4, float, ())
-        self.W2L = ti.Matrix.field(4, 4, float, ())
         self.target = ti.Vector.field(3, ti.f32, ())
         self.intrinsic = ti.Matrix.field(3, 3, ti.f32, ())
         self.type = self.TAN_FOV
@@ -229,10 +228,6 @@ class Camera(AutoInit):
     @ti.func
     def untrans_dir(self, pos):
         return (self.W2L[None] @ ts.vec4(pos, 0)).xyz
-
-    @ti.func
-    def setup_view(self):
-        self.W2L[None] = self.L2W[None].inverse()
 
     @ti.func
     def cook(self, pos, translate=True):

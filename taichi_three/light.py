@@ -74,7 +74,7 @@ class Light(AutoInit):
 
     @ti.func
     def set_view(self, camera):
-        self.viewdir[None] = camera.untrans_dir(self.dir[None])
+        self.viewdir[None] = (camera.L2W[None].inverse() @ ts.vec4(self.dir[None], 0)).xyz  # TODO: merge t3.PointLight with t3.Light by considering `w`?
 
     def make_shadow_camera(self, dis=10, fov=60, **kwargs):
         shadow = Camera(pos=[x * dis for x in self.dir_py], fov=fov, **kwargs)
@@ -137,7 +137,7 @@ class PointLight(Light):
 
     @ti.func
     def set_view(self, camera):
-        self.viewpos[None] = camera.untrans_pos(self.pos[None])
+        self.viewdir[None] = (camera.L2W[None].inverse() @ ts.vec4(self.pos[None], 1)).xyz  # TODO: merge t3.PointLight with t3.Light by considering `w`?
 
     @ti.func
     def intensity(self, pos):

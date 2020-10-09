@@ -12,12 +12,18 @@ import math
 class ModelBase(AutoInit):
     def __init__(self):
         self.L2W = ti.Matrix.field(4, 4, float, ())
+        self.L2C = ti.Matrix.field(4, 4, float, ())
         @ti.materialize_callback
         @ti.kernel
         def init_L2W():
             self.L2W[None] = ti.Matrix.identity(float, 4)
+            self.L2C[None] = ti.Matrix.identity(float, 4)
 
         self.init_cbs = []
+
+    @ti.func
+    def set_view(self, camera):
+        self.L2C[None] = camera.L2W[None].inverse() @ self.L2W[None]
 
     def _init(self):
         for cb in self.init_cbs:

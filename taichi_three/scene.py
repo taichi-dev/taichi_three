@@ -74,16 +74,17 @@ class Scene(AutoInit):
     @ti.func
     def _render_camera(self, camera):
         camera.fb.clear_buffer()
-        camera.setup_view()
 
         # sets up light directions
         if ti.static(len(self.lights)):
             for light in ti.static(self.lights):
-                light.set_view(camera)  # TODO: model.set_view too?
+                light.set_view(camera)  # TODO: t3.Light should be a subclass of t3.ModelBase?
         else:
             ti.static_print('Warning: no lights')
 
         if ti.static(len(self.models)):
+            for model in ti.static(self.models):
+                model.set_view(camera)  # sets up ModelView matrix
             for model in ti.static(self.models):
                 model.render(camera)
         else:

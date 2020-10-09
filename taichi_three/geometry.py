@@ -68,8 +68,7 @@ def compute_tangent(dp1, dp2, duv1, duv2):
 @ti.func
 def render_triangle(model, camera, face):
     scene = model.scene
-    #W2C = camera.L2W[None].inverse()
-    L2C = camera.W2L[None] @ model.L2W[None]
+    L2C = model.L2C[None]  # Local to Camera, i.e. ModelView in OpenGL
     posa, posb, posc = model.pos[face[0, 0]], model.pos[face[1, 0]], model.pos[face[2, 0]]
     texa, texb, texc = model.tex[face[0, 1]], model.tex[face[1, 1]], model.tex[face[2, 1]]
     nrma, nrmb, nrmc = model.nrm[face[0, 2]], model.nrm[face[1, 2]], model.nrm[face[2, 2]]
