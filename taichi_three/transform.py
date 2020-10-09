@@ -4,29 +4,37 @@ from .common import *
 import math
 
 
-def rotationX(angle):
+def rotateX(angle):
     return ti.Matrix([
-            [1,               0,                0, 0],
-            [0, math.cos(angle), -math.sin(angle), 0],
-            [0, math.sin(angle),  math.cos(angle), 0],
-            [0,               0,                0, 1],
+            [1,             0,              0, 0],
+            [0, ti.cos(angle), -ti.sin(angle), 0],
+            [0, ti.sin(angle),  ti.cos(angle), 0],
+            [0,             0,              0, 1],
            ])
 
-def rotationY(angle):
+def rotateY(angle):
     return ti.Matrix([
-            [ math.cos(angle), 0, math.sin(angle), 0],
-            [               0, 1,               0, 0],
-            [-math.sin(angle), 0, math.cos(angle), 0],
-            [               0, 0,               0, 1],
+            [ ti.cos(angle), 0, ti.sin(angle), 0],
+            [             0, 1,             0, 0],
+            [-ti.sin(angle), 0, ti.cos(angle), 0],
+            [             0, 0,             0, 1],
            ])
 
-def rotationZ(angle):
+def rotateZ(angle):
     return ti.Matrix([
-            [math.cos(angle), -math.sin(angle), 0, 0],
-            [math.sin(angle),  math.cos(angle), 0, 0],
-            [              0,                0, 1, 0],
-            [              0,                0, 0, 1],
+            [ti.cos(angle), -ti.sin(angle), 0, 0],
+            [ti.sin(angle),  ti.cos(angle), 0, 0],
+            [            0,              0, 1, 0],
+            [            0,              0, 0, 1],
            ])
+
+
+def rotateAxis(axis, angle):
+    if not isinstance(axis, ti.Matrix):
+        axis = ti.Vector(axis)
+    axis = axis.normalized()
+    # FIXME: https://www.cnblogs.com/graphics/archive/2012/08/10/2627458.html
+    return axis[0] * rotateX(angle) + axis[1] * rotateY(angle) + axis[2] * rotateZ(angle)
 
 
 def transform(linear, offset):
@@ -58,6 +66,10 @@ def scale(x, y=None, z=None):
             [0, 0, z, 0],
             [0, 0, 0, 1],
            ])
+
+
+def translateScaleRotate(t, s, r, a):
+    return rotateAxis(r, a) @ scale(s[0], s[1], s[2]) @ translate(t[0], t[1], t[2])
 
 
 @ti.data_oriented

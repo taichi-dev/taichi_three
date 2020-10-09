@@ -20,7 +20,7 @@ while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     camera.from_mouse(gui)
-    monkey.L2W[None] = t3.rotationZ(angle=time.time())
+    monkey.L2W[None] = t3.rotateZ(angle=time.time())
     torus. L2W[None] = t3.translate(0, math.cos(time.time()) * 0.5, 0)
     scene.render()
     gui.set_image(camera.img)

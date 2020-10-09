@@ -1,6 +1,7 @@
 import math
 import taichi as ti
 import taichi_glsl as ts
+from .transform import *
 
 
 @ti.func
@@ -67,16 +68,17 @@ def compute_tangent(dp1, dp2, duv1, duv2):
 @ti.func
 def render_triangle(model, camera, face):
     scene = model.scene
-    L2W = model.L2W[None]
+    #W2C = camera.L2W[None].inverse()
+    L2C = camera.W2L[None] @ model.L2W[None]
     posa, posb, posc = model.pos[face[0, 0]], model.pos[face[1, 0]], model.pos[face[2, 0]]
     texa, texb, texc = model.tex[face[0, 1]], model.tex[face[1, 1]], model.tex[face[2, 1]]
     nrma, nrmb, nrmc = model.nrm[face[0, 2]], model.nrm[face[1, 2]], model.nrm[face[2, 2]]
-    posa = camera.untrans_pos((L2W @ ts.vec4(posa, 1)).xyz)
-    posb = camera.untrans_pos((L2W @ ts.vec4(posb, 1)).xyz)
-    posc = camera.untrans_pos((L2W @ ts.vec4(posc, 1)).xyz)
-    nrma = camera.untrans_dir((L2W @ ts.vec4(nrma, 0)).xyz)
-    nrmb = camera.untrans_dir((L2W @ ts.vec4(nrmb, 0)).xyz)
-    nrmc = camera.untrans_dir((L2W @ ts.vec4(nrmc, 0)).xyz)
+    posa = (L2C @ ts.vec4(posa, 1)).xyz
+    posb = (L2C @ ts.vec4(posb, 1)).xyz
+    posc = (L2C @ ts.vec4(posc, 1)).xyz
+    nrma = (L2C @ ts.vec4(nrma, 0)).xyz
+    nrmb = (L2C @ ts.vec4(nrmb, 0)).xyz
+    nrmc = (L2C @ ts.vec4(nrmc, 0)).xyz
 
     pos_center = (posa + posb + posc) / 3
     if ti.static(camera.type == camera.ORTHO):
@@ -104,7 +106,7 @@ def render_triangle(model, camera, face):
         B = camera.uncook(posb)
         C = camera.uncook(posc)
         scr_norm = ts.cross(A - C, B - A)
-        if scr_norm != 0:
+        if scr_norm != 0:  # degenerate to line if zero
             B_A = (B - A) / scr_norm
             A_C = (A - C) / scr_norm
 

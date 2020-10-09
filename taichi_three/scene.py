@@ -74,6 +74,7 @@ class Scene(AutoInit):
     @ti.func
     def _render_camera(self, camera):
         camera.fb.clear_buffer()
+        camera.setup_view()
 
         # sets up light directions
         if ti.static(len(self.lights)):
