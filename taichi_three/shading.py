@@ -141,11 +141,13 @@ class CookTorrance(Shading):
         outdir = ts.vec3(0.0)
         clr = ts.vec3(0.0)
         if ti.random() < self.emission:
-            clr = ts.vec3(1.0, 0.0, 0.0)
+            clr = ts.vec3(1.0)
         elif ti.random() < self.color:
             clr = ts.vec3(1.0)
             outdir = ts.reflect(indir, normal)
-            clr = outdir * 0.5 + 0.5
+            outdir = ts.randUnit3D()
+            if outdir.dot(normal) < 0:
+                outdir = -outdir
         return pos, outdir, clr
 
     @ti.func

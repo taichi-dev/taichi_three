@@ -39,7 +39,6 @@ class Scene:
         self.lights.append(light)
 
     def render_shadows(self):
-        self.init()
         self._render_shadows()
 
     @ti.kernel

@@ -5,6 +5,26 @@ from .geometry import *
 from .camera import *
 
 
+@ti.data_oriented
+class Accumator:
+    def __init__(self, shape=(512, 512)):
+        self.buf = ti.Vector.field(3, float, shape)
+        self.count = ti.field(int, ())
+
+    @ti.kernel
+    def accumate(self, src: ti.template()):
+        self.count[None] += 1
+        for I in ti.grouped(self.buf):
+            alpha = 1 / self.count[None]
+            self.buf[I] = self.buf[I] * (1 - alpha) + src[I] * alpha
+
+    @ti.kernel
+    def reset(self):
+        self.count[None] = 0
+        for I in ti.grouped(self.buf):
+            self.buf[I] *= 0
+
+
 class RTCamera(Camera):
     def __init__(self, res=None):
         super().__init__(res)

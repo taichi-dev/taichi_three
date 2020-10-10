@@ -92,8 +92,9 @@ class Camera:
             self.intrinsic[None][2, 2] = 1.0
 
     def from_mouse(self, gui):
-        self.ctl.from_mouse(gui)
+        changed = self.ctl.from_mouse(gui)
         self.ctl.apply(self)
+        return changed
 
     @ti.func
     def render(self, scene):
@@ -181,6 +182,7 @@ class CameraCtl:
         self.mpos = (0, 0)
 
     def from_mouse(self, gui):
+        changed = False
         is_alter_move = gui.is_pressed(ti.GUI.CTRL)
         if gui.is_pressed(ti.GUI.LMB):
             mpos = gui.get_cursor_pos()
@@ -188,25 +190,30 @@ class CameraCtl:
                 self.orbit((mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]),
                     pov=is_alter_move)
             self.mpos = mpos
+            changed = True
         elif gui.is_pressed(ti.GUI.RMB):
             mpos = gui.get_cursor_pos()
             if self.mpos != (0, 0):
                 self.zoom_by_mouse(mpos, (mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]),
                         dolly=is_alter_move)
             self.mpos = mpos
+            changed = True
         elif gui.is_pressed(ti.GUI.MMB):
             mpos = gui.get_cursor_pos()
             if self.mpos != (0, 0):
                 self.pan((mpos[0] - self.mpos[0], mpos[1] - self.mpos[1]))
             self.mpos = mpos
+            changed = True
         else:
             if gui.event and gui.event.key == ti.GUI.WHEEL:
                 # one mouse wheel unit is (0, 120)
                 self.zoom(-gui.event.delta[1] / 1200,
                     dolly=is_alter_move)
                 gui.event = None
+                changed = True
             mpos = (0, 0)
         self.mpos = mpos
+        return changed
 
     '''
     NOTE: taichi_three uses a LEFT HANDED coordinate system.

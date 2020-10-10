@@ -2,6 +2,7 @@ import taichi as ti
 import taichi_three as t3
 import numpy as np
 
+res = 512, 512
 ti.init(ti.cpu)
 
 scene = t3.Scene()
@@ -12,20 +13,23 @@ model.add_uniform('emission', 0.0)
 scene.add_model(model)
 light = t3.Model.from_obj(obj)
 light.add_uniform('color', 0.0)
-light.add_uniform('emission', 1.0)
+light.add_uniform('emission', 64.0)
 scene.add_model(light)
-camera = t3.RTCamera(res=(256, 256))
+camera = t3.RTCamera(res=res)
 scene.add_camera(camera)
+accumator = t3.Accumator(camera.res)
 
-light.L2W[None] = t3.translate(1.6, 0, 0) @ t3.scale(0.2)
+light.L2W[None] = t3.translate(0, 0, -1.6) @ t3.scale(0.2)
 gui = ti.GUI('Model', camera.res)
 while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
-    camera.from_mouse(gui)
+    if camera.from_mouse(gui):
+        accumator.reset()
     camera.loadrays()
-    camera.steprays()
-    camera.steprays()
+    for s in range(2):
+        camera.steprays()
     camera.applyrays()
-    gui.set_image(camera.img)
+    accumator.accumate(camera.img)
+    gui.set_image(accumator.buf)
     gui.show()
