@@ -70,7 +70,12 @@ class Light:
         self.viewdir[None] = (camera.L2W[None].inverse() @ ts.vec4(self.dir[None], 0)).xyz
 
     def make_shadow_camera(self, dis=10, fov=60, **kwargs):
-        shadow = Camera(pos=[x * dis for x in self.dir_py], fov=fov, **kwargs)
+        shadow = Camera()
+        shadow.fov = math.radians(fov)
+        shadow.ctl = CameraCtl(pos=(self.dir[None].value * dis).entries, **kwargs)
+        @ti.materialize_callback
+        def init_camera():
+            shadow.ctl.apply(shadow)
         shadow.type = shadow.ORTHO
         self.shadow = shadow
         return shadow
@@ -96,7 +101,7 @@ class Light:
         if ti.static(self.shadow is None):
             return 1
 
-        lspos = self.shadow.untrans_pos(wpos)
+        lspos = (self.shadow.L2W[None] @ ts.vec4(wpos, 1)).xyz
         lscoor = self.shadow.uncook(lspos)
 
         cur_idepth = self.shadow.fb.idepth_fixp(1 / lspos.z)
