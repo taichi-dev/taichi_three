@@ -23,9 +23,6 @@ class ScatterModel(ModelBase):
             def initialize_radius():
                 self.radius.fill(1.0)
 
-    def _init(self):
-        self.L2W.init()
-
     @ti.func
     def render(self, camera):
         for i in ti.grouped(self.pos):
