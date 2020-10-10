@@ -33,7 +33,7 @@ def plucker_bcoor(u, v, a, b, c):
 
 
 @ti.func
-def intersect_triangle(model, camera, I, orig, dir, face):
+def intersect_triangle(model, orig, dir, face):
     posa, posb, posc = model.pos[face[0, 0]], model.pos[face[1, 0]], model.pos[face[2, 0]]
     texa, texb, texc = model.tex[face[0, 1]], model.tex[face[1, 1]], model.tex[face[2, 1]]
     nrma, nrmb, nrmc = model.nrm[face[0, 2]], model.nrm[face[1, 2]], model.nrm[face[2, 2]]
@@ -46,8 +46,10 @@ def intersect_triangle(model, camera, I, orig, dir, face):
     nrmb = (L2C @ ts.vec4(nrmb, 0)).xyz
     nrmc = (L2C @ ts.vec4(nrmc, 0)).xyz
 
+    hit = 1e6
+    clr = ts.vec3(0.0)
     sa, sb, sc = plucker_bcoor(orig, orig + dir, posa, posb, posc)
-    if sa >= 0 and sb >= 0 and sc >= 0:
+    if (sa >= 0 and sb >= 0 and sc >= 0) or (sa <= 0 and sb <= 0 and sc <= 0):
         snorm = sa + sb + sc
         sa /= snorm
         sb /= snorm
@@ -55,8 +57,10 @@ def intersect_triangle(model, camera, I, orig, dir, face):
         pos = posa * sa + posb * sb + posc * sc
         tex = texa * sa + texb * sb + texc * sc
         nrm = nrma * sa + nrmb * sb + nrmc * sc
-        nrm = -nrm
-        camera.img[I].fill(nrm * 0.5 + 0.5)
+        hit = (orig - pos).norm()
+        orig, dir, clr = model.radiance(pos, dir, tex, nrm)
+
+    return hit, orig, dir, clr
 
 
 # http://www.opengl-tutorial.org/cn/intermediate-tutorials/tutorial-13-normal-mapping/

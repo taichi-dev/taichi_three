@@ -12,19 +12,23 @@ class RTCamera(Camera):
         self.N = self.res[0] * self.res[1]
         self.ro = ti.Vector.field(3, float, self.N)
         self.rd = ti.Vector.field(3, float, self.N)
+        self.rc = ti.Vector.field(3, float, self.N)
         self.rI = ti.Vector.field(2, int, self.N)
 
     @ti.kernel
-    def accumate(self):
-        self.scene.curr_camera = ti.static(self)
-        self.fb.clear_buffer()
-        self.scene.curr_camera = ti.static(None)
-
-    @ti.kernel
     def steprays(self):
-        for model in ti.static(self.scene.models):
-            for i in self.ro:
-                model.intersect(self, self.rI[i], self.ro[i], self.rd[i])
+        for i in self.ro:
+            hit = 1e6
+            orig = self.ro[i]
+            dir = self.rd[i]
+            clr = ts.vec3(0.0)
+            for model in ti.static(self.scene.models):
+                ihit, iorig, idir, iclr = model.intersect(self.ro[i], self.rd[i])
+                if ihit < hit:
+                    hit, orig, dir, clr = ihit, iorig + idir * 1e-4, idir, iclr
+            self.ro[i] = orig
+            self.rd[i] = dir
+            self.rc[i] *= clr
 
     @ti.kernel
     def loadrays(self):
@@ -33,10 +37,15 @@ class RTCamera(Camera):
             i = I.dot(ts.vec(1, self.res[0]))
             coor = ts.vec2((I.x - self.cx) / self.fx, (I.y - self.cy) / self.fy)
             orig, dir = self.generate(coor)
-            #print(i, orig, dir)
             self.ro[i] = orig
             self.rd[i] = dir
+            self.rc[i] = ts.vec3(1.0)
             self.rI[i] = I
+
+    @ti.kernel
+    def applyrays(self):
+        for i in self.ro:
+            self.img[self.rI[i]] = self.rc[i]
 
     @ti.func
     def generate(self, coor):

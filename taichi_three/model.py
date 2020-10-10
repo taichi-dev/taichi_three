@@ -46,9 +46,15 @@ class ModelLow(ModelBase):
             render_triangle(self, camera, self.faces[i])
 
     @ti.func
-    def intersect(self, camera, I, orig, dir):
+    def intersect(self, orig, dir):
+        hit = 1e6
+        sorig, sdir = orig, dir
+        clr = ts.vec3(0.0)
         for i in range(self.faces.shape[0]):
-            intersect_triangle(self, camera, I, orig, dir, self.faces[i])
+            ihit, iorig, idir, iclr = intersect_triangle(self, sorig, sdir, self.faces[i])
+            if ihit < hit:
+                hit, orig, dir, clr = ihit, iorig, idir, iclr
+        return hit, orig, dir, clr
 
     @classmethod
     def from_obj(cls, obj, texture=None, normtex=None):
@@ -111,11 +117,19 @@ class ModelLow(ModelBase):
         else:
             return default
 
-    def colorize(self, pos, texcoor, normal):
+    def make_shading(self, texcoor):
         opt = self.shading_type()
         opt.model = self
         for key in opt.parameters:
             setattr(opt, key, self.sample(key, texcoor, getattr(opt, key)))
+        return opt
+
+    def radiance(self, pos, indir, texcoor, normal):
+        opt = self.make_shading(texcoor)
+        return opt.radiance(pos, indir, normal)
+
+    def colorize(self, pos, texcoor, normal):
+        opt = self.make_shading(texcoor)
         return opt.colorize(pos, normal)
 
     @ti.func

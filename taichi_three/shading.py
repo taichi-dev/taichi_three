@@ -21,6 +21,11 @@ class Shading:
         return ts.mix(blue, orange, ti.sqrt(color))
 
     @ti.func
+    def radiance(self, pos, indir, normal):
+        outdir = indir
+        return pos, outdir, ts.vec3(1.0)
+
+    @ti.func
     def colorize(self, pos, normal):
         res = ts.vec3(0.0)
         viewdir = pos.normalized()
@@ -130,6 +135,17 @@ class CookTorrance(Shading):
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+
+    @ti.func
+    def radiance(self, pos, indir, normal):
+        outdir = ts.vec3(0.0)
+        clr = ts.vec3(0.0)
+        if ti.random() < self.emission:
+            clr = ts.vec3(1.0)
+        elif ti.random() < self.color:
+            clr = ts.vec3(1.0)
+            outdir = ts.normalize(ts.reflect(indir, normal.normalized()))
+        return pos, outdir, clr
 
     @ti.func
     def ischlick(self, cost):
