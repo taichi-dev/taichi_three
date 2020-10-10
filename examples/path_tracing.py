@@ -17,7 +17,7 @@ scene.add_model(light)
 camera = t3.RTCamera(res=(256, 256))
 scene.add_camera(camera)
 
-light.L2W[None] = t3.translate(0, 1.6, 0) @ t3.scale(0.2)
+light.L2W[None] = t3.translate(1.6, 0, 0) @ t3.scale(0.2)
 gui = ti.GUI('Model', camera.res)
 while gui.running:
     gui.get_event(None)

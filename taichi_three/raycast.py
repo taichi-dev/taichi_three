@@ -19,16 +19,15 @@ class RTCamera(Camera):
     def steprays(self):
         for i in self.ro:
             hit = 1e6
-            orig = self.ro[i]
-            dir = self.rd[i]
-            clr = ts.vec3(0.0)
-            for model in ti.static(self.scene.models):
-                ihit, iorig, idir, iclr = model.intersect(self.ro[i], self.rd[i])
-                if ihit < hit:
-                    hit, orig, dir, clr = ihit, iorig + idir * 1e-4, idir, iclr
-            self.ro[i] = orig
-            self.rd[i] = dir
-            self.rc[i] *= clr
+            orig, dir = self.ro[i], self.rd[i]
+            if self.rd[i].norm_sqr() >= 1e-3:
+                clr = ts.vec3(0.0)
+                for model in ti.static(self.scene.models):
+                    ihit, iorig, idir, iclr = model.intersect(self.ro[i], self.rd[i])
+                    if ihit < hit:
+                        hit, orig, dir, clr = ihit, iorig + idir * 1e-4, idir, iclr
+                self.ro[i], self.rd[i] = orig, dir
+                self.rc[i] *= clr
 
     @ti.kernel
     def loadrays(self):

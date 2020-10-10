@@ -57,8 +57,9 @@ def intersect_triangle(model, orig, dir, face):
         pos = posa * sa + posb * sb + posc * sc
         tex = texa * sa + texb * sb + texc * sc
         nrm = nrma * sa + nrmb * sb + nrmc * sc
-        hit = (orig - pos).norm()
-        orig, dir, clr = model.radiance(pos, dir, tex, nrm)
+        if dir.dot(pos - orig) > 1e-4:
+            hit = (pos - orig).norm()
+            orig, dir, clr = model.radiance(pos, dir, tex, nrm)
 
     return hit, orig, dir, clr
 
