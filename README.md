@@ -74,6 +74,7 @@ Notable changes:
 * Framebuffered texcoor - get model surface coordinate by mouse, see `examples/screen_to_texcoor.py`.
 * Separate camera control logic from `t3.Camera` to `t3.CameraCtl`.
 * Support `t3.AmbientLight` and ambient occulsion.
+* Set up the path tracing scheme.
 
 Minor fixes:
 * Fix an artifect in perspective mode due to texture coordinate interpolation.

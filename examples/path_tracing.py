@@ -16,6 +16,7 @@ light.add_uniform('color', 0.0)
 light.add_uniform('emission', 64.0)
 scene.add_model(light)
 camera = t3.RTCamera(res=res)
+camera.ctl = t3.CameraCtl(pos=[1, 0, -1])
 scene.add_camera(camera)
 accumator = t3.Accumator(camera.res)
 

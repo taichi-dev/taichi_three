@@ -11,7 +11,7 @@ class FrameBuffer:
         self.res = res or (512, 512)
         self.buffers = {}
         self.add_buffer('img', 3)
-        self.add_buffer('idepth', 0, int)
+        self.add_buffer('idepth', 0)
 
     @ti.func
     def idepth_fixp(self, z):
