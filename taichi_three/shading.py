@@ -120,6 +120,32 @@ class StdMtl(Shading):
         return strength
 
 
+class IdealRT(Shading):
+    emission = 0.0
+    diffuse = 1.0
+    specular = 0.0
+    emission_color = 1.0
+    diffuse_color = 1.0
+    specular_color = 1.0
+    parameters = ['emission', 'diffuse', 'specular', 'emission_color', 'diffuse_color', 'specular_color']
+
+    @ti.func
+    def radiance(self, pos, indir, normal):
+        outdir = ts.vec3(0.0)
+        clr = ts.vec3(0.0)
+        if ti.random() < self.emission:
+            clr = ts.vec3(self.emission_color)
+        elif ti.random() < self.specular:
+            clr = ts.vec3(self.specular_color)
+            outdir = ts.reflect(indir, normal)
+        elif ti.random() < self.diffuse:
+            clr = ts.vec3(self.diffuse_color)
+            outdir = ts.randUnit3D()
+            if outdir.dot(normal) < 0:
+                outdir = -outdir
+        return pos, outdir, clr
+
+
 # https://zhuanlan.zhihu.com/p/37639418
 class CookTorrance(Shading):
     color = 1.0
@@ -135,20 +161,6 @@ class CookTorrance(Shading):
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-
-    @ti.func
-    def radiance(self, pos, indir, normal):
-        outdir = ts.vec3(0.0)
-        clr = ts.vec3(0.0)
-        if ti.random() < self.emission:
-            clr = ts.vec3(1.0)
-        elif ti.random() < self.color:
-            clr = ts.vec3(1.0)
-            outdir = ts.reflect(indir, normal)
-            outdir = ts.randUnit3D()
-            if outdir.dot(normal) < 0:
-                outdir = -outdir
-        return pos, outdir, clr
 
     @ti.func
     def ischlick(self, cost):

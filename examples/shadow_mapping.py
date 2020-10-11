@@ -19,8 +19,8 @@ scene.add_shadow_camera(light.make_shadow_camera())
 scene.add_light(light)
 
 gui = ti.GUI('Model', camera.res)
-#gui2 = ti.GUI('Depth map', light.shadow.res)
-#gui2.fps_limit = None
+gui2 = ti.GUI('Depth map', light.shadow.res)
+gui2.fps_limit = None
 while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
@@ -29,6 +29,6 @@ while gui.running:
     scene.render_shadows()
     scene.render()
     gui.set_image(camera.img)
-    #gui2.set_image(light.shadow.fb['idepth'])
+    gui2.set_image(light.shadow.img)
     gui.show()
-    #gui2.show()
+    gui2.show()

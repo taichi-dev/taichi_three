@@ -154,7 +154,8 @@ def render_triangle(model, camera, face):
                     continue
 
                 clr = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
-                camera.fb.update(X, model.pixel_shader(*clr))
+                #camera.fb.update(X, model.pixel_shader(*clr))
+                camera.img[X].fill(1)
 
 
 @ti.func

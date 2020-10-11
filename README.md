@@ -74,7 +74,8 @@ Notable changes:
 * Framebuffered texcoor - get model surface coordinate by mouse, see `examples/screen_to_texcoor.py`.
 * Separate camera control logic from `t3.Camera` to `t3.CameraCtl`.
 * Support `t3.AmbientLight` and ambient occulsion.
-* Set up the path tracing scheme.
+* Set up the basis of path tracing scheme.
+* Shadow mapping is broken.
 
 Minor fixes:
 * Fix an artifect in perspective mode due to texture coordinate interpolation.
@@ -94,6 +95,7 @@ Minor fixes:
 * Fix color artifects on edges due to interpolation.
 * Fix shadow artifects on 90-deg faces.
 * Make camera buffer update less ad-hoc.
+* Support scaling in ORTHO mode.
 
 Major steps:
 * Standardize affine system - L2W, W2C, C2D.

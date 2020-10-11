@@ -14,8 +14,8 @@ class Accumator:
     @ti.kernel
     def accumate(self, src: ti.template()):
         self.count[None] += 1
+        alpha = max(1 / 256, 1 / self.count[None])
         for I in ti.grouped(self.buf):
-            alpha = 1 / self.count[None]
             self.buf[I] = self.buf[I] * (1 - alpha) + src[I] * alpha
 
     @ti.kernel
@@ -23,6 +23,26 @@ class Accumator:
         self.count[None] = 0
         for I in ti.grouped(self.buf):
             self.buf[I] *= 0
+
+    @ti.kernel
+    def denoise(self, alpha: ti.template(), throttle: ti.template()):
+        ti.static_print('denoise', alpha)
+        for I in ti.grouped(self.buf):
+            center = ts.clamp(self.buf[I])
+            around = ts.clamp((self.buf[I + ts.D.x_] + self.buf[I + ts.D.X_] + self.buf[I + ts.D._x] + self.buf[I + ts.D._X]) / 4)
+            diff = (center - around).norm_sqr()
+            if diff < throttle**2:
+                self.buf[I] = center * (1 - alpha) + around * alpha
+
+    def render(self, camera, depth, baseres=3, regrate=128):
+        rate = max(0, baseres - self.count[None] // regrate)
+        region = camera.res[0] // 2**rate, camera.res[1] // 2**rate
+        camera.loadrays((0, 0), region, 2**rate)
+        for step in range(depth):
+            camera.steprays()
+        camera.applyrays()
+        self.accumate(camera.img)
+        self.denoise(0.5 * (rate / baseres), 0.5)
 
 
 class RTCamera(Camera):
@@ -35,9 +55,13 @@ class RTCamera(Camera):
         self.rc = ti.Vector.field(3, float, self.N)
         self.rI = ti.Vector.field(2, int, self.N)
 
-    @ti.kernel
     def steprays(self):
-        for i in self.ro:
+        nrays = self.region[0] * self.region[1]
+        self._steprays(nrays)
+
+    @ti.kernel
+    def _steprays(self, nrays: ti.template()):
+        for i in range(nrays):
             hit = 1e6
             orig, dir = self.ro[i], self.rd[i]
             if self.rd[i].norm_sqr() >= 1e-3:
@@ -49,22 +73,39 @@ class RTCamera(Camera):
                 self.ro[i], self.rd[i] = orig, dir
                 self.rc[i] *= clr
 
+    def loadrays(self, topleft=None, region=None, skipstep=None):
+        self.topleft = topleft or (0, 0)
+        self.region = region or self.res
+        self.skipstep = skipstep or 1
+        self._loadrays(self.topleft, self.region, self.skipstep)
+
     @ti.kernel
-    def loadrays(self):
-        self.fb.clear_buffer()
-        for I in ti.grouped(ti.ndrange(*self.res)):
-            i = I.dot(ts.vec(1, self.res[0]))
+    def _loadrays(self, topleft: ti.template(), region: ti.template(), skipstep: ti.template()):
+        ti.static_print('loadrays:', topleft, region, skipstep)
+        for II in ti.grouped(ti.ndrange(*region)):
+            I = II * skipstep + topleft
+            for J in ti.static(ti.grouped(ti.ndrange(skipstep, skipstep))):
+                self.img[I + J] *= 0
+        for II in ti.grouped(ti.ndrange(*region)):
+            i = II.dot(ts.vec(1, region[0]))
+            I = II * skipstep + topleft + skipstep / 2
             coor = ts.vec2((I.x - self.cx) / self.fx, (I.y - self.cy) / self.fy)
             orig, dir = self.generate(coor)
             self.ro[i] = orig
             self.rd[i] = dir
             self.rc[i] = ts.vec3(1.0)
-            self.rI[i] = I
+            self.rI[i] = II
+
+    def applyrays(self):
+        nrays = self.region[0] * self.region[1]
+        self._applyrays(nrays, self.topleft, self.skipstep)
 
     @ti.kernel
-    def applyrays(self):
-        for i in self.ro:
-            self.img[self.rI[i]] = self.rc[i]
+    def _applyrays(self, nrays: ti.template(), topleft: ti.template(), skipstep: ti.template()):
+        for i in range(nrays):
+            I = self.rI[i] * skipstep + topleft
+            for J in ti.static(ti.grouped(ti.ndrange(skipstep, skipstep))):
+                self.img[I + J] = self.rc[i]
 
     @ti.func
     def generate(self, coor):

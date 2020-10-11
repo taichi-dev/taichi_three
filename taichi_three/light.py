@@ -69,11 +69,11 @@ class Light:
     def set_view(self, camera):
         self.viewdir[None] = (camera.L2W[None].inverse() @ ts.vec4(self.dir[None], 0)).xyz
 
-    def make_shadow_camera(self, dis=10, fov=60, **kwargs):
-        shadow = Camera()
+    def make_shadow_camera(self, res=(512, 512), dis=10, fov=60, **kwargs):
+        shadow = Camera(res=res)
         shadow.fov = math.radians(fov)
-        shadow.ctl = CameraCtl(pos=(self.dir[None].value * dis).entries, **kwargs)
-        @ti.materialize_callback
+        #shadow.ctl = CameraCtl(pos=(-self.dir[None].value * dis).entries, **kwargs)
+        #@ti.materialize_callback
         def init_camera():
             shadow.ctl.apply(shadow)
         shadow.type = shadow.ORTHO
