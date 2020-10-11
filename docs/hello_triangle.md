@@ -16,26 +16,29 @@ scene = t3.Scene()
 camera = t3.Camera()
 scene.add_camera(camera)
 
-model = t3.SimpleModel(faces_n=1, pos_n=3)
+model = t3.SimpleModel()
 scene.add_model(model)
 ```
 
-The `faces_n` indicates how much faces the model have, the `pos_n` indicates how much vertices the model have.
 Finally, don't forget to **add** the model and camera to scene.
 
 ## Loading mesh data
 
-In the world of Taichi THREE (and many other modern rendering pipelines), a model is composed of many pieces of triangle faces, and their vertices.
+In the world of modern graphics, a **model** is composed of many pieces of triangle faces, and their vertices.
 Each triangle face has 3 vertices at its corner.
 
-The positions, colors, and other properties of vertices are stored separately in the **vertex buffer**.
-The vertex-face corespondence for each face, is composed of 3 indices into vertex buffer.
+To draw a triangle, we need to specify the **position** of its vertices, in the format of (X, Y, Z) coordinates.
+
+In this case, we want to draw a triangle `ABC` with its vertices at coordinates `A(0, 0.5, 0)`, `B(0.5, -0.5, 0)`, `C(-0.5, -0.5, 0)`.
+
+We can load vertices by using our OpenGL-alike API:
 
 ```py
-model.pos[0] = [+0.0, +0.5, 0.0]  # top
-model.pos[1] = [-0.5, -0.5, 0.0]  # right
-model.pos[2] = [+0.5, -0.5, 0.0]  # left
-model.faces[0] = [0, 1, 2]        # each triangle face contains 3 indices into its vertices
+model.gl.Begin('GL_TRIANGLES')       # begin drawing triangle(s)
+model.gl.Vertex(+0.0, +0.5, 0.0)     # A
+model.gl.Vertex(+0.5, -0.5, 0.0)     # B
+model.gl.Vertex(-0.5, -0.5, 0.0)     # C
+model.gl.End()
 ```
 
 ## Visualizing the scene
@@ -56,28 +59,6 @@ Till now running the code successfully show gives you an white triangle in the m
 
 ![0_1](0_1.gif)
 
-## Specifying vertex colors
-
-Mesh vertices could also has properties. The most commonly used property is, of course, color.
-
-To specify a color for each vertex, simply assign some RGB values to the `model.clr` field:
-
-```py
-model.pos[0] = [+0.0, +0.5, 0.0]
-model.pos[1] = [-0.5, -0.5, 0.0]
-model.pos[2] = [+0.5, -0.5, 0.0]
-model.clr[0] = [1.0, 0.0, 0.0]    # red
-model.clr[1] = [0.0, 1.0, 0.0]    # green
-model.clr[2] = [0.0, 0.0, 1.0]    # blue
-model.faces[0] = [0, 1, 2]
-```
-
-Then the color of each pixel in the triangle will then be a **interpolation** of its 3 vertices, via its barycentric coordinate.
-
-Run it and you should see a colorful triangle as shown below:
-
-![0_2](0_2.gif)
-
 ## Controling the camera with mouse
 
 We can also move the camera by mouse. To do so, we'll need to capture some mouse events in our GUI loop, and feed it into the `camera`:
@@ -85,7 +66,7 @@ We can also move the camera by mouse. To do so, we'll need to capture some mouse
 ```py
 gui = t3.GUI('Hello Triangle')
 while gui.running:
-    gui.get_event(None)  # receive mouse and key events from GUI
+    gui.get_event(None)     # receive mouse and key events from GUI
     camera.from_mouse(gui)  # let the camera to process the mouse events
     scene.render()
     gui.set_image(camera.img)
@@ -100,7 +81,7 @@ Feel like moving in 3D, right? Exactly what we want!
 
 Turning the camera around using LMB, you may already noticed that the triangle is **invisible** when we moved to its back.
 
-That's because Taichi THREE use the **face culling policy**: a face is only visible when the vertices are **clockwise**.
+That's because Taichi THREE enforces the **face culling policy**: a face is only visible when the vertices are **clockwise**.
 Why do we set this strange limitation? Well, you'll know in the later sections.
 
 ![face_culling](http://learnopengl.com/img/advanced/faceculling_windingorder.png)
@@ -113,21 +94,53 @@ For example, we used `[0, 1, 2]` as vertex indices, so the ordered vertices are:
 Looking from -Z direction, they are clockwise (therfore visible).
 Looking from +Z direction, they are counter-clockwise (therfore invisible).
 
-## Make both side visible
-
-The face culling can't be **disabled** in Taichi THREE for simplicity and performance.
-
-So in order to make both side visible, we'd create two faces, one face towards -Z, another face towards +Z:
+So if you flip the vertex order to ACB, you'll find the triangle only visible from the back (by moving camera around):
 
 ```py
-model = t3.SimpleModel(faces_n=2, pos_n=3)
-
-...
-
-model.faces[0] = [0, 1, 2]  # looks clockwise from -Z
-model.faces[1] = [0, 2, 1]  # looks clockwise from +Z
+model.gl.Begin('GL_TRIANGLES')       # begin drawing triangles
+model.gl.Vertex(+0.0, +0.5, 0.0)     # A
+model.gl.Vertex(-0.5, -0.5, 0.0)     # C
+model.gl.Vertex(+0.5, -0.5, 0.0)     # B
+model.gl.End()                       # update the draw buffer
 ```
 
+## Specifying vertex colors
+
+Mesh vertices could also has properties. The most commonly used property is, of course, color.
+
+To specify a color for the triangle, simply call `model.gl.glColor` with RGB values before all vertices:
+
+```py
+model.gl.Begin('GL_TRIANGLES')       # begin drawing triangles
+model.gl.Color(1.0, 0.0, 0.0)        # RGB (255, 0, 0), aka red
+model.gl.Vertex(+0.0, +0.5, 0.0)     # A
+model.gl.Vertex(+0.5, -0.5, 0.0)     # B
+model.gl.Vertex(-0.5, -0.5, 0.0)     # C
+model.gl.End()                       # update the draw buffer
+```
+
+Then you should get a red triangle now.
+
+## Color interpolation
+
+More interestingly, you can specify a different color for each vertices:
+
+```py
+model.gl.Begin('GL_TRIANGLES')       # begin drawing triangles
+model.gl.Color(1.0, 0.0, 0.0)        # red
+model.gl.Vertex(+0.0, +0.5, 0.0)     # A
+model.gl.Color(0.0, 1.0, 0.0)        # green
+model.gl.Vertex(+0.5, -0.5, 0.0)     # B
+model.gl.Color(0.0, 0.0, 1.0)        # blue
+model.gl.Vertex(-0.5, -0.5, 0.0)     # C
+model.gl.End()                       # update the draw buffer
+```
+
+Then the color of each pixel in the triangle will then be a **interpolation** of its 3 vertices, via its barycentric coordinate:
+
+![0_2](0_2.gif)
+
+Congrats!
 
 ## Appendix
 

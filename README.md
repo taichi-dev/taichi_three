@@ -86,6 +86,10 @@ Other updates:
 * Clip the triangle bounding box to prevent drawing outside the camera.
 
 
+New in latest
+
+
+
 TODO list
 ---------
 

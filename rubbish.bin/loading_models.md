@@ -59,18 +59,11 @@ array([[0, 4, 6],
 You may then want to load these data into your `t3.SimpleModel` for displaying ``cube.obj``.
 You may want to use a for-loop for assigning properties to each vertex/face:
 
-```py
-for i in range(len(obj['vp'])):
-    model.pos[i] = obj['vp'][i]
-for i in range(len(obj['f'])):
-    model.faces[i] = obj['f'][i, :, 0]
-```
-
 It works but become low-effcient when the model is huge. Use ``from_numpy`` to ease that concern:
 
 ```py
-model.pos.from_numpy(obj['vp']
-model.faces.from_numpy(obj['f'][:, :, 0])
+model.set_vertices(obj['vp'])
+model.set_triangles(obj['f'][:, :, 0])
 ```
 
 ## To sum up

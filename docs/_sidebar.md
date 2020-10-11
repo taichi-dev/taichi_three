@@ -2,7 +2,6 @@
 
   - [Installation](installation.md)
   - [Hello triangle](hello_triangle.md)
-  - [Loading models](loading_models.md)
   - [Shading models](shading_models.md)
   - [Binding textures](binding_textures.md)
   ----

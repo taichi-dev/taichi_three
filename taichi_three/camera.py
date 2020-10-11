@@ -7,8 +7,15 @@ import math
 
 @ti.data_oriented
 class FrameBuffer:
-    def __init__(self, res=None):
+    def __init__(self, res=None, taa=False):
         self.res = res or (512, 512)
+        self.n_taa = (taa if not isinstance(taa, bool) else 9) if taa else 0
+        if self.n_taa:
+            assert self.n_taa >= 2
+            self.taa = ti.Vector.field(3, float, (self.n_taa, *res))
+            self.itaa = ti.field(int, ())
+            self.ntaa = ti.field(int, ())
+
         self.buffers = {}
         self.add_buffer('img', 3)
         self.add_buffer('idepth', 0)
@@ -32,9 +39,20 @@ class FrameBuffer:
             buf = ti.Vector.field(dim, dtype, self.res)
         self.buffers[name] = buf
 
+    @subscriptable
+    @ti.func
+    def _taaimg(self, i, j):
+        return self.taa[self.itaa[None], i, j]
+
+    @property
+    def img(self):
+        return self.buffers['img']
+
     def __getitem__(self, name):
         if isinstance(name, tuple):
             name = name[0]
+        if self.n_taa and name == 'img':
+            return self._taaimg
         if name in self.buffers:
             return self.buffers[name]
         else:
@@ -54,9 +72,27 @@ class FrameBuffer:
 
     @ti.func
     def clear_buffer(self):
-        for I in ti.grouped(next(iter(self.buffers.values()))):
-            for buf in ti.static(self.buffers.values()):
-                buf[I] *= 0
+        self.ntaa[None] = min(self.n_taa, self.ntaa[None] + 1)
+        self.itaa[None] = (self.itaa[None] + 1) % self.n_taa
+        for I in ti.grouped(self.img):
+            for k in ti.static(self.buffers.keys()):
+                self[k][I] *= 0
+
+    @ti.kernel
+    def flush_taa(self):
+        if ti.static(self.n_taa):
+            self.ntaa[None] = 0
+            self.itaa[None] = 0
+            for I in ti.grouped(self.img):
+                r = ts.vec3(0.0)
+                for i in ti.static(range(self.n_taa)):
+                    self.taa[i, I] *= 0
+
+    @ti.func
+    def update_buffer(self):
+        if ti.static(self.n_taa):
+            for I in ti.grouped(self.img):
+                self.img[I] = sum(self.taa[i, I] for i in range(self.n_taa)) / self.ntaa[None]
 
 
 @ti.data_oriented
@@ -65,9 +101,9 @@ class Camera:
     TAN_FOV = 'Tangent Perspective' # rectilinear perspective
     COS_FOV = 'Cosine Perspective' # curvilinear perspective, see en.wikipedia.org/wiki/Curvilinear_perspective
 
-    def __init__(self, res=None):
+    def __init__(self, res=None, *args, **kwargs):
         self.res = res or (512, 512)
-        self.fb = FrameBuffer(self.res)
+        self.fb = FrameBuffer(self.res, *args, **kwargs)
         self.L2W = ti.Matrix.field(4, 4, float, ())
         self.intrinsic = ti.Matrix.field(3, 3, float, ())
         self.type = self.TAN_FOV
@@ -82,6 +118,10 @@ class Camera:
         self.ctl = CameraCtl()
 
         @ti.materialize_callback
+        def init_camera_ctl():
+            self.ctl.apply(self)
+
+        @ti.materialize_callback
         @ti.kernel
         def init_intrinsic():
             # TODO: intrinsic as 3x3 projection matrix?
@@ -93,7 +133,9 @@ class Camera:
 
     def from_mouse(self, gui):
         changed = self.ctl.from_mouse(gui)
-        self.ctl.apply(self)
+        if changed:
+            self.ctl.apply(self)
+            self.fb.flush_taa()
         return changed
 
     @ti.func
@@ -115,6 +157,8 @@ class Camera:
         else:
             ti.static_print('Warning: no models')
 
+        self.fb.update_buffer()
+
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
         # see http://ais.informatik.uni-freiburg.de/teaching/ws09/robotics2/pdfs/rob2-08-camera-calibration.pdf
         self.fx = fx or self.fx
@@ -124,7 +168,7 @@ class Camera:
 
     @property
     def img(self):
-        return self.fb['img']
+        return self.fb.img
 
     @ti.func
     def cook(self, pos, translate=True):

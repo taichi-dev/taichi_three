@@ -81,6 +81,12 @@ def compute_tangent(dp1, dp2, duv1, duv2):
     return T, B
 
 
+TAA_SHAKES = [(0, 0),
+    (1, 0), (0, -1), (-1, 0), (0, 1),
+    (1, 1), (-1, 1), (-1, -1), (1, -1),
+    ]
+
+
 @ti.func
 def render_triangle(model, camera, face):
     scene = model.scene
@@ -121,18 +127,24 @@ def render_triangle(model, camera, face):
         B = camera.uncook(posb)
         C = camera.uncook(posc)
         scr_norm = ts.cross(A - C, B - A)
-        if scr_norm != 0:  # degenerate to line if zero
+        if scr_norm != 0:  # degenerate to 'line' if zero
             B_A = (B - A) / scr_norm
             A_C = (A - C) / scr_norm
+
+            shake = ts.vec2(0.0)
+            if ti.static(camera.fb.n_taa):
+                for i, s in ti.static(enumerate(map(ti.Vector, TAA_SHAKES[:camera.fb.n_taa]))):
+                    if camera.fb.itaa[None] == i:
+                        shake = s * 0.5
 
             # screen space bounding box
             M = int(ti.floor(min(A, B, C) - 1))
             N = int(ti.ceil(max(A, B, C) + 1))
-            M = ts.clamp(M, 0, ti.Vector(camera.res))
-            N = ts.clamp(N, 0, ti.Vector(camera.res))
+            M = ts.clamp(M, 0, ti.Vector(camera.fb.res))
+            N = ts.clamp(N, 0, ti.Vector(camera.fb.res))
             for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
                 # barycentric coordinates using the area method
-                X_A = X - A
+                X_A = X - A + shake
                 w_C = ts.cross(B_A, X_A)
                 w_B = ts.cross(A_C, X_A)
                 w_A = 1 - w_C - w_B

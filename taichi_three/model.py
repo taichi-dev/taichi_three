@@ -31,10 +31,14 @@ class ModelLow(ModelBase):
     def __init__(self, faces_n, pos_n, tex_n, nrm_n):
         super().__init__()
 
-        self.faces = ti.Matrix.field(3, 3, int, faces_n)
-        self.pos = ti.Vector.field(3, float, pos_n)
-        self.tex = ti.Vector.field(2, float, tex_n)
-        self.nrm = ti.Vector.field(3, float, nrm_n)
+        if not hasattr(self, 'faces'):
+            self.faces = ti.Matrix.field(3, 3, int, faces_n)
+        if not hasattr(self, 'pos'):
+            self.pos = ti.Vector.field(3, float, pos_n)
+        if not hasattr(self, 'tex'):
+            self.tex = ti.Vector.field(2, float, tex_n)
+        if not hasattr(self, 'nrm'):
+            self.nrm = ti.Vector.field(3, float, nrm_n)
 
         self.textures = {}
         self.shading_type = CookTorrance
@@ -141,43 +145,6 @@ class ModelLow(ModelBase):
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
         color = self.colorize(pos, texcoor, normal)
         return pos, color, texcoor, normal
-
-
-class SimpleModel(ModelBase):
-    def __init__(self, faces_n, pos_n):
-        super().__init__()
-
-        self.pos = ti.Vector.field(3, float, pos_n)
-        self.clr = ti.Vector.field(3, float, pos_n)
-        self.faces = ti.Vector.field(3, int, faces_n)
-
-        @ti.materialize_callback
-        def initialize_clr():
-            self.clr.fill(1.0)
-
-    @ti.func
-    def render(self, camera):
-        for i in ti.grouped(self.faces):
-            face = ti.Matrix.cols([self.faces[i], self.faces[i], ts.vec3(0)])
-            render_triangle(self, camera, face)
-
-    @subscriptable
-    @ti.func
-    def tex(self, I):
-        return self.clr[I]
-
-    @subscriptable
-    def nrm(self, I):
-        return ts.vec3(0.0, 0.0, -1.0)
-
-    @ti.func
-    def pixel_shader(self, pos, color):
-        return dict(img=color, pos=pos)
-
-    @ti.func
-    def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
-        color = texcoor
-        return pos, color
 
 
 class Model(ModelLow):
