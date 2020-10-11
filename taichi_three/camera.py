@@ -72,8 +72,9 @@ class FrameBuffer:
 
     @ti.func
     def clear_buffer(self):
-        self.ntaa[None] = min(self.n_taa, self.ntaa[None] + 1)
-        self.itaa[None] = (self.itaa[None] + 1) % self.n_taa
+        if ti.static(self.n_taa):
+            self.ntaa[None] = min(self.n_taa, self.ntaa[None] + 1)
+            self.itaa[None] = (self.itaa[None] + 1) % self.n_taa
         for I in ti.grouped(self.img):
             for k in ti.static(self.buffers.keys()):
                 self[k][I] *= 0

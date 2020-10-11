@@ -18,7 +18,6 @@ while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     camera.from_mouse(gui)
-    #model.L2W.from_mouse(gui)
     scene.render()
     gui.set_image(camera.img)
     gui.show()

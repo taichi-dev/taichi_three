@@ -10,6 +10,7 @@ __author__ = '彭于斌 <1931127624@qq.com>'
 
 import taichi as ti
 import taichi_glsl as ts
+import numpy as np
 
 print(f'[Tai3D] version {".".join(map(str, __version__))}')
 print(f'[Tai3D] Inputs are welcomed at https://github.com/taichi-dev/taichi_three')
@@ -29,5 +30,7 @@ print(f'[Tai3D] Camera control hints: LMB to orbit, MMB to move, RMB to scale')
 from taichi import GUI, Vector, Matrix, kernel, func, random, init, reset, imread, imwrite, cpu, gpu
 from taichi_glsl import sin, cos, tan, asin, acos, atan, bilerp, vec, vec2, vec3, vec4, isnan
 from taichi_glsl import clamp, smoothstep, mix, sign, floor, ceil, fract, reflect, refract
+from math import radians, degrees, pi, tau
+from time import time as get_time
 
 ti.reset()

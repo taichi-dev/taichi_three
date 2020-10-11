@@ -173,6 +173,8 @@ class Main:
                 action='store_true', help='Reset normal vectors to flat')
         parser.add_argument('-S', '--showhints',
                 action='store_true', help='Show information about pixel under cursor')
+        parser.add_argument('-T', '--taa', default=True,
+                action='store_true', help='Enable temporal anti-aliasing')
         parser.add_argument('-t', '--texture',
                 type=str, help='Path to texture to bind')
         parser.add_argument('-n', '--normtex',
@@ -192,8 +194,10 @@ class Main:
         ti.init(getattr(ti, args.arch))
 
         scene = t3.Scene()
-        obj = t3.readobj(args.filename, scale=args.scale)
+        obj = t3.readobj(args.filename, scale=args.scale if args.scale != 0 else 1)
         t3.objflipaxis(obj, args.flipx, args.flipy, args.flipz)
+        if args.scale == 0:
+            t3.objautoscale(obj)
         if args.flipface:
             t3.objflipface(obj)
         if args.flipnorm:
@@ -213,7 +217,7 @@ class Main:
         if args.roughness is not None:
             model.add_texture('roughness', ti.imread(args.roughness))
         scene.add_model(model)
-        camera = t3.Camera(res=(args.resx, args.resy))
+        camera = t3.Camera(res=(args.resx, args.resy), taa=args.taa)
         if args.showhints:
             camera.fb.add_buffer('pos', 3)
             camera.fb.add_buffer('texcoor', 2)

@@ -76,15 +76,15 @@ def read_OBJ(path, scale=1):
         # a field should look like '5/1/1'
         # for vertex/vertex UV coords/vertex Normal  (indexes number in the list)
         # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
-        indices = [[int(_) - 1 for _ in field.split('/')] for field in fields]
+        indices = [[int(_) - 1 if _ else 0 for _ in field.split('/')] for field in fields]
 
         _tri_append(faces, indices)
 
     ret = {}
-    ret['vp'] = None if len(vp) == 0 else np.array(vp).astype(np.float32) * scale
-    ret['vt'] = None if len(vt) == 0 else np.array(vt).astype(np.float32)
-    ret['vn'] = None if len(vn) == 0 else np.array(vn).astype(np.float32)
-    ret['f'] = None if len(faces) == 0 else np.array(faces).astype(np.int32)
+    ret['vp'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vp) == 0 else np.array(vp, dtype=np.float32) * scale
+    ret['vt'] = np.array([[0, 0]], dtype=np.float32) if len(vt) == 0 else np.array(vt, dtype=np.float32)
+    ret['vn'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vn) == 0 else np.array(vn, dtype=np.float32)
+    ret['f'] = np.zeros((1, 3, 3), dtype=np.float32) if len(faces) == 0 else np.array(faces, dtype=np.int32)
     return ret
 
 

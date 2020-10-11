@@ -86,7 +86,14 @@ Other updates:
 * Clip the triangle bounding box to prevent drawing outside the camera.
 
 
-New in latest
+New in latest master
+--------------------
+
+Notable changes:
+* Support Temporal Anti-Aliasing (TAA), use `t3.Camera(taa=True)` to enable it.
+
+Minor updates:
+* Add `t3.objmerge`, `t3.objbreakdown` and `t3.objautoscale` for OBJ editing helpers.
 
 
 
@@ -108,14 +115,12 @@ Major steps:
 * Support `t3.CutoffLight` for light cones.
 
 Ambitions:
-* Support anti-aliasing.
 * Use a node system for materials.
 * Path tracing scheme, e.g. cornell box.
 * Support image-based lighting and environment maps (skybox).
 * Support deferred shading and SSAO.
 * Support screen-space reflection.
 * Differentiable rendering (#18).
-
 
 
 Help
