@@ -13,8 +13,8 @@ scene.add_model(model)
 
 gui = t3.GUI('Shading Models')
 while gui.running:
-    scene.render()
     gui.get_event(None)
     camera.from_mouse(gui)
+    scene.render()
     gui.set_image(camera.img)
     gui.show()

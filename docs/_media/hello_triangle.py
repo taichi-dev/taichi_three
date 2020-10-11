@@ -18,8 +18,8 @@ model.gl.End()
 
 gui = t3.GUI('Hello Triangle')
 while gui.running:
-    scene.render()
     gui.get_event(None)
     camera.from_mouse(gui)
+    scene.render()
     gui.set_image(camera.img)
     gui.show()
