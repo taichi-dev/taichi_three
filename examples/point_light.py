@@ -16,7 +16,7 @@ camera.ctl = t3.CameraCtl(pos=[0, 1, 1])
 scene.add_camera(camera)
 light = t3.PointLight(pos=[0, 1, 0])
 scene.add_light(light)
-ambient = t3.AmbientLight(0.5)
+ambient = t3.AmbientLight(0.2)
 scene.add_light(ambient)
 
 gui = ti.GUI('Model', camera.res)
