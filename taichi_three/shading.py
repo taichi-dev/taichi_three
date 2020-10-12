@@ -9,8 +9,51 @@ EPS = 1e-4
 
 
 @ti.data_oriented
+class Material:
+    def __init__(self, shader):
+        self.shader = shader
+
+    def specify_inputs(self, **kwargs):
+        Material.inputs = kwargs
+        return self
+    
+    def __enter__(self):
+        assert hasattr(Material, 'inputs')
+        return self.shader
+
+    def __exit__(self, type, val, tb):
+        del Material.inputs
+
+
+@ti.data_oriented
+class Input:
+    def __init__(self, name):
+        self.name = name
+
+    def get(self):
+        assert hasattr(Material, 'inputs')
+        return Material.inputs[self.name]
+
+
+@ti.data_oriented
 class Shading:
     use_postp = False
+
+    default_inputs = dict(
+        pos=Input('pos'),
+        texcoor=Input('texcoor'),
+        normal=Input('normal'),
+        model=Input('model'),
+    )
+
+    def __init__(self, **kwargs):
+        self.params = dict(self.get_default_params())
+        self.params.update(self.default_inputs)
+        self.params.update(kwargs)
+
+    @staticmethod
+    def get_default_params():
+        raise NotImplementedError
 
     @ti.func
     def post_process(self, color):
@@ -26,7 +69,9 @@ class Shading:
         return pos, outdir, ts.vec3(1.0)
 
     @ti.func
-    def colorize(self, pos, normal):
+    def colorize(self):
+        pos = self.pos
+        normal = self.normal
         res = ts.vec3(0.0)
         viewdir = pos.normalized()
         wpos = (self.model.scene.cameras[-1].L2W @ ts.vec4(pos, 1)).xyz  # TODO: get curr camera?
@@ -148,19 +193,28 @@ class IdealRT(Shading):
 
 # https://zhuanlan.zhihu.com/p/37639418
 class CookTorrance(Shading):
-    color = 1.0
-    ambient = 1.0
-    emission = 0.0
-    roughness = 0.3
-    metallic = 0.0
-    specular = 0.04
-    kd = 1.0
-    ks = 1.0
 
-    parameters = ['color', 'ambient', 'emission', 'roughness', 'metallic']
+    @staticmethod
+    def get_default_params():
+        return dict(
+            color = Constant(1.0),
+            ambient = Constant(1.0),
+            emission = Constant(0.0),
+            roughness = Constant(0.3),
+            metallic = Constant(0.0),
+            specular = Constant(0.04),
+            kd = Constant(1.0),
+            ks = Constant(1.0),
+            )
 
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+    def __enter__(self):
+        for k, v in self.params.items():
+            v = v.get()
+            setattr(self, k, v)
+
+    def __exit__(self, type, val, tb):
+        for k, v in self.params.items():
+            delattr(self, k)
 
     @ti.func
     def ischlick(self, cost):
@@ -195,90 +249,63 @@ class CookTorrance(Shading):
         return self.emission
 
 
-# References at https://learnopengl.com/PBR/Theory
-# Borrowed from https://github.com/victoriacity/taichimd/blob/1dba9dd825cea33f468ed8516b7e2dc6b8995c41/taichimd/graphics.py#L409
-# All credits by @victoriacity
-class VictoriaCookTorrance(Shading):
-    eps = EPS
+@ti.data_oriented
+class Constant:
+    def __init__(self, value):
+        self.value = value
 
-    specular = 0.6
-    kd = 1.6
-    ks = 2.0
-    roughness = 0.6
-    metallic = 0.0
+    def get(self):
+        return self.value
 
-    '''
-    Cook-Torrance BRDF with an Lambertian factor.
-    Lo(p, w0)=\int f_c*Li(p, wi)(n.wi)dwi where
-    f_c = k_d*f_lambert * k_s*f_cook-torrance
-    For finite point lights, the integration is evaluated as a
-    discrete sum.
-    '''
-
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-
-    '''
-    Calculates the Cook-Torrance BRDF as
-    f_lambert = color / pi
-    k_s * f_specular = D * F * G / (4 * (wo.n) * (wi.n))
-    '''
+@ti.data_oriented
+class Uniform:
+    def __init__(self, dim, dtype, initial=None):
+        self.value = create_field(dim, dtype, (), initial)
 
     @ti.func
-    def brdf(self, normal, viewdir, lightdir, color):
-        halfway = ts.normalize(viewdir + lightdir)
-        ndotv = max(ti.dot(viewdir, normal), self.eps)
-        ndotl = max(ti.dot(lightdir, normal), self.eps)
-        diffuse = self.kd * color / math.pi
-        specular = self.microfacet(normal, halfway)\
-                    * self.frensel(viewdir, halfway, color)\
-                    * self.geometry(ndotv, ndotl)
-        specular /= 4 * ndotv * ndotl
-        return diffuse + specular
+    def get(self):
+        return self.value[None]
 
-    '''
-    Trowbridge-Reitz GGX microfacet distribution
-    '''
+    def fill(self, value):
+        self.value[None] = value
+
+@ti.data_oriented
+class Texture:
+    def __init__(self, texture, scale=None, type='color'):
+        # convert UInt8 into Float32 for storage:
+        if texture.dtype == np.uint8:
+            texture = texture.astype(np.float32) / 255
+        elif texture.dtype == np.float64:
+            texture = texture.astype(np.float32)
+
+        # normal maps are stored as [-1, 1] for maximizing FP precision:
+        if type == 'normal':
+            texture = texture * 2 - 1
+
+        if len(texture.shape) == 3 and texture.shape[2] == 1:
+            texture = texture.reshape(texture.shape[:2])
+
+        # either RGB or greyscale
+        if len(texture.shape) == 2:
+            self.texture = ti.field(float, texture.shape)
+
+        else:
+            assert len(texture.shape) == 3, texture.shape
+            texture = texture[:, :, :3]
+            assert texture.shape[2] == 3, texture.shape
+            if scale is not None:
+                texture *= np.array(scale)[None, None, ...]
+
+            self.texture = ti.Vector.field(3, float, texture.shape[:2])
+
+        @ti.materialize_callback
+        def init_texture():
+            self.texture.from_numpy(texture)
+
     @ti.func
-    def microfacet(self, normal, halfway):
-        alpha = self.roughness
-        ndoth = ts.dot(normal, halfway)
-        ggx = alpha**2 / math.pi
-        ggx /= (ndoth**2 * (alpha**2 - 1.0) + 1.0)**2
-        return ggx
+    def get(self):
+        texcoor = self.params['texcoor'].get()
+        return ts.bilerp(self.texture, texcoor * ts.vec(*self.texture.shape))
 
-    '''
-    Fresnel-Schlick approximation
-    '''
-    @ti.func
-    def frensel(self, view, halfway, color):
-        f0 = ts.mix(self.specular, color, self.metallic)
-        hdotv = ts.clamp(ts.dot(halfway, view), 0, 1)
-        return (f0 + (1 - f0) * (1 - hdotv)**5) * self.ks
-
-    '''
-    Smith's method with Schlick-GGX
-    '''
-    @ti.func
-    def geometry(self, ndotv, ndotl):
-        k = (self.roughness + 1)**2 / 8
-        geom = ndotv * ndotl \
-            / (ndotv * (1 - k) + k) / (ndotl * (1 - k) + k)
-        return max(0, geom)
-
-
-    '''
-    Compared with the basic lambertian-phong shading,
-    the rendering function also takes the surface color as parameter.
-    Also note that the viewdir points from the camera to the object
-    so it needs to be inverted when calculating BRDF.
-    '''
-    @ti.func
-    def render_func(self, pos, normal, viewdir, light, color):
-        lightdir = light.get_dir(pos)
-        costheta = max(0, ts.dot(normal, lightdir))
-        l_out = ts.vec3(0.0)
-        if costheta > 0:
-            l_out = self.brdf(normal, -viewdir, lightdir, color) \
-                 * costheta * light.get_color(pos)
-        return l_out
+    def fill(self, value):
+        self.texture.fill(value)

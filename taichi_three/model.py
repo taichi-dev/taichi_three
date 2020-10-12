@@ -41,7 +41,7 @@ class ModelLow(ModelBase):
             self.nrm = ti.Vector.field(3, float, nrm_n)
 
         self.textures = {}
-        self.shading_type = CookTorrance
+        self.material = Material(CookTorrance())
 
     @ti.func
     def render(self, camera):
@@ -77,39 +77,6 @@ class ModelLow(ModelBase):
             model.add_texture('normal', normtex)
         return model
 
-    def add_texture(self, name, texture, scale=None):
-        assert name not in self.textures, name
-
-        # convert UInt8 into Float32 for storage:
-        if texture.dtype == np.uint8:
-            texture = texture.astype(np.float32) / 255
-        elif texture.dtype == np.float64:
-            texture = texture.astype(np.float32)
-
-        # normal maps are stored as [-1, 1] for maximizing FP precision:
-        if name == 'normal':
-            texture = texture * 2 - 1
-
-        if len(texture.shape) == 3 and texture.shape[2] == 1:
-            texture = texture.reshape(texture.shape[:2])
-
-        # either RGB or greyscale
-        if len(texture.shape) == 2:
-            self.textures[name] = ti.field(float, texture.shape)
-
-        else:
-            assert len(texture.shape) == 3, texture.shape
-            texture = texture[:, :, :3]
-            assert texture.shape[2] == 3, texture.shape
-            if scale is not None:
-                texture *= np.array(scale)[None, None, ...]
-
-            self.textures[name] = ti.Vector.field(3, float, texture.shape[:2])
-
-        @ti.materialize_callback
-        def init_texture():
-            self.textures[name].from_numpy(texture)
-
     def add_uniform(self, name, value):
         self.add_texture(name, np.array([[value]]))
 
@@ -121,20 +88,14 @@ class ModelLow(ModelBase):
         else:
             return default
 
-    def make_shading(self, texcoor):
-        opt = self.shading_type()
-        opt.model = self
-        for key in opt.parameters:
-            setattr(opt, key, self.sample(key, texcoor, getattr(opt, key)))
-        return opt
-
     def radiance(self, pos, indir, texcoor, normal):
         opt = self.make_shading(texcoor)
         return opt.radiance(pos, indir, normal)
 
     def colorize(self, pos, texcoor, normal):
-        opt = self.make_shading(texcoor)
-        return opt.colorize(pos, normal)
+        with self.material.specify_inputs(model=self, pos=pos, texcoor=texcoor, normal=normal) as shader:
+            with shader:
+                return shader.colorize()
 
     @ti.func
     def pixel_shader(self, pos, color, texcoor, normal):

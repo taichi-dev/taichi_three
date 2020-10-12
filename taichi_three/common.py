@@ -13,6 +13,38 @@ class AutoInit:
         raise NotImplementedError
 
 
+def create_field(dim, dtype, shape=None, initial=None, **kwargs):
+    if dim is None:
+        return dtype(shape, **kwargs)
+    if dim == 0:
+        dim = ()
+    if not isinstance(dim, (list, tuple)):
+        dim = [dim]
+    if isinstance(dim, list):
+        dim = tuple(dim)
+
+    if len(dim) == 0:
+        ret = ti.field(dtype, shape, **kwargs)
+    elif len(dim) == 1:
+        ret = ti.Vector.field(dim[0], dtype, shape, **kwargs)
+    elif len(dim) == 2:
+        ret = ti.Matrix.field(dim[0], dim[1], dtype, shape, **kwargs)
+    else:
+        raise TypeError(f'Expect int or tuple for dim, got: {dim}')
+
+    if initial is not None:
+        if callable(initial):
+            ti.materialize_callback(initial)
+        else:
+            initial = np.array(initial, dtype=ti.to_numpy_type(dtype))
+            @ti.materialize_callback
+            def init_field():
+                ret.from_numpy(initial)
+
+    return ret
+
+
+
 class subscriptable(property):
     def __init__(self, func):
         self.func = func
@@ -35,6 +67,7 @@ class subscriptable(property):
             return wrapped
 
         super().__init__(accessor)
+
 
 class dummy_expression:
     is_taichi_class = True

@@ -15,15 +15,15 @@ def _tri_append(faces, indices):
         assert False, len(indices)
 
 
-def readobj(path, scale=1):
+def readobj(path, scale=None):
     if path.endswith('.obj'):
-        ret = read_OBJ(path, scale)
+        ret = read_OBJ(path)
     elif path.endswith('.npz'):
-        ret = read_NPZ(path, scale)
+        ret = read_NPZ(path)
     else:
         assert False, f'Unrecognized file format: {path}'
 
-    if ret['vp'] is not None:
+    if scale is not None:
         ret['vp'] = ret['vp'] * scale
     return ret
 
@@ -36,7 +36,7 @@ def writeobj(path, obj):
         assert False, f'Unrecognized file format: {path}'
 
 
-def read_OBJ(path, scale=1):
+def read_OBJ(path):
     vp = []
     vt = []
     vn = []
@@ -81,7 +81,7 @@ def read_OBJ(path, scale=1):
         _tri_append(faces, indices)
 
     ret = {}
-    ret['vp'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vp) == 0 else np.array(vp, dtype=np.float32) * scale
+    ret['vp'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vp) == 0 else np.array(vp, dtype=np.float32)
     ret['vt'] = np.array([[0, 0]], dtype=np.float32) if len(vt) == 0 else np.array(vt, dtype=np.float32)
     ret['vn'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vn) == 0 else np.array(vn, dtype=np.float32)
     ret['f'] = np.zeros((1, 3, 3), dtype=np.float32) if len(faces) == 0 else np.array(faces, dtype=np.int32)
@@ -112,11 +112,11 @@ def write_NPZ(path, obj):
     data['f'] = obj['f'].astype(np.uint16)
     np.savez(path, **data)
 
-def read_NPZ(path, scale=1):
+def read_NPZ(path):
     data = np.load(path)
 
     ret = {}
-    ret['vp'] = data['vp'] * scale
+    ret['vp'] = data['vp']
     ret['vt'] = data['vt']
     ret['vn'] = data['vn'].astype(np.float32) / (2**15 - 1)
     ret['f'] = data['f'].astype(np.int32)
