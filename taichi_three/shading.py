@@ -36,13 +36,13 @@ class Input:
 
 
 @ti.data_oriented
-class Shading:
-    use_postp = False
-
+class Node:
     default_inputs = dict(
         pos=Input('pos'),
         texcoor=Input('texcoor'),
         normal=Input('normal'),
+        tangent=Input('tangent'),
+        bitangent=Input('bitangent'),
         model=Input('model'),
     )
 
@@ -50,10 +50,39 @@ class Shading:
         self.params = dict(self.get_default_params())
         self.params.update(self.default_inputs)
         self.params.update(kwargs)
+        self._method_level = 0
+
+    @classmethod
+    def get_default_params(cls):
+        return {}
+
+    def __enter__(self):
+        self._method_level += 1
+        if self._method_level <= 1:
+            for k, v in self.params.items():
+                v = v.get()
+                setattr(self, k, v)
+
+    def __exit__(self, type, val, tb):
+        self._method_level -= 1
+        if self._method_level <= 0:
+            for k, v in self.params.items():
+                if hasattr(self, k):
+                    delattr(self, k)
 
     @staticmethod
-    def get_default_params():
-        raise NotImplementedError
+    def method(foo):
+        from functools import wraps
+        @wraps(foo)
+        def wrapped(self, *args, **kwargs):
+            with self:
+                return foo(self, *args, **kwargs)
+
+        return wrapped
+
+
+class Shading(Node):
+    use_postp = False
 
     @ti.func
     def post_process(self, color):
@@ -63,11 +92,13 @@ class Shading:
         orange = ts.vec3(1.19, 1.04, 0.98)
         return ts.mix(blue, orange, ti.sqrt(color))
 
+    @Node.method
     @ti.func
     def radiance(self, pos, indir, normal):
         outdir = indir
         return pos, outdir, ts.vec3(1.0)
 
+    @Node.method
     @ti.func
     def colorize(self):
         pos = self.pos
@@ -107,6 +138,7 @@ class Shading:
     @ti.func
     def get_ambient(self):
         return 0
+
 
 
 class BlinnPhong(Shading):
@@ -193,9 +225,8 @@ class IdealRT(Shading):
 
 # https://zhuanlan.zhihu.com/p/37639418
 class CookTorrance(Shading):
-
-    @staticmethod
-    def get_default_params():
+    @classmethod
+    def get_default_params(cls):
         return dict(
             color = Constant(1.0),
             ambient = Constant(1.0),
@@ -206,15 +237,6 @@ class CookTorrance(Shading):
             kd = Constant(1.0),
             ks = Constant(1.0),
             )
-
-    def __enter__(self):
-        for k, v in self.params.items():
-            v = v.get()
-            setattr(self, k, v)
-
-    def __exit__(self, type, val, tb):
-        for k, v in self.params.items():
-            delattr(self, k)
 
     @ti.func
     def ischlick(self, cost):
@@ -249,19 +271,30 @@ class CookTorrance(Shading):
         return self.emission
 
 
-@ti.data_oriented
-class Constant:
+class PlaceHolder(Node):
+    def __init__(self, hint='placeholder'):
+        super().__init__()
+        self.hint = hint
+
+    def get(self):
+        raise NotImplementedError(hint)
+
+
+class Constant(Node):
     def __init__(self, value):
+        super().__init__()
         self.value = value
 
     def get(self):
         return self.value
 
-@ti.data_oriented
-class Uniform:
+
+class Uniform(Node):
     def __init__(self, dim, dtype, initial=None):
+        super().__init__()
         self.value = create_field(dim, dtype, (), initial)
 
+    @Node.method
     @ti.func
     def get(self):
         return self.value[None]
@@ -269,18 +302,19 @@ class Uniform:
     def fill(self, value):
         self.value[None] = value
 
-@ti.data_oriented
-class Texture:
-    def __init__(self, texture, scale=None, type='color'):
+
+class Texture(Node):
+    def __init__(self, texture, scale=None):
+        super().__init__()
+
+        if isinstance(texture, str):
+            texture = ti.imread(texture)
+
         # convert UInt8 into Float32 for storage:
         if texture.dtype == np.uint8:
             texture = texture.astype(np.float32) / 255
         elif texture.dtype == np.float64:
             texture = texture.astype(np.float32)
-
-        # normal maps are stored as [-1, 1] for maximizing FP precision:
-        if type == 'normal':
-            texture = texture * 2 - 1
 
         if len(texture.shape) == 3 and texture.shape[2] == 1:
             texture = texture.reshape(texture.shape[:2])
@@ -293,19 +327,39 @@ class Texture:
             assert len(texture.shape) == 3, texture.shape
             texture = texture[:, :, :3]
             assert texture.shape[2] == 3, texture.shape
-            if scale is not None:
-                texture *= np.array(scale)[None, None, ...]
 
+            if scale is not None:
+                if callable(scale):
+                    texture = scale(texture)
+                else:
+                    texture *= np.array(scale)[None, None, ...]
+
+            # TODO: use create_field for this
             self.texture = ti.Vector.field(3, float, texture.shape[:2])
 
         @ti.materialize_callback
         def init_texture():
             self.texture.from_numpy(texture)
 
+    @Node.method
     @ti.func
     def get(self):
-        texcoor = self.params['texcoor'].get()
-        return ts.bilerp(self.texture, texcoor * ts.vec(*self.texture.shape))
+        return ts.bilerp(self.texture, self.texcoor * ts.vec(*self.texture.shape))
 
     def fill(self, value):
         self.texture.fill(value)
+
+
+class NormalMap(Node):
+    @classmethod
+    def get_default_params(cls):
+        return dict(
+            texture = PlaceHolder('texture'),
+            )
+
+    @Node.method
+    @ti.func
+    def get(self):
+        normal = self.texture * 2 - 1
+        normal = ti.Matrix.cols([self.tangent, self.bitangent, self.normal]) @ normal
+        return normal.normalized()

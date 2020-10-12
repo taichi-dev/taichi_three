@@ -5,10 +5,12 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-obj = t3.readobj('assets/cube.obj', scale=0.8)
-texture = ti.imread('assets/cloth.jpg')
-normtex = ti.imread('assets/normal.png')
-model = t3.Model.from_obj(obj, texture, normtex)
+obj = t3.readobj('assets/cube.obj', scale=0.6)
+model = t3.Model.from_obj(obj)
+model.material = t3.Material(t3.CookTorrance(
+    color=t3.Texture(ti.imread('assets/cloth.jpg')),
+    normal=t3.NormalMap(texture=t3.Texture(ti.imread('assets/normal.png'))),
+))
 scene.add_model(model)
 camera = t3.Camera()
 camera.ctl = t3.CameraCtl(pos=[0, 1, -1.8])
@@ -23,4 +25,5 @@ while gui.running:
     camera.from_mouse(gui)
     scene.render()
     gui.set_image(camera.img)
+    #gui.set_image(camera.fb['normal'].to_numpy() * 0.5 + 0.5)
     gui.show()

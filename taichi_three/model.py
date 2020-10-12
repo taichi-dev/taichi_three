@@ -92,10 +92,9 @@ class ModelLow(ModelBase):
         opt = self.make_shading(texcoor)
         return opt.radiance(pos, indir, normal)
 
-    def colorize(self, pos, texcoor, normal):
-        with self.material.specify_inputs(model=self, pos=pos, texcoor=texcoor, normal=normal) as shader:
-            with shader:
-                return shader.colorize()
+    def colorize(self, pos, texcoor, normal, tangent, bitangent):
+        with self.material.specify_inputs(model=self, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent) as shader:
+            return shader.colorize()
 
     @ti.func
     def pixel_shader(self, pos, color, texcoor, normal):
@@ -104,20 +103,17 @@ class ModelLow(ModelBase):
 
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
-        color = self.colorize(pos, texcoor, normal)
+        color = self.colorize(pos, texcoor, normal, tangent, bitangent)
         return pos, color, texcoor, normal
 
 
 class Model(ModelLow):
     @ti.func
     def pixel_shader(self, pos, texcoor, normal, tangent, bitangent):
-        ndir = self.sample('normal', texcoor, ts.vec3(0.0, 0.0, 1.0))
-        normal = ti.Matrix.cols([tangent, bitangent, normal]) @ ndir
         # normal has been no longer normalized due to lerp and ndir errors.
         # so here we re-enforce normalization to get slerp.
         normal = normal.normalized()
-
-        color = self.colorize(pos, texcoor, normal)
+        color = self.colorize(pos, texcoor, normal, tangent, bitangent)
         return dict(img=color, pos=pos, texcoor=texcoor, normal=normal,
                     tangent=tangent, bitangent=bitangent)
 

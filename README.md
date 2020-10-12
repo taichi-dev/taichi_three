@@ -90,6 +90,7 @@ New in latest master
 --------------------
 
 Notable changes:
+* Set up a node-alike system for materials, see `examples/physics_based_rendering.py` for example.
 * Support Temporal Anti-Aliasing (TAA), use `t3.Camera(taa=True)` to enable it.
 
 Minor updates:
@@ -106,6 +107,7 @@ Minor fixes:
 * Fix color artifects on edges due to interpolation.
 * Fix shadow artifects on 90-deg faces.
 * Make camera buffer update less ad-hoc.
+* Adapt ambient occulsion to node system.
 * Support scaling in ORTHO mode.
 
 Major steps:
@@ -115,7 +117,6 @@ Major steps:
 * Support `t3.CutoffLight` for light cones.
 
 Ambitions:
-* Use a node system for materials.
 * Path tracing scheme, e.g. cornell box.
 * Support image-based lighting and environment maps (skybox).
 * Support deferred shading and SSAO.

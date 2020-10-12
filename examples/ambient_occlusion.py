@@ -7,8 +7,10 @@ ti.init(ti.cpu)
 scene = t3.Scene()
 obj = t3.readobj('assets/torus.obj', scale=0.8)
 model = t3.Model.from_obj(obj)
-model.add_texture('color', ti.imread('assets/cloth.jpg'))
-model.add_texture('ambient', ti.imread('assets/pattern.jpg'))
+model.material = t3.Material(t3.CookTorrance(
+    color=t3.Texture(ti.imread('assets/cloth.jpg')),
+    ambient=t3.Texture(ti.imread('assets/pattern.jpg')),
+    ))
 scene.add_model(model)
 camera = t3.Camera()
 camera.ctl = t3.CameraCtl(pos=[0, 1, -1.8])
