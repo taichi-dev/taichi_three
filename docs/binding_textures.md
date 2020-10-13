@@ -1,25 +1,40 @@
 # Binding textures
 
-In the [previous section](loading_models.md), you've successfully loaded a `cube.obj` and display it.
+In [Hello Cube](hello_cube.md), you've successfully loaded a cube and display it.
 But its surface is just plain white till now, can't we make it more colorful, look like a real thing?
+Of course! We may want to replaced the default material in this case.
+
+## Specifying material colors
+
+In Taichi THREE, materials are considered as **nodes**. You may override the default node to specify your own material properties.
+
+Let's get started by replace the default white color by red:
+
+```py
+model.material = t3.Material(t3.BlinnPhong(
+    color=t3.Constant(t3.RGB(1.0, 0.0, 0.0)),  # red
+))
+```
+
+![3_0](3_0.gif)
 
 ## Adding texture
 
-Now I want to make the cube look like an wooden box. What we need is **texture**.
+Now I want to make the cube look like an wooden box rather than plain colors. What we need is **texture**.
 
 Let's download this image and save it to `container2.png`:
 
 ![container2.png](https://learnopengl.com/img/textures/container2.png)
 
-?> Or, feel free to use your own images :)
-
-Then, add this line to load the image onto the model:
+Then, add this line to specify the **material node** of the model:
 
 ```py
-model.add_texture('color', t3.imread('container2.png'))
+model.material = t3.Material(t3.BlinnPhong(
+    color=t3.Texture('container2.png'),
+))
 ```
 
-The `'color'` tells Taichi THREE to **sample** colors from that image.
+The `color` tells Taichi THREE to **sample** colors from that image.
 
 Running it you'll obtain a wooden container:
 
@@ -30,13 +45,16 @@ Running it you'll obtain a wooden container:
 Pretty cool, right? But the metal border of the container doesn't look like metal.
 
 To make metal look like metal, we want it to **shine**.
-We may use the Blinn-Phong shader, and set its `specular` paramter to `1.0`.
+Using the Blinn-Phong shader, we may set its `specular` paramter to `1.0`.
 The `specular` parameter is simply the specular rate of material.
 The higher the `specular` is, the more the material shines.
 
 ```py
 model.shading = t3.BlinnPhong       # use Blinn-Phong shader
-model.add_uniform('specular', 1.0)  # set a uniform specular rate
+model.material = t3.Material(t3.BlinnPhong(
+    color=t3.Texture('container2.png'),
+    specular=t3.Constant(1.0),  # set a constant specular rate: 1.0
+))
 ```
 
 ![3_2](3_2.gif)
@@ -45,7 +63,7 @@ model.add_uniform('specular', 1.0)  # set a uniform specular rate
 
 But wait, we don't want the wood shine too!
 
-So, `add_uniform` can only specify an parameter uniformly over the whole model.
+So, `t3.Constant` can only specify an parameter uniformly over the whole model.
 It can't deal with a model with multiple materials on its face.
 
 To specify a different specular rate per-pixel, we need a **specular map**, it's also a kind of texture.
@@ -60,7 +78,12 @@ Let's download this image and save to `container2_specular.png`:
 And replace the `add_uniform` with this line in our script:
 
 ```py
-model.add_texture('specular', t3.imread('container2_specular.png'))
+model.add_texture('specular', t3.imread())
+model.shading = t3.BlinnPhong       # use Blinn-Phong shader
+model.material = t3.Material(t3.BlinnPhong(
+    color=t3.Texture('container2.png'),
+    specular=t3.Texture('container2_specular.png'),  # let Taichi THREE sample specular from this texture
+))
 ```
 
 ![3_3](3_3.gif)

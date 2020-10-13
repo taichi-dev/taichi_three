@@ -5,12 +5,12 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-obj = t3.readobj('assets/monkey.obj', scale=0.8)
+obj = t3.readobj('assets/monkey.obj')
 model = t3.Model.from_obj(obj)
 scene.add_model(model)
 camera = t3.Camera(taa=True)
 scene.add_camera(camera)
-light = t3.Light([0.4, -1.5, 0.8])
+light = t3.Light([0.4, -1.5, -0.8])
 scene.add_light(light)
 
 gui = ti.GUI('Model', camera.res)

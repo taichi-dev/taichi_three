@@ -1,4 +1,87 @@
 import numpy as np
+import math
+
+
+def _t(x):
+    return [[x[i][j] for i in range(len(x))] for j in range(len(x[0]))]
+
+
+class Geometry:
+    @classmethod
+    def fromobjstr(cls, code):
+        from .loader import readobj
+        from io import StringIO
+        obj = readobj(StringIO(code))
+        return obj
+
+    @classmethod
+    def fromarrays(cls, vertices, faces, texcoords, normals):
+        vertices = np.array(vertices, dtype=np.float32)
+        faces = np.array(faces, dtype=np.int32)
+        texcoords = np.array(texcoords, dtype=np.float32)
+        normals = np.array(normals, dtype=np.float32)
+        obj = dict(vp=vertices, f=faces, vn=normals, vt=texcoords)
+        objswapaxis(obj, 1, 2)
+        return obj
+
+    @classmethod
+    def cylinder(cls, semiheight=1, N=32):
+        from .loader import _tri_append
+        vertices = [(0, 0, -semiheight), (0, 0, +semiheight)]
+        texcoords = [(0, 0)]
+        normals = [(0, 0, -1), (0, 0, 1)]
+        faces = []
+        for i in range(N):
+            angle = (i / N) * np.pi * 2
+            pos = math.cos(angle), math.sin(angle)
+            vertices.append((*pos, -semiheight))
+            vertices.append((*pos, +semiheight))
+            normals.append((*pos, 0))
+            texcoords.append(pos)
+        for i in range(N):
+            j = (i + 1) % N
+            a, b = i * 2 + 2, j * 2 + 2
+            c, d = j * 2 + 3, i * 2 + 3
+            faces.append(_t([[0, a, b], [0, i, j], [0, 0, 0]]))
+            faces.append(_t([[1, c, d], [0, j, i], [1, 1, 1]]))
+            _tri_append(faces, _t([[d, c, b, a], [i, j, j, i], [i + 2, j + 2, j + 2, i + 2]]))
+        return cls.fromarrays(vertices, faces, texcoords, normals)
+
+    @classmethod
+    def cube(cls):
+        return cls.fromobjstr('''o Cube
+v 1.0 1.0 -1.0
+v 1.0 -1.0 -1.0
+v 1.0 1.0 1.0
+v 1.0 -1.0 1.0
+v -1.0 1.0 -1.0
+v -1.0 -1.0 -1.0
+v -1.0 1.0 1.0
+v -1.0 -1.0 1.0
+vt 0.0 0.0
+vt 0.0 1.0
+vt 1.0 1.0
+vt 1.0 0.0
+vn 0.0 1.0 0.0
+vn 0.0 0.0 1.0
+vn -1.0 0.0 0.0
+vn 0.0 -1.0 0.0
+vn 1.0 0.0 0.0
+vn 0.0 0.0 -1.0
+f 1/1/1 5/2/1 7/3/1
+f 7/3/1 3/4/1 1/1/1
+f 4/1/2 3/2/2 7/3/2
+f 7/3/2 8/4/2 4/1/2
+f 8/1/3 7/2/3 5/3/3
+f 5/3/3 6/4/3 8/1/3
+f 6/1/4 2/2/4 4/3/4
+f 4/3/4 8/4/4 6/1/4
+f 2/1/5 1/2/5 3/3/5
+f 3/3/5 4/4/5 2/1/5
+f 6/1/6 5/2/6 1/3/6
+f 1/3/6 2/4/6 6/1/6
+''')
+
 
 
 def objmerge(obj, other):
@@ -14,13 +97,38 @@ def objautoscale(self):
     obj['vp'] /= np.max(np.abs(obj['vp']))
 
 
-def objflipaxis(obj, *flips):
-    for i, flip in enumerate(flips):
+def objflipaxis(obj, x=False, y=False, z=False):
+    for i, flip in enumerate([x, y, z]):
         if flip:
             obj['vp'][:, i] = -obj['vp'][:, i]
             obj['vn'][:, i] = -obj['vn'][:, i]
-    if (flips[0] != flips[1]) != flips[2]:
+    if (x != y) != z:
         objflipface(obj)
+
+
+def objswapaxis(obj, a=1, b=2):
+    obj['vp'][:, (a, b)] = obj['vp'][:, (b, a)]
+    obj['vn'][:, (a, b)] = obj['vn'][:, (b, a)]
+
+
+def objreorient(obj, orient):
+    flip = False
+    if orient.startswith('-'):
+        flip = True
+        orient = orient[:1]
+
+    x, y, z = ['xyz'.index(o.lower()) for o in orient]
+    fx, fy, fz = [o.isupper() for o in orient]
+
+    if x != 0 or y != 1 or z != 2:
+        obj['vp'][:, (0, 1, 2)] = obj['vp'][:, (x, y, z)]
+        obj['vn'][:, (0, 1, 2)] = obj['vn'][:, (x, y, z)]
+
+    for i, flip in enumerate([fx, fy, fz]):
+        if flip:
+            obj['vp'][:, i] = -obj['vp'][:, i]
+            obj['vn'][:, i] = -obj['vn'][:, i]
+    return obj
 
 
 def objflipface(obj):

@@ -15,20 +15,33 @@ def _tri_append(faces, indices):
         assert False, len(indices)
 
 
-def readobj(path, scale=None):
-    if path.endswith('.obj'):
+def readobj(path, orient='xyZ', scale=None):
+    if callable(getattr(path, 'read', 'none')):
+        ret = read_OBJ(path)
+    elif path.endswith('.obj'):
         ret = read_OBJ(path)
     elif path.endswith('.npz'):
         ret = read_NPZ(path)
     else:
         assert False, f'Unrecognized file format: {path}'
 
+    if orient is not None:
+        from .objedit import objreorient
+        objreorient(ret, orient)
+
     if scale is not None:
-        ret['vp'] = ret['vp'] * scale
+        if scale == 'auto':
+            from .objedit import objautoscale
+            objautoscale(ret)
+        else:
+            ret['vp'] = ret['vp'] * scale
+
     return ret
 
 def writeobj(path, obj):
-    if path.endswith('.obj'):
+    if callable(getattr(path, 'write', 'none')):
+        write_OBJ(path, obj)
+    elif path.endswith('.obj'):
         write_OBJ(path, obj)
     elif path.endswith('.npz'):
         write_NPZ(path, obj)
@@ -42,8 +55,11 @@ def read_OBJ(path):
     vn = []
     faces = []
 
-    with open(path, 'r') as myfile:
-        lines = myfile.readlines()
+    if callable(getattr(path, 'read', 'none')):
+        lines = path.readlines()
+    else:
+        with open(path, 'r') as myfile:
+            lines = myfile.readlines()
 
     # cache vertices
     for line in lines:
@@ -89,7 +105,11 @@ def read_OBJ(path):
 
 
 def write_OBJ(path, obj, name='Object'):
-    with open(path, 'w') as f:
+    if callable(getattr(path, 'write', 'none')):
+        f = path
+    else:
+        f = open(path, 'w')
+    with f:
         f.write('# Taichi THREE saved OBJ file\n')
         f.write('# https://github.com/taichi-dev/taichi-three\n')
         f.write(f'o {name}\n')

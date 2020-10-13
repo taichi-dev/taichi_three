@@ -142,16 +142,15 @@ class Shading(Node):
 
 
 class BlinnPhong(Shading):
-    color = 1.0
-    ambient = 1.0
-    specular = 1.0
-    emission = 0.0
-    shineness = 15
-
-    parameters = ['color', 'ambient', 'specular', 'emission', 'shineness']
-
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+    @classmethod
+    def get_default_params(cls):
+        return dict(
+            color = Constant(1.0),
+            ambient = Constant(1.0),
+            specular = Constant(1.0),
+            emission = Constant(0.0),
+            shineness = Constant(15),
+        )
 
     @ti.func
     def get_ambient(self):
@@ -167,60 +166,6 @@ class BlinnPhong(Shading):
         ndf = (self.shineness + 8) / 8 * pow(NoH, self.shineness)
         strength = self.color + ndf * self.specular
         return strength
-
-
-class StdMtl(Shading):
-    Ka = 1.0
-    Kd = 1.0
-    Ks = 0.0
-    Ke = 0.0
-    Ns = 1.0
-
-    parameters = ['Ka', 'Kd', 'Ks', 'Ke', 'Ns']
-
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-
-    @ti.func
-    def get_ambient(self):
-        return self.Ka
-
-    @ti.func
-    def get_emission(self):
-        return self.Ke
-
-    @ti.func
-    def brdf(self, normal, lightdir, viewdir):
-        NoH = max(0, ts.dot(normal, ts.normalize(lightdir + viewdir)))
-        ndf = (self.Ns + 8) / 8 * pow(NoH, self.Ns)
-        strength = self.Ka + ndf * self.Ks
-        return strength
-
-
-class IdealRT(Shading):
-    emission = 0.0
-    diffuse = 1.0
-    specular = 0.0
-    emission_color = 1.0
-    diffuse_color = 1.0
-    specular_color = 1.0
-    parameters = ['emission', 'diffuse', 'specular', 'emission_color', 'diffuse_color', 'specular_color']
-
-    @ti.func
-    def radiance(self, pos, indir, normal):
-        outdir = ts.vec3(0.0)
-        clr = ts.vec3(0.0)
-        if ti.random() < self.emission:
-            clr = ts.vec3(self.emission_color)
-        elif ti.random() < self.specular:
-            clr = ts.vec3(self.specular_color)
-            outdir = ts.reflect(indir, normal)
-        elif ti.random() < self.diffuse:
-            clr = ts.vec3(self.diffuse_color)
-            outdir = ts.randUnit3D()
-            if outdir.dot(normal) < 0:
-                outdir = -outdir
-        return pos, outdir, clr
 
 
 # https://zhuanlan.zhihu.com/p/37639418
@@ -269,6 +214,32 @@ class CookTorrance(Shading):
     @ti.func
     def get_emission(self):
         return self.emission
+
+
+class IdealRT(Shading):
+    emission = 0.0
+    diffuse = 1.0
+    specular = 0.0
+    emission_color = 1.0
+    diffuse_color = 1.0
+    specular_color = 1.0
+    parameters = ['emission', 'diffuse', 'specular', 'emission_color', 'diffuse_color', 'specular_color']
+
+    @ti.func
+    def radiance(self, pos, indir, normal):
+        outdir = ts.vec3(0.0)
+        clr = ts.vec3(0.0)
+        if ti.random() < self.emission:
+            clr = ts.vec3(self.emission_color)
+        elif ti.random() < self.specular:
+            clr = ts.vec3(self.specular_color)
+            outdir = ts.reflect(indir, normal)
+        elif ti.random() < self.diffuse:
+            clr = ts.vec3(self.diffuse_color)
+            outdir = ts.randUnit3D()
+            if outdir.dot(normal) < 0:
+                outdir = -outdir
+        return pos, outdir, clr
 
 
 class PlaceHolder(Node):

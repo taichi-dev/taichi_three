@@ -37,7 +37,7 @@ class Light:
     shadow = None
 
     def __init__(self, dir=None, color=None):
-        dir = dir or [0, 0, 1]
+        dir = dir or [0, 0, -1]
         norm = math.sqrt(sum(x ** 2 for x in dir))
         dir = [-x / norm for x in dir]
         color = color or [1, 1, 1]

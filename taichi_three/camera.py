@@ -218,7 +218,7 @@ class Camera:
 class CameraCtl:
     def __init__(self, pos=None, target=None, up=None):
         # python scope camera transformations
-        self.pos = pos or [0, 0, -2]
+        self.pos = pos or [0, 0, 3]
         self.target = target or [0, 0, 0]
         self.up = up or [0, 1, 0]
         self.trans = None
@@ -261,17 +261,17 @@ class CameraCtl:
         return changed
 
     '''
-    NOTE: taichi_three uses a LEFT HANDED coordinate system.
-    that is, the +Z axis points FROM the camera TOWARDS the scene,
+    NOTE: taichi_three uses a RIGHT HANDED coordinate system.
+    that is, the -Z axis points FROM the camera TOWARDS the scene,
     with X, Y being device coordinates.
     '''
     def set(self, pos=None, target=None, up=None):
         pos = ti.Vector(pos or self.pos)
         target = ti.Vector(target or self.target)
-        up = ti.Vector(up or self.up)
-        fwd = (target - pos).normalized()
-        right = up.cross(fwd).normalized()
-        up = fwd.cross(right)
+        up = ti.Vector(up or self.up)      # +Y
+        fwd = (target - pos).normalized()  # -Z
+        right = fwd.cross(up).normalized() # +X
+        up = right.cross(fwd)              # +Y
         trans = ti.Matrix([right.entries, up.entries, fwd.entries]).transpose()
 
         self.trans = [[trans[i, j] for j in range(3)] for i in range(3)]

@@ -90,8 +90,11 @@ New in latest master
 --------------------
 
 Notable changes:
+* Fix the coordinate system to be right-handed: +X right, +Y up, +Z forward; +Z points FROM scene TO camera.
 * Set up a node-alike system for materials, see `examples/physics_based_rendering.py` for example.
 * Support Temporal Anti-Aliasing (TAA), use `t3.Camera(taa=True)` to enable it.
+* Add `t3.Geometry.cube()` for creating a cube mesh without reading from disk.
+* Support `t3.readobj('cube.obj', orient='xyZ')` for orientation fixes.
 
 Minor updates:
 * Add `t3.objmerge`, `t3.objbreakdown` and `t3.objautoscale` for OBJ editing helpers.
@@ -103,7 +106,6 @@ TODO list
 
 Minor fixes:
 * Fix black-pixels artifect in `ms_cloth.py`.
-* Fix the coordinate system to be right-handed.
 * Fix color artifects on edges due to interpolation.
 * Fix shadow artifects on 90-deg faces.
 * Make camera buffer update less ad-hoc.

@@ -1,12 +1,12 @@
 - Getting started
 
   - [Installation](installation.md)
-  - [Hello triangle](hello_triangle.md)
-  - [Shading models](shading_models.md)
+  - [Hello cube](hello_cube.md)
   - [Binding textures](binding_textures.md)
+  - [Coordinate system](coordinate_system.md)
   ----
   - **Sections below are WIP:**
-  - [Coordinate system](coordinate_system.md)
+  - [More geometries](more_geometries.md)
   - [Camera control](camera_control.md)
 
 - Advanced topics
@@ -18,6 +18,8 @@
   - [Using normal maps](using_normal_maps.md)
   - [Customizing shaders](customizing_shaders.md)
   - [Deferred shading](deferred_shading.md)
+  - [Anti-aliasing](anti_aliasing.md)
+  - [Hello triangle](hello_triangle.md)
   - [Scatter models](scatter_models.md)
 
 - [Miscellaneous](miscellaneous.md)

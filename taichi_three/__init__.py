@@ -33,4 +33,10 @@ from taichi_glsl import clamp, smoothstep, mix, sign, floor, ceil, fract, reflec
 from math import radians, degrees, pi, tau
 from time import time as get_time
 
+def RGB(r, g, b):
+    return ti.Vector([r, g, b])
+
+def Vec(*args):
+    return ti.Vector(args)
+
 ti.reset()
