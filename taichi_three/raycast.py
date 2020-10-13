@@ -14,7 +14,7 @@ class Accumator:
     @ti.kernel
     def accumate(self, src: ti.template()):
         self.count[None] += 1
-        alpha = max(1 / 256, 1 / self.count[None])
+        alpha = max(1 / 512, 1 / self.count[None])
         for I in ti.grouped(self.buf):
             self.buf[I] = self.buf[I] * (1 - alpha) + src[I] * alpha
 
@@ -25,16 +25,18 @@ class Accumator:
             self.buf[I] *= 0
 
     @ti.kernel
-    def denoise(self, alpha: ti.template(), throttle: ti.template()):
+    def denoise(self, alpha: ti.template()):
         ti.static_print('denoise', alpha)
-        for I in ti.grouped(self.buf):
-            center = ts.clamp(self.buf[I])
-            around = ts.clamp((self.buf[I + ts.D.x_] + self.buf[I + ts.D.X_] + self.buf[I + ts.D._x] + self.buf[I + ts.D._X]) / 4)
-            diff = (center - around).norm_sqr()
-            if diff < throttle**2:
+        if ti.static(alpha != 0):
+            for I in ti.grouped(self.buf):
+                center = ts.clamp(self.buf[I])
+                around = ts.clamp((self.buf[I + ts.D.x_] + self.buf[I + ts.D.X_] + self.buf[I + ts.D._x] + self.buf[I + ts.D._X]) / 4)
+                #amax = ts.clamp(max(self.buf[I + ts.D.x_], self.buf[I + ts.D.X_], self.buf[I + ts.D._x], self.buf[I + ts.D._X]))
+                #amin = ts.clamp(min(self.buf[I + ts.D.x_], self.buf[I + ts.D.X_], self.buf[I + ts.D._x], self.buf[I + ts.D._X]))
+                #if center <= amin + throttle or center >= amax - throttle:
                 self.buf[I] = center * (1 - alpha) + around * alpha
 
-    def render(self, camera, depth, baseres=3, regrate=128):
+    def render(self, camera, depth, baseres=2, regrate=32):
         rate = max(0, baseres - self.count[None] // regrate)
         region = camera.res[0] // 2**rate, camera.res[1] // 2**rate
         camera.loadrays((0, 0), region, 2**rate)
@@ -42,7 +44,7 @@ class Accumator:
             camera.steprays()
         camera.applyrays()
         self.accumate(camera.img)
-        self.denoise(0.5 * (rate / baseres), 0.5)
+        #self.denoise(0.1 * (rate / baseres))
 
 
 class RTCamera(Camera):

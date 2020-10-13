@@ -14,7 +14,7 @@ ball.material = t3.Material(t3.BlinnPhong(
 ))
 scene.add_model(ball)
 camera = t3.Camera()
-camera.ctl = t3.CameraCtl(pos=[0, 1, 1])
+camera.ctl = t3.CameraCtl(pos=[0, 1.8, 1.8])
 scene.add_camera(camera)
 light = t3.PointLight(pos=[0, 1, 0])
 scene.add_light(light)

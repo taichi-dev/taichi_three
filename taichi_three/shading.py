@@ -217,29 +217,34 @@ class CookTorrance(Shading):
 
 
 class IdealRT(Shading):
-    emission = 0.0
-    diffuse = 1.0
-    specular = 0.0
-    emission_color = 1.0
-    diffuse_color = 1.0
-    specular_color = 1.0
-    parameters = ['emission', 'diffuse', 'specular', 'emission_color', 'diffuse_color', 'specular_color']
+    @classmethod
+    def get_default_params(cls):
+        return dict(
+            indir = Input('indir'),
+            emission = Constant(0.0),
+            diffuse = Constant(1.0),
+            specular = Constant(0.0),
+            emission_color = Constant(1.0),
+            diffuse_color = Constant(1.0),
+            specular_color = Constant(1.0),
+            )
 
+    @Node.method
     @ti.func
-    def radiance(self, pos, indir, normal):
+    def radiance(self):
         outdir = ts.vec3(0.0)
         clr = ts.vec3(0.0)
         if ti.random() < self.emission:
             clr = ts.vec3(self.emission_color)
         elif ti.random() < self.specular:
             clr = ts.vec3(self.specular_color)
-            outdir = ts.reflect(indir, normal)
+            outdir = ts.reflect(self.indir, self.normal)
         elif ti.random() < self.diffuse:
             clr = ts.vec3(self.diffuse_color)
             outdir = ts.randUnit3D()
-            if outdir.dot(normal) < 0:
+            if outdir.dot(self.normal) < 0:
                 outdir = -outdir
-        return pos, outdir, clr
+        return self.pos, outdir, clr
 
 
 class PlaceHolder(Node):

@@ -115,7 +115,7 @@ def objreorient(obj, orient):
     flip = False
     if orient.startswith('-'):
         flip = True
-        orient = orient[:1]
+        orient = orient[1:]
 
     x, y, z = ['xyz'.index(o.lower()) for o in orient]
     fx, fy, fz = [o.isupper() for o in orient]
@@ -124,10 +124,13 @@ def objreorient(obj, orient):
         obj['vp'][:, (0, 1, 2)] = obj['vp'][:, (x, y, z)]
         obj['vn'][:, (0, 1, 2)] = obj['vn'][:, (x, y, z)]
 
-    for i, flip in enumerate([fx, fy, fz]):
-        if flip:
+    for i, fi in enumerate([fx, fy, fz]):
+        if fi:
             obj['vp'][:, i] = -obj['vp'][:, i]
             obj['vn'][:, i] = -obj['vn'][:, i]
+
+    if flip:
+        objflipface(obj)
     return obj
 
 

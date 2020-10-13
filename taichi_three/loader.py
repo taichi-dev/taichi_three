@@ -58,22 +58,23 @@ def read_OBJ(path):
     if callable(getattr(path, 'read', 'none')):
         lines = path.readlines()
     else:
-        with open(path, 'r') as myfile:
+        with open(path, 'rb') as myfile:
             lines = myfile.readlines()
 
     # cache vertices
     for line in lines:
+        line = line.strip()
         try:
             type, fields = line.split(maxsplit=1)
             fields = [float(_) for _ in fields.split()]
         except ValueError:
             continue
 
-        if type == 'v':
+        if type == b'v':
             vp.append(fields)
-        elif type == 'vt':
+        elif type == b'vt':
             vt.append(fields)
-        elif type == 'vn':
+        elif type == b'vn':
             vn.append(fields)
 
     # cache faces
@@ -86,13 +87,13 @@ def read_OBJ(path):
 
         # line looks like 'f 5/1/1 1/2/1 4/3/1'
         # or 'f 314/380/494 382/400/494 388/550/494 506/551/494' for quads
-        if type != 'f':
+        if type != b'f':
             continue
 
         # a field should look like '5/1/1'
         # for vertex/vertex UV coords/vertex Normal  (indexes number in the list)
         # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
-        indices = [[int(_) - 1 if _ else 0 for _ in field.split('/')] for field in fields]
+        indices = [[int(_) - 1 if _ else 0 for _ in field.split(b'/')] for field in fields]
 
         _tri_append(faces, indices)
 
@@ -100,7 +101,7 @@ def read_OBJ(path):
     ret['vp'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vp) == 0 else np.array(vp, dtype=np.float32)
     ret['vt'] = np.array([[0, 0]], dtype=np.float32) if len(vt) == 0 else np.array(vt, dtype=np.float32)
     ret['vn'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vn) == 0 else np.array(vn, dtype=np.float32)
-    ret['f'] = np.zeros((1, 3, 3), dtype=np.float32) if len(faces) == 0 else np.array(faces, dtype=np.int32)
+    ret['f'] = np.zeros((1, 3, 3), dtype=np.int32) if len(faces) == 0 else np.array(faces, dtype=np.int32)
     return ret
 
 
