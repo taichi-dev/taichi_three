@@ -6,10 +6,8 @@ scene.add_camera(camera)
 
 light = t3.Light(dir=[-0.2, -0.6, 1.0])
 scene.add_light(light)
-ambient = t3.AmbientLight(0.1)
-scene.add_light(ambient)
 
-obj = t3.Geometry.cylinder()
+obj = t3.Geometry.cube()
 model = t3.Model.from_obj(obj)
 scene.add_model(model)
 
