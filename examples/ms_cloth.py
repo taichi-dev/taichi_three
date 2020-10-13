@@ -55,7 +55,7 @@ def substep():
 ### Rendering GUI
 
 scene = t3.Scene()
-camera = t3.Camera(res=(1920, 1080))
+camera = t3.Camera()
 camera.ctl = t3.CameraCtl(pos=[0, 0.8, -1.1], target=[0, 0.25, 0])
 scene.add_camera(camera)
 light = t3.Light(dir=[0.4, -1.5, 1.8])
@@ -63,7 +63,9 @@ light = t3.Light(dir=[0.4, -1.5, 1.8])
 scene.add_light(light)
 
 model = t3.Model(faces_n=N**2 * 4, pos_n=N**2, tex_n=N**2, nrm_n=N**2 * 2)
-model.add_texture('color', ti.imread('assets/cloth.jpg'))
+model.material = t3.Material(t3.CookTorrance(
+    color=t3.Texture('assets/cloth.jpg'),
+))
 scene.add_model(model)
 
 sphere = t3.Model.from_obj(t3.readobj('assets/sphere.obj'))
@@ -113,15 +115,15 @@ def update_display():
         ya = x[tl.clamp(i + tl.D._x, 0, tl.vec(*NN) - 1)]
         yb = x[tl.clamp(i + tl.D._X, 0, tl.vec(*NN) - 1)]
         normal = (ya - yb).cross(xa - xb).normalized()
-        model.nrm[j] = normal
-        model.nrm[N**2 + j] = -normal
+        model.nrm[j] = -normal
+        model.nrm[N**2 + j] = normal
 
 
 init()
 init_display()
 
 sphere.L2W[None] = t3.translate(ball_pos) @ t3.scale(ball_radius)
-with ti.GUI('Mass Spring', camera.res, fast_gui=True, fullscreen=True) as gui:
+with ti.GUI('Mass Spring', camera.res) as gui:
     while gui.running and not gui.get_event(gui.ESCAPE):
         if not gui.is_pressed(gui.SPACE):
             for i in range(steps):
