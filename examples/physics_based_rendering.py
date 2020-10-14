@@ -11,14 +11,16 @@ model = t3.Model.from_obj(obj)
 model.material = t3.Material(t3.CookTorrance(
     color=t3.Texture(ti.imread('assets/cloth.jpg')),
     roughness=t3.Texture(ti.imread('assets/pattern.jpg')),
-    metallic=t3.Constant(0.7),
+    metallic=t3.Constant(0.5),
     ))
 scene.add_model(model)
 camera = t3.Camera()
+camera.ctl = t3.CameraCtl(pos=[0.8, 0, 2.5])
+camera.fb.post_process = t3.make_tonemap()
 scene.add_camera(camera)
-light = t3.Light([0.4, -1.5, 1.8])
+light = t3.Light([0, -0.5, -1])
 scene.add_light(light)
-ambient = t3.AmbientLight(0.54)
+ambient = t3.AmbientLight(0.3)
 scene.add_light(ambient)
 
 gui = ti.GUI('Model', camera.res)

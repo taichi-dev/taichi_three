@@ -88,9 +88,9 @@ class ModelLow(ModelBase):
         else:
             return default
 
-    def radiance(self, pos, indir, texcoor, normal):
+    def radiance(self, pos, indir, texcoor, normal, tangent, bitangent):
         # TODO: we don't support normal maps in path tracing mode for now
-        with self.material.specify_inputs(model=self, pos=pos, texcoor=texcoor, normal=normal, tangent=normal, bitangent=normal, indir=indir) as shader:
+        with self.material.specify_inputs(model=self, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent, indir=indir) as shader:
             return shader.radiance()
 
     def colorize(self, pos, texcoor, normal, tangent, bitangent):

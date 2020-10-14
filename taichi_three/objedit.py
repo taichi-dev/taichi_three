@@ -48,6 +48,26 @@ class Geometry:
         return cls.fromarrays(vertices, faces, texcoords, normals)
 
     @classmethod
+    def meshgrid(cls, n):
+        def _face(x, y):
+            return np.array([(x, y), (x, y + 1), (x + 1, y + 1), (x + 1, y)])
+
+        n_particles = n**2
+        n_faces = (n - 1)**2
+        xi = np.arange(n)
+        yi = np.arange(n)
+        xs = np.linspace(0, 1, n)
+        ys = np.linspace(0, 1, n)
+        uv = np.array(np.meshgrid(xs, ys)).swapaxes(0, 2).reshape(n_particles, 2)
+        faces = _face(*np.meshgrid(xi[:-1], yi[:-1])).swapaxes(0, 1).swapaxes(1, 2).swapaxes(2, 3)
+        faces = (faces[1] * n + faces[0]).reshape(n_faces, 4)
+        pos = np.concatenate([uv * 2 - 1, np.zeros((n_particles, 1))], axis=1)
+        faces = np.moveaxis(np.array([faces, faces, np.zeros((n_faces, 4), dtype=np.int_)]), 0, 2)
+        faces = np.concatenate([faces[:, (0, 1, 2)], faces[:, (0, 2, 3)]], axis=0)
+        normals = np.array([[0, 0, 1]])
+        return cls.fromarrays(pos, faces, uv, normals)
+
+    @classmethod
     def cube(cls):
         return cls.fromobjstr('''o Cube
 v 1.0 1.0 -1.0
@@ -153,7 +173,7 @@ def objmknorm(obj):
     fip = obj['f'][:, :, 0]
     fit = obj['f'][:, :, 1]
     p = obj['vp'][fip]
-    nrm = np.cross(p[:, 1] - p[:, 0], p[:, 2] - p[:, 0])
+    nrm = np.cross(p[:, 2] - p[:, 0], p[:, 1] - p[:, 0])
     nrm /= np.linalg.norm(nrm, axis=1, keepdims=True)
     fin = np.arange(obj['f'].shape[0])[:, np.newaxis]
     fin = np.concatenate([fin for i in range(3)], axis=1)

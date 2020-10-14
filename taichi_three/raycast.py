@@ -39,7 +39,8 @@ class Accumator:
     def render(self, camera, depth, baseres=2, regrate=32):
         rate = max(0, baseres - self.count[None] // regrate)
         region = camera.res[0] // 2**rate, camera.res[1] // 2**rate
-        camera.loadrays((0, 0), region, 2**rate)
+        base = ((self.count[None] % 2) * 2 - 1) * 2**rate // 4
+        camera.loadrays((base, base), region, 2**rate)
         for step in range(depth):
             camera.steprays()
         camera.applyrays()
@@ -90,7 +91,7 @@ class RTCamera(Camera):
                 self.img[I + J] *= 0
         for II in ti.grouped(ti.ndrange(*region)):
             i = II.dot(ts.vec(1, region[0]))
-            I = II * skipstep + topleft + skipstep / 2
+            I = II * skipstep + topleft + skipstep * ti.random()
             coor = ts.vec2((I.x - self.cx) / self.fx, (I.y - self.cy) / self.fy)
             orig, dir = self.generate(coor)
             self.ro[i] = orig

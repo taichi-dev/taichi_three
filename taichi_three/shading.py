@@ -82,16 +82,6 @@ class Node:
 
 
 class Shading(Node):
-    use_postp = False
-
-    @ti.func
-    def post_process(self, color):
-        if ti.static(not self.use_postp):
-            return color
-        blue = ts.vec3(0.00, 0.01, 0.05)
-        orange = ts.vec3(1.19, 1.04, 0.98)
-        return ts.mix(blue, orange, ti.sqrt(color))
-
     @Node.method
     @ti.func
     def radiance(self, pos, indir, normal):
@@ -113,7 +103,6 @@ class Shading(Node):
                     subclr = self.render_func(pos, normal, viewdir, light)
                     res += strength * subclr
         res += self.get_emission()
-        res = self.post_process(res)
         return res
 
     @ti.func
@@ -125,7 +114,7 @@ class Shading(Node):
         l_out = ts.vec3(0.0)
         if NoL > EPS:
             l_out = light.get_color(pos)
-            l_out *= NoL * self.brdf(normal, -viewdir, lightdir)
+            l_out *= NoL * self.brdf(normal, lightdir, -viewdir)
         return l_out
 
     def brdf(self, normal, lightdir, viewdir):
@@ -244,6 +233,9 @@ class IdealRT(Shading):
             outdir = ts.randUnit3D()
             if outdir.dot(self.normal) < 0:
                 outdir = -outdir
+            #s = ti.random()
+            #outdir = ts.vec3(ti.sqrt(1 - s**2) * ts.randUnit2D(), s)
+            #outdir = ti.Matrix.cols([self.tangent, self.bitangent, self.normal]) @ outdir
         return self.pos, outdir, clr
 
 

@@ -45,6 +45,7 @@ def intersect_triangle(model, orig, dir, face):
     nrma = (L2C @ ts.vec4(nrma, 0)).xyz
     nrmb = (L2C @ ts.vec4(nrmb, 0)).xyz
     nrmc = (L2C @ ts.vec4(nrmc, 0)).xyz
+    tan, bitan = compute_tangent(posb - posa, posc - posa, texb - texa, texc - texa)
 
     hit = 1e6
     clr = ts.vec3(0.0)
@@ -59,7 +60,7 @@ def intersect_triangle(model, orig, dir, face):
         nrm = nrma * sa + nrmb * sb + nrmc * sc
         if dir.dot(pos - orig) > 1e-4:
             hit = (pos - orig).norm()
-            orig, dir, clr = model.radiance(pos, dir, tex, nrm)
+            orig, dir, clr = model.radiance(pos, dir, tex, nrm, tan, bitan)
 
     return hit, orig, dir, clr
 
@@ -117,9 +118,14 @@ def render_triangle(model, camera, face):
     # this is to be compatible with obj model loading.
     if ts.dot(pos_center, normal) <= 0:
 
+        if ti.static(hasattr(model, 'use_auto_normal')):
+            nrma = normal
+            nrmb = normal
+            nrmc = normal
+
         tan, bitan = compute_tangent(-dpab, -dpac, -dtab, -dtac)
 
-        clra = model.vertex_shader(posa, texa, nrma, tan, bitan)
+        clra = model.vertex_shader(posa, texa, nrma, tan, bitan)  # TODO: interpolate tan and bitan? merge with nrm?
         clrb = model.vertex_shader(posb, texb, nrmb, tan, bitan)
         clrc = model.vertex_shader(posc, texc, nrmc, tan, bitan)
 

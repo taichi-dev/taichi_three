@@ -20,6 +20,8 @@ class FrameBuffer:
         self.add_buffer('img', 3)
         self.add_buffer('idepth', 0)
 
+        self.post_process = None
+
     @ti.func
     def idepth_fixp(self, z):
         if ti.static(ti.core.is_integral(self['idepth'].dtype)):
@@ -91,9 +93,25 @@ class FrameBuffer:
 
     @ti.func
     def update_buffer(self):
-        if ti.static(self.n_taa):
+        if ti.static(self.n_taa or self.post_process is not None):
             for I in ti.grouped(self.img):
-                self.img[I] = sum(self.taa[i, I] for i in range(self.n_taa)) / self.ntaa[None]
+                color = self.img[I] * 0
+                if ti.static(self.n_taa):
+                    color = sum(self.taa[i, I] for i in range(self.n_taa)) / self.ntaa[None]
+                else:
+                    color = self.img[I]
+                if ti.static(self.post_process is not None):
+                    self.img[I] = self.post_process(color)
+
+
+# Used for camera.fb.post_process
+# https://zhuanlan.zhihu.com/p/21983679
+def make_tonemap(adapted_lum=1.2):
+    @ti.func
+    def result(color):
+        color *= adapted_lum
+        return color * (2.51 * color + 0.03) / (color * (2.43 * color + 0.59) + 0.14)
+
 
 
 @ti.data_oriented
