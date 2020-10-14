@@ -3,16 +3,6 @@ import taichi as ti
 import functools
 
 
-class AutoInit:
-    def init(self):
-        if not hasattr(self, '_AutoInit_had_init'):
-            self._init()
-            self._AutoInit_had_init = True
-
-    def _init(self):
-        raise NotImplementedError
-
-
 def create_field(dim, dtype, shape=None, initial=None, **kwargs):
     if dim is None:
         return dtype(shape, **kwargs)

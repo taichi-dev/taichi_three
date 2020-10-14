@@ -92,13 +92,12 @@ New in latest master
 Notable changes:
 * Fix the coordinate system to be right-handed: +X right, +Y up, +Z forward; +Z points FROM scene TO camera.
 * Set up a node-alike system for materials, see `examples/physics_based_rendering.py` for example.
+* Add `t3.Geometry.cube()`, `t3.Geometry.cylinder()` for creating mesh without reading from disk.
 * Support Temporal Anti-Aliasing (TAA), use `t3.Camera(taa=True)` to enable it.
-* Add `t3.Geometry.cube()` for creating a cube mesh without reading from disk.
 * Support `t3.readobj('cube.obj', orient='xyZ')` for orientation fixes.
 
 Minor updates:
 * Add `t3.objmerge`, `t3.objbreakdown` and `t3.objautoscale` for OBJ editing helpers.
-
 
 
 TODO list
@@ -110,16 +109,17 @@ Minor fixes:
 * Fix shadow artifects on 90-deg faces.
 * Make camera buffer update less ad-hoc.
 * Adapt ambient occulsion to node system.
+* Fix broken shadow mapping snice v0.0.7.
 * Support scaling in ORTHO mode.
 
 Major steps:
 * Standardize affine system - L2W, W2C, C2D.
-* Add some helpers for creating primitive geometries.
 * Support shadow mapping for `t3.PointLight`.
 * Support `t3.CutoffLight` for light cones.
 
 Ambitions:
-* Path tracing scheme, e.g. cornell box.
+* Standardize path tracing scheme, e.g. cornell box.
+* Further push forward node-alike system in other fields.
 * Support image-based lighting and environment maps (skybox).
 * Support deferred shading and SSAO.
 * Support screen-space reflection.
