@@ -34,9 +34,9 @@ def plucker_bcoor(u, v, a, b, c):
 
 @ti.func
 def intersect_triangle(model, orig, dir, face):
-    posa, posb, posc = model.pos[face[0, 0]], model.pos[face[1, 0]], model.pos[face[2, 0]]
-    texa, texb, texc = model.tex[face[0, 1]], model.tex[face[1, 1]], model.tex[face[2, 1]]
-    nrma, nrmb, nrmc = model.nrm[face[0, 2]], model.nrm[face[1, 2]], model.nrm[face[2, 2]]
+    posa, posb, posc = face.pos
+    texa, texb, texc = face.tex
+    nrma, nrmb, nrmc = face.nrm
 
     L2C = model.L2W[None]
     posa = (L2C @ ts.vec4(posa, 1)).xyz
@@ -117,12 +117,6 @@ def render_triangle(model, camera, face):
     # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
     # this is to be compatible with obj model loading.
     if ts.dot(pos_center, normal) <= 0:
-
-        if ti.static(hasattr(model, 'use_auto_normal')):
-            nrma = normal
-            nrmb = normal
-            nrmc = normal
-
         tan, bitan = compute_tangent(-dpab, -dpac, -dtab, -dtac)
 
         clra = model.vertex_shader(posa, texa, nrma, tan, bitan)  # TODO: interpolate tan and bitan? merge with nrm?

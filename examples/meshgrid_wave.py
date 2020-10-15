@@ -4,8 +4,8 @@ import taichi_three as t3
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-obj = t3.Geometry.meshgrid(64)
-model = t3.Model.from_obj(obj)
+obj = t3.Geometry.meshgrid(128)
+model = t3.Model(t3.MeshMakeNormal(t3.Mesh.from_obj(obj)))
 model.use_auto_normal = True
 scene.add_model(model)
 camera = t3.Camera()
@@ -22,8 +22,9 @@ def Z(xy, t):
 
 @ti.kernel
 def deform_mesh(t: float):
-    for i in model.pos:
-        model.pos[i].y = Z(model.pos[i].xZ, t)
+    for i in model.mesh.mesh.pos:
+        model.mesh.mesh.pos[i].y = Z(model.mesh.mesh.pos[i].xZ, t)
+
 
 gui = ti.GUI('Meshgrid', camera.res)
 while gui.running:
