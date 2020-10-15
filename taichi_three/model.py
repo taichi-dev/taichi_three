@@ -74,11 +74,12 @@ class MakeNormalFace:
         return normal, normal, normal
 
 
+@ti.data_oriented
 class Mesh:
     def __init__(self, faces, pos, tex, nrm):
         self.faces = faces
         self.pos = pos
-        self.tex = pos
+        self.tex = tex
         self.nrm = nrm
 
     def loop_range(self):
@@ -90,6 +91,10 @@ class Mesh:
 
     @classmethod
     def from_obj(cls, obj):
+        if isinstance(obj, str):
+            from .loader import readobj
+            obj = readobj(obj)
+
         faces = create_field((3, 3), int, len(obj['f']))
         pos = create_field(3, float, len(obj['vp']))
         tex = create_field(2, float, len(obj['vt']))
@@ -106,6 +111,7 @@ class Mesh:
         return mesh
 
 
+@ti.data_oriented
 class MeshMakeNormal:
     def __init__(self, mesh):
         self.mesh = mesh
@@ -117,6 +123,41 @@ class MeshMakeNormal:
     def get_face(self, i):
         face = self.mesh.get_face(i)
         return MakeNormalFace(face)
+
+
+@ti.data_oriented
+class MeshGridSmoothNormal:
+    def __init__(self, mesh, N):
+        self.mesh = mesh
+        self.N = N
+
+    def loop_range(self):
+        return self.mesh.loop_range()
+
+    @ti.func
+    def get_face(self, i):
+        face = self.mesh.get_face(i)
+        ret = DataOriented()
+        ret.pos = ti.static(face.pos)
+        ret.tex = ti.static(face.tex)
+        I = ts.vec((i % (self.N - 1)**2) // (self.N - 1), i % (self.N - 1))
+        n0 = self.get_normal_at(I + ts.D.__)
+        n1 = self.get_normal_at(I + ts.D._x)
+        n2 = self.get_normal_at(I + ts.D.xx)
+        n3 = self.get_normal_at(I + ts.D.x_)
+        if ti.static(i >= (self.N - 1)**2):
+            ret.nrm = ti.static((n0, n1, n2))
+        else:
+            ret.nrm = ti.static((n0, n2, n3))
+        return ret
+
+    @ti.func
+    def get_normal_at(self, I):
+        xa = self.mesh.pos[ts.vec(self.N, 1).dot(ts.clamp(I + ts.D.x_, 0, ts.vec(self.N, self.N) - 1))]
+        xb = self.mesh.pos[ts.vec(self.N, 1).dot(ts.clamp(I + ts.D.X_, 0, ts.vec(self.N, self.N) - 1))]
+        ya = self.mesh.pos[ts.vec(self.N, 1).dot(ts.clamp(I + ts.D._x, 0, ts.vec(self.N, self.N) - 1))]
+        yb = self.mesh.pos[ts.vec(self.N, 1).dot(ts.clamp(I + ts.D._X, 0, ts.vec(self.N, self.N) - 1))]
+        return (ya - yb).cross(xa - xb).normalized()
 
 
 class Model(ModelBase):

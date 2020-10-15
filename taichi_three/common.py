@@ -35,6 +35,12 @@ def create_field(dim, dtype, shape=None, initial=None, **kwargs):
 
 
 
+@ti.data_oriented
+class DataOriented(object):
+    pass
+
+
+
 class subscriptable(property):
     def __init__(self, func):
         self.func = func

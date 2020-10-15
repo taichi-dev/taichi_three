@@ -89,10 +89,13 @@ Other updates:
 New in latest master
 --------------------
 
-Notable changes:
+API breaking changes:
+* `t3.Model.from_obj` is now deprecated, use `t3.Model(t3.Mesh.from_obj(obj))` instead.
 * Fix the coordinate system to be right-handed: +X right, +Y up, +Z forward; +Z points FROM scene TO camera.
+
+Notable changes:
 * Set up a node-alike system for materials, see `examples/physics_based_rendering.py` for example.
-* Add `t3.Geometry.cube()`, `t3.Geometry.cylinder()` for creating mesh without reading from disk.
+* Add `t3.Geometry.cube()`, `t3.Geometry.cylinder()`, and `t3.Geometry.meshgrid()` for creating mesh without reading disk.
 * Support Temporal Anti-Aliasing (TAA), use `t3.Camera(taa=True)` to enable it.
 * Support `t3.readobj('cube.obj', orient='xyZ')` for orientation fixes.
 

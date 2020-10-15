@@ -3,7 +3,7 @@ import taichi_glsl as tl
 import taichi_three as t3
 import numpy as np
 
-ti.init(arch=ti.gpu)
+ti.init(arch=ti.cpu)
 
 ### Parameters
 
@@ -62,66 +62,23 @@ light = t3.Light(dir=[0.4, -1.5, 1.8])
 #scene.add_shadow_camera(light.make_shadow_camera())  # comment this if you get too poor FPS
 scene.add_light(light)
 
-model = t3.Model(faces_n=N**2 * 4, pos_n=N**2, tex_n=N**2, nrm_n=N**2 * 2)
-model.material = t3.Material(t3.CookTorrance(
-    color=t3.Texture('assets/cloth.jpg'),
-))
+mesh = t3.Mesh.from_obj(t3.Geometry.meshgrid(N))
+model = t3.Model(t3.MeshGridSmoothNormal(mesh, N))
+model.material = t3.Material(t3.CookTorrance(color=t3.Texture('assets/cloth.jpg')))
 scene.add_model(model)
 
-sphere = t3.Model.from_obj(t3.readobj('assets/sphere.obj'))
+sphere = t3.Model(t3.Mesh.from_obj('assets/sphere.obj'))
 scene.add_model(sphere)
-
-
-@ti.kernel
-def init_display():
-    for i_ in ti.grouped(ti.ndrange(N - 1, N - 1)):
-        i = i_
-        a = i.dot(tl.vec(N, 1))
-        i.x += 1
-        b = i.dot(tl.vec(N, 1))
-        i.y += 1
-        c = i.dot(tl.vec(N, 1))
-        i.x -= 1
-        d = i.dot(tl.vec(N, 1))
-        i.y -= 1
-        for p in ti.static(range(3)):
-            for q in ti.static(range(3)):
-                model.faces[a * 4 + 0][p, q] = [a, c, b][p]
-                model.faces[a * 4 + 1][p, q] = [a, d, c][p]
-        for p in ti.static(range(3)):
-            for q in ti.static(range(2)):
-                model.faces[a * 4 + 2][p, q] = [a, b, c][p]
-                model.faces[a * 4 + 3][p, q] = [a, c, d][p]
-        a += N**2
-        b += N**2
-        c += N**2
-        d += N**2
-        for p in ti.static(range(3)):
-            model.faces[a * 4 + 2][p, 2] = [a, b, c][p]
-            model.faces[a * 4 + 3][p, 2] = [a, c, d][p]
-    for i in ti.grouped(x):
-        j = i.dot(tl.vec(N, 1))
-        model.tex[j] = tl.D._x + i.xY / N
 
 
 @ti.kernel
 def update_display():
     for i in ti.grouped(x):
         j = i.dot(tl.vec(N, 1))
-        model.pos[j] = x[i]
-
-        xa = x[tl.clamp(i + tl.D.x_, 0, tl.vec(*NN) - 1)]
-        xb = x[tl.clamp(i + tl.D.X_, 0, tl.vec(*NN) - 1)]
-        ya = x[tl.clamp(i + tl.D._x, 0, tl.vec(*NN) - 1)]
-        yb = x[tl.clamp(i + tl.D._X, 0, tl.vec(*NN) - 1)]
-        normal = (ya - yb).cross(xa - xb).normalized()
-        model.nrm[j] = -normal
-        model.nrm[N**2 + j] = normal
+        mesh.pos[j] = x[i]
 
 
 init()
-init_display()
-
 sphere.L2W[None] = t3.translate(ball_pos) @ t3.scale(ball_radius)
 with ti.GUI('Mass Spring', camera.res) as gui:
     while gui.running and not gui.get_event(gui.ESCAPE):
