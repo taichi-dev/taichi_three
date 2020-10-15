@@ -98,6 +98,7 @@ Notable changes:
 
 Minor updates:
 * Add `t3.objmerge`, `t3.objbreakdown` and `t3.objautoscale` for OBJ editing helpers.
+* Fix broken `t3.ScatterModel`.
 
 
 TODO list

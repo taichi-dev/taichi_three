@@ -92,9 +92,9 @@ TAA_SHAKES = [(0, 0),
 def render_triangle(model, camera, face):
     scene = model.scene
     L2C = model.L2C[None]  # Local to Camera, i.e. ModelView in OpenGL
-    posa, posb, posc = model.pos[face[0, 0]], model.pos[face[1, 0]], model.pos[face[2, 0]]
-    texa, texb, texc = model.tex[face[0, 1]], model.tex[face[1, 1]], model.tex[face[2, 1]]
-    nrma, nrmb, nrmc = model.nrm[face[0, 2]], model.nrm[face[1, 2]], model.nrm[face[2, 2]]
+    posa, posb, posc = face.pos
+    texa, texb, texc = face.tex
+    nrma, nrmb, nrmc = face.nrm
     posa = (L2C @ ts.vec4(posa, 1)).xyz
     posb = (L2C @ ts.vec4(posb, 1)).xyz
     posc = (L2C @ ts.vec4(posc, 1)).xyz

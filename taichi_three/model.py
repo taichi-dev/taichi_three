@@ -27,26 +27,45 @@ class ModelBase:
         self.L2C[None] = camera.L2W[None].inverse() @ self.L2W[None]
 
 
-class ModelLow(ModelBase):
-    def __init__(self, faces_n, pos_n, tex_n, nrm_n):
+@ti.data_oriented
+class IndicedTriangle:
+    def __init__(self, face, postab, textab, nrmtab):
+        self.face = face
+        self.postab = postab
+        self.textab = textab
+        self.nrmtab = nrmtab
+
+    @property
+    @ti.func
+    def pos(self):
+        return self.postab[self.face[0, 0]], self.postab[self.face[1, 0]], self.postab[self.face[2, 0]]
+
+    @property
+    @ti.func
+    def tex(self):
+        return self.textab[self.face[0, 1]], self.textab[self.face[1, 1]], self.textab[self.face[2, 1]]
+
+    @property
+    @ti.func
+    def nrm(self):
+        return self.nrmtab[self.face[0, 2]], self.nrmtab[self.face[1, 2]], self.nrmtab[self.face[2, 2]]
+
+
+class Model(ModelBase):
+    def __init__(self, faces, pos, tex, nrm):
         super().__init__()
 
-        if not hasattr(self, 'faces'):
-            self.faces = ti.Matrix.field(3, 3, int, faces_n)
-        if not hasattr(self, 'pos'):
-            self.pos = ti.Vector.field(3, float, pos_n)
-        if not hasattr(self, 'tex'):
-            self.tex = ti.Vector.field(2, float, tex_n)
-        if not hasattr(self, 'nrm'):
-            self.nrm = ti.Vector.field(3, float, nrm_n)
-
-        self.textures = {}
+        self.faces = faces
+        self.pos = pos
+        self.tex = pos
+        self.nrm = nrm
 
     @ti.func
     def render(self, camera):
         for i in ti.grouped(self.faces):
             # assume all elements to be triangle
-            render_triangle(self, camera, self.faces[i])
+            face = IndicedTriangle(self.faces[i], self.pos, self.tex, self.nrm)
+            render_triangle(self, camera, face)
 
     @ti.func
     def intersect(self, orig, dir):
@@ -60,32 +79,22 @@ class ModelLow(ModelBase):
         return hit, orig, dir, clr
 
     @classmethod
-    def from_obj(cls, obj, texture=None, normtex=None):
-        model = cls(len(obj['f']), len(obj['vp']), len(obj['vt']), len(obj['vn']))
+    def from_obj(cls, obj):
+        faces = create_field((3, 3), int, len(obj['f']))
+        pos = create_field(3, float, len(obj['vp']))
+        tex = create_field(2, float, len(obj['vt']))
+        nrm = create_field(3, float, len(obj['vn']))
+
+        model = cls(faces=faces, pos=pos, tex=tex, nrm=nrm)
 
         @ti.materialize_callback
         def init_mesh_data():
-            model.faces.from_numpy(obj['f'])
-            model.pos.from_numpy(obj['vp'])
-            model.tex.from_numpy(obj['vt'])
-            model.nrm.from_numpy(obj['vn'])
+            faces.from_numpy(obj['f'])
+            pos.from_numpy(obj['vp'])
+            tex.from_numpy(obj['vt'])
+            nrm.from_numpy(obj['vn'])
 
-        if texture is not None:
-            model.add_texture('color', texture)
-        if normtex is not None:
-            model.add_texture('normal', normtex)
         return model
-
-    def add_uniform(self, name, value):
-        self.add_texture(name, np.array([[value]]))
-
-    @ti.func
-    def sample(self, name: ti.template(), texcoor, default):
-        if ti.static(name in self.textures.keys()):
-            tex = ti.static(self.textures[name])
-            return ts.bilerp(tex, texcoor * ts.vec(*tex.shape))
-        else:
-            return default
 
     def radiance(self, pos, indir, texcoor, normal, tangent, bitangent):
         # TODO: we don't support normal maps in path tracing mode for now
@@ -96,18 +105,6 @@ class ModelLow(ModelBase):
         with self.material.specify_inputs(model=self, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent) as shader:
             return shader.colorize()
 
-    @ti.func
-    def pixel_shader(self, pos, color, texcoor, normal):
-        color = color * self.sample('color', texcoor, ts.vec3(1.0))
-        return dict(img=color, pos=pos, normal=normal)
-
-    @ti.func
-    def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
-        color = self.colorize(pos, texcoor, normal, tangent, bitangent)
-        return pos, color, texcoor, normal
-
-
-class Model(ModelLow):
     @ti.func
     def pixel_shader(self, pos, texcoor, normal, tangent, bitangent):
         # normal has been no longer normalized due to lerp and ndir errors.
