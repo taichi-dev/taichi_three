@@ -178,10 +178,8 @@ def render_triangle(model, camera, face):
 @ti.func
 def render_particle(model, camera, index):  # FIXME: broken after L2C infra
     scene = model.scene
-    L2W = model.L2W
-    a = model.pos[index]
+    a = (model.L2C[None] @ ts.vec4(model.pos[index], 1)).xyz
     r = model.radius[index]
-    a = camera.untrans_pos(L2W @ a)
     A = camera.uncook(a)
 
     rad = camera.uncook(ts.vec3(r, r, a.z), False)

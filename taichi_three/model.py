@@ -20,7 +20,7 @@ class ModelBase:
             self.L2W[None] = ti.Matrix.identity(float, 4)
             self.L2C[None] = ti.Matrix.identity(float, 4)
 
-        self.init_cbs = []
+        self.material = Material(CookTorrance())
 
     @ti.func
     def set_view(self, camera):
@@ -41,7 +41,6 @@ class ModelLow(ModelBase):
             self.nrm = ti.Vector.field(3, float, nrm_n)
 
         self.textures = {}
-        self.material = Material(CookTorrance())
 
     @ti.func
     def render(self, camera):

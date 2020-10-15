@@ -11,7 +11,7 @@ import math
 
 class ScatterModel(ModelBase):
     def __init__(self, num=None):
-        self.L2W = Affine.field(())
+        super().__init__()
 
         self.num = num
 
@@ -30,6 +30,5 @@ class ScatterModel(ModelBase):
 
     @ti.func
     def colorize(self, pos, normal):
-        opt = CookTorrance()
-        opt.model = ti.static(self)
-        return opt.colorize(pos, normal)
+        with self.material.specify_inputs(model=self, pos=pos, texcoor=None, normal=normal, tangent=None, bitangent=None) as shader:
+            return shader.colorize()
