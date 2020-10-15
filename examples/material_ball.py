@@ -23,16 +23,13 @@ scene.add_light(light)
 gui = ti.GUI('Material Ball', camera.res)
 roughness = gui.slider('roughness', 0, 1, step=0.05)
 metallic = gui.slider('metallic', 0, 1, step=0.05)
-luminance = gui.slider('luminance', 0, 2, step=0.05)
 roughness.value = 0.3
 metallic.value = 0.0
-luminance.value = 1.0
 while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     model.material.shader.params['roughness'].fill(roughness.value)
     model.material.shader.params['metallic'].fill(metallic.value)
-    model.material.shader.params['color'].fill(luminance.value)
     if any(x < 0.6 for x in gui.get_cursor_pos()):
         camera.from_mouse(gui)
     scene.render()

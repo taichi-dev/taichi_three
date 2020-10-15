@@ -26,7 +26,7 @@ class Material:
 
 
 @ti.data_oriented
-class Input:
+class MaterialInput:
     def __init__(self, name):
         self.name = name
 
@@ -37,18 +37,8 @@ class Input:
 
 @ti.data_oriented
 class Node:
-    default_inputs = dict(
-        pos=Input('pos'),
-        texcoor=Input('texcoor'),
-        normal=Input('normal'),
-        tangent=Input('tangent'),
-        bitangent=Input('bitangent'),
-        model=Input('model'),
-    )
-
     def __init__(self, **kwargs):
         self.params = dict(self.get_default_params())
-        self.params.update(self.default_inputs)
         self.params.update(kwargs)
         self._method_level = 0
 
@@ -82,6 +72,14 @@ class Node:
 
 
 class Shading(Node):
+    @classmethod
+    def get_default_params(cls):
+        return dict(
+            pos = MaterialInput('pos'),
+            normal = MaterialInput('normal'),
+            model = MaterialInput('model'),
+        )
+
     @Node.method
     @ti.func
     def radiance(self, pos, indir, normal):
@@ -134,6 +132,9 @@ class BlinnPhong(Shading):
     @classmethod
     def get_default_params(cls):
         return dict(
+            pos = MaterialInput('pos'),
+            normal = MaterialInput('normal'),
+            model = MaterialInput('model'),
             color = Constant(1.0),
             ambient = Constant(1.0),
             specular = Constant(1.0),
@@ -162,6 +163,9 @@ class CookTorrance(Shading):
     @classmethod
     def get_default_params(cls):
         return dict(
+            pos = MaterialInput('pos'),
+            normal = MaterialInput('normal'),
+            model = MaterialInput('model'),
             color = Constant(1.0),
             ambient = Constant(1.0),
             emission = Constant(0.0),
@@ -209,7 +213,10 @@ class IdealRT(Shading):
     @classmethod
     def get_default_params(cls):
         return dict(
-            indir = Input('indir'),
+            pos = MaterialInput('pos'),
+            normal = MaterialInput('normal'),
+            model = MaterialInput('model'),
+            indir = MaterialInput('indir'),
             emission = Constant(0.0),
             diffuse = Constant(1.0),
             specular = Constant(0.0),
@@ -272,6 +279,12 @@ class Uniform(Node):
 
 
 class Texture(Node):
+    @classmethod
+    def get_default_params(cls):
+        return dict(
+            texcoor = MaterialInput('texcoor'),
+            )
+
     def __init__(self, texture, scale=None):
         super().__init__()
 
