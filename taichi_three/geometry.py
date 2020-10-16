@@ -89,35 +89,47 @@ TAA_SHAKES = [(0, 0),
 
 
 @ti.func
+def v4trans(mat, vec, wei):
+    ti.static_assert(vec.n == 3, vec.n)
+
+    if ti.static(vec.m == 1):
+        return (mat @ ts.vec4(vec, wei)).xyz
+
+    tmp = ti.Matrix.zero(float, 4, vec.m)
+    for i, j in ti.static(ti.ndrange(vec.n, vec.m)):
+        tmp[i, j] = vec[i, j]
+    for i in ti.static(range(vec.m)):
+        tmp[3, i] = wei
+    tmp = mat @ tmp
+    ret = ti.Matrix.zero(float, vec.n, vec.m)
+    for i, j in ti.static(ti.ndrange(vec.n, vec.m)):
+        ret[i, j] = tmp[i, j]
+    return ret
+
+
+@ti.func
 def render_triangle(model, camera, face):
     scene = model.scene
     L2C = model.L2C[None]  # Local to Camera, i.e. ModelView in OpenGL
     posa, posb, posc = face.pos
     texa, texb, texc = face.tex
     nrma, nrmb, nrmc = face.nrm
-    posa = (L2C @ ts.vec4(posa, 1)).xyz
-    posb = (L2C @ ts.vec4(posb, 1)).xyz
-    posc = (L2C @ ts.vec4(posc, 1)).xyz
-    nrma = (L2C @ ts.vec4(nrma, 0)).xyz
-    nrmb = (L2C @ ts.vec4(nrmb, 0)).xyz
-    nrmc = (L2C @ ts.vec4(nrmc, 0)).xyz
+    posa = v4trans(L2C, posa, 1)
+    posb = v4trans(L2C, posb, 1)
+    posc = v4trans(L2C, posc, 1)
+    nrma = v4trans(L2C, nrma, 0)
+    nrmb = v4trans(L2C, nrmb, 0)
+    nrmc = v4trans(L2C, nrmc, 0)
 
     pos_center = (posa + posb + posc) / 3
     if ti.static(camera.type == camera.ORTHO):
         pos_center = ts.vec3(0.0, 0.0, 1.0)
 
-    dpab = posa - posb
-    dpac = posa - posc
-    dtab = texa - texb
-    dtac = texa - texc
-
-    normal = ts.cross(dpab, dpac)
-
     # NOTE: the normal computation indicates that a front-facing face should
     # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
     # this is to be compatible with obj model loading.
-    if ts.dot(pos_center, normal) <= 0:
-        tan, bitan = compute_tangent(-dpab, -dpac, -dtab, -dtac)  # TODO: node-ize this
+    if ts.dot(pos_center, ts.cross(posa - posc, posa - posb)) >= 0:
+        tan, bitan = compute_tangent(posb - posa, posc - posa, texb - texa, texc - texa)  # TODO: node-ize this
 
         clra = [posa, texa, nrma, tan, bitan]  # TODO: interpolate tan and bitan? merge with nrm?
         clrb = [posb, texb, nrmb, tan, bitan]
