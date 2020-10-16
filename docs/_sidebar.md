@@ -1,6 +1,5 @@
 - Getting started
 
-  - [Installation](installation.md)
   - [Hello cube](hello_cube.md)
   - [Binding textures](binding_textures.md)
   - [Coordinate system](coordinate_system.md)

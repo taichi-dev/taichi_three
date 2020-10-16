@@ -12,7 +12,7 @@ setuptools.setup(
     url='https://github.com/taichi-dev/taichi_three',
     description='A Taichi extension library to render 3D scenes',
     long_description=t3.__doc__,
-    license='MIT',
+    license=t3.__license__,
     keywords=['graphics', 'renderer'],
     classifiers=[
         'Intended Audience :: Developers',
