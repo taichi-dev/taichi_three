@@ -62,8 +62,8 @@ light = t3.Light(dir=[0.4, -1.5, 1.8])
 #scene.add_shadow_camera(light.make_shadow_camera())  # comment this if you get too poor FPS
 scene.add_light(light)
 
-mesh = t3.Mesh.from_obj(t3.Geometry.meshgrid(N))
-model = t3.Model(t3.MeshGridSmoothNormal(mesh, N))
+mesh = t3.MeshGrid((N, N))
+model = t3.Model(t3.QuadToTri(mesh))
 model.material = t3.Material(t3.CookTorrance(color=t3.Texture('assets/cloth.jpg')))
 scene.add_model(model)
 
@@ -74,8 +74,7 @@ scene.add_model(sphere)
 @ti.kernel
 def update_display():
     for i in ti.grouped(x):
-        j = i.dot(tl.vec(N, 1))
-        mesh.pos[j] = x[i]
+        mesh.pos[i] = x[i]
 
 
 init()

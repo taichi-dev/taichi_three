@@ -82,11 +82,16 @@ class Mesh:
         self.tex = tex
         self.nrm = nrm
 
-    def loop_range(self):
-        return self.faces.loop_range()
+    @property
+    def shape(self):
+        return self.faces.shape
+
+    @property
+    def static_shape(self):
+        return []
 
     @ti.func
-    def get_face(self, i):
+    def get_face(self, i, j: ti.template()):
         return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm)
 
     @classmethod
@@ -116,61 +121,32 @@ class MeshMakeNormal:
     def __init__(self, mesh):
         self.mesh = mesh
 
-    def loop_range(self):
-        return self.mesh.loop_range()
+    @property
+    def shape(self):
+        return self.mesh.shape
+
+    @property
+    def static_shape(self):
+        return self.mesh.static_shape
 
     @ti.func
-    def get_face(self, i):
-        face = self.mesh.get_face(i)
+    def get_face(self, i, j: ti.template()):
+        face = self.mesh.get_face(i, j)
         return MakeNormalFace(face)
 
 
 @ti.data_oriented
-class MeshGridSmoothNormal:
-    def __init__(self, mesh, N):
-        self.mesh = mesh
-        self.N = N
-
-    def loop_range(self):
-        return self.mesh.loop_range()
-
-    @ti.func
-    def get_face(self, i):
-        face = self.mesh.get_face(i)
-        ret = DataOriented()
-        ret.pos = ti.static(face.pos)
-        ret.tex = ti.static(face.tex)
-        I = ts.vec((i % (self.N - 1)**2) // (self.N - 1), i % (self.N - 1))
-        n0 = self.get_normal_at(I + ts.D.__)
-        n1 = self.get_normal_at(I + ts.D._x)
-        n2 = self.get_normal_at(I + ts.D.xx)
-        n3 = self.get_normal_at(I + ts.D.x_)
-        if ti.static(i >= (self.N - 1)**2):
-            ret.nrm = ti.static((n0, n1, n2))
-        else:
-            ret.nrm = ti.static((n0, n2, n3))
-        return ret
-
-    @ti.func
-    def get_normal_at(self, I):
-        xa = self.mesh.pos[ts.vec(self.N, 1).dot(ts.clamp(I + ts.D.x_, 0, ts.vec(self.N, self.N) - 1))]
-        xb = self.mesh.pos[ts.vec(self.N, 1).dot(ts.clamp(I + ts.D.X_, 0, ts.vec(self.N, self.N) - 1))]
-        ya = self.mesh.pos[ts.vec(self.N, 1).dot(ts.clamp(I + ts.D._x, 0, ts.vec(self.N, self.N) - 1))]
-        yb = self.mesh.pos[ts.vec(self.N, 1).dot(ts.clamp(I + ts.D._X, 0, ts.vec(self.N, self.N) - 1))]
-        return (ya - yb).cross(xa - xb).normalized()
-
-
 class Model(ModelBase):
     def __init__(self, mesh):
         super().__init__()
-
         self.mesh = mesh
 
     @ti.func
     def render(self, camera):
-        for i in ti.grouped(self.mesh):
-            face = self.mesh.get_face(i)
-            render_triangle(self, camera, face)
+        for i in ti.grouped(ti.ndrange(*self.mesh.shape)):
+            for j in ti.static(ti.grouped(ti.ndrange(*self.mesh.static_shape))):
+                face = self.mesh.get_face(i, j)
+                render_triangle(self, camera, face)
 
     @ti.func
     def intersect(self, orig, dir):
@@ -205,3 +181,92 @@ class Model(ModelBase):
     @ti.func
     def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
         return pos, texcoor, normal, tangent, bitangent
+
+
+@ti.data_oriented
+class MeshGridFace:
+    def __init__(self, parent, i):
+        self.parent = parent
+        self.i = i
+
+    @property
+    @ti.func
+    def pos(self):
+        return [self.parent.pos[i] for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
+
+    @property
+    @ti.func
+    def tex(self):
+        return [i / ts.vec2(*self.parent.res) for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
+
+    @property
+    @ti.func
+    def nrm(self):
+        return [self.parent.get_normal_at(i) for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
+        #return ts.vec3(0.0, 1.0, 0.0), ts.vec3(0.0, 1.0, 0.0), ts.vec3(0.0, 1.0, 0.0)
+
+
+@ti.data_oriented
+class MeshGrid:
+    def __init__(self, res):
+        super().__init__()
+        self.res = res
+        self.pos = ti.Vector.field(3, float, self.res)
+
+        @ti.materialize_callback
+        @ti.kernel
+        def init_pos():
+            for i in ti.grouped(self.pos):
+                self.pos[i] = ts.vec(i / ts.vec(*self.pos.shape) * 2 - 1, 0.0).xzy
+
+    @ti.func
+    def get_normal_at(self, i):
+        xa = self.pos[ts.clamp(i + ts.D.x_, 0, ts.vec2(*self.shape))]
+        xb = self.pos[ts.clamp(i + ts.D.X_, 0, ts.vec2(*self.shape))]
+        ya = self.pos[ts.clamp(i + ts.D._x, 0, ts.vec2(*self.shape))]
+        yb = self.pos[ts.clamp(i + ts.D._X, 0, ts.vec2(*self.shape))]
+        return (ya - yb).cross(xa - xb).normalized()
+
+    @property
+    def shape(self):
+        return [self.res[0] - 1, self.res[1] - 1]
+
+    @property
+    def static_shape(self):
+        return []
+
+    @ti.func
+    def get_face(self, i, j: ti.template()):
+        return MeshGridFace(self, i)
+
+
+@ti.data_oriented
+class QuadToTri:
+    def __init__(self, mesh):
+        self.mesh = mesh
+
+    @property
+    def shape(self):
+        return self.mesh.shape
+
+    @property
+    def static_shape(self):
+        return [2, *self.mesh.static_shape]
+
+    @ti.func
+    def get_face(self, i, j: ti.template()):
+        face = self.mesh.get_face(i, ts.vec(*[j[_] for _ in range(1, j.n)]))
+        ret = DataOriented()
+        if ti.static(j.x == 0):
+            ret.__dict__.update(
+                pos = [face.pos[i] for i in [0, 1, 2]],
+                tex = [face.tex[i] for i in [0, 1, 2]],
+                nrm = [face.nrm[i] for i in [0, 1, 2]],
+            )
+        else:
+            ret.__dict__.update(
+                pos = [face.pos[i] for i in [0, 2, 3]],
+                tex = [face.tex[i] for i in [0, 2, 3]],
+                nrm = [face.nrm[i] for i in [0, 2, 3]],
+            )
+        return ret
