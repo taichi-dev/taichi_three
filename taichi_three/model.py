@@ -67,6 +67,9 @@ class Mesh:
     def static_shape(self):
         return []
 
+    def before_rendering(self):
+        pass
+
     @ti.func
     def get_face(self, i, j: ti.template()):
         return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm)
@@ -128,6 +131,9 @@ class MeshMakeNormal:
     def static_shape(self):
         return self.mesh.static_shape
 
+    def before_rendering(self):
+        self.mesh.before_rendering()
+
     @ti.func
     def get_face(self, i, j: ti.template()):
         face = self.mesh.get_face(i, j)
@@ -142,6 +148,7 @@ class Model(ModelBase):
 
     @ti.func
     def render(self, camera):
+        self.mesh.before_rendering()
         for i in ti.grouped(ti.ndrange(*self.mesh.shape)):
             for j in ti.static(ti.grouped(ti.ndrange(*self.mesh.static_shape))):
                 face = self.mesh.get_face(i, j)
@@ -203,18 +210,24 @@ class MeshGrid:
         @property
         @ti.func
         def nrm(self):
-            return [self.parent.get_normal_at(i) for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
+            return [self.parent.snrm[i] for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
 
     def __init__(self, res):
         super().__init__()
         self.res = res
         self.pos = ti.Vector.field(3, float, self.res)
+        self.snrm = ti.Vector.field(3, float, self.res)
 
         @ti.materialize_callback
         @ti.kernel
         def init_pos():
             for i in ti.grouped(self.pos):
                 self.pos[i] = ts.vec(i / ts.vec(*self.pos.shape) * 2 - 1, 0.0).xzy
+
+    @ti.func
+    def before_rendering(self):
+        for i in ti.grouped(self.snrm):
+            self.snrm[i] = self.get_normal_at(i)
 
     @ti.func
     def get_normal_at(self, i):
@@ -249,6 +262,9 @@ class QuadToTri:
     @property
     def static_shape(self):
         return [2, *self.mesh.static_shape]
+
+    def before_rendering(self):
+        self.mesh.before_rendering()
 
     @ti.func
     def get_face(self, i, j: ti.template()):
