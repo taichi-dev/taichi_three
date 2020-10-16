@@ -97,9 +97,9 @@ class FrameBuffer:
                 self.img[I] = sum(self.taa[i, I] for i in range(self.n_taa)) / self.ntaa[None]
 
 
-class SuperSampling2x2(FrameBuffer):
+class SuperSampling2x2:
     def __init__(self, src, dim=3):
-        super().__init__(res=(src.res[0] // 2, src.res[1] // 2), dim=dim)
+        self.img = create_field(dim, float, (src.res[0] // 2, src.res[1] // 2))
         self.src = src
 
     @ti.kernel
