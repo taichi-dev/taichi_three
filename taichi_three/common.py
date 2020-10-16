@@ -34,6 +34,22 @@ def create_field(dim, dtype, shape=None, initial=None, **kwargs):
     return ret
 
 
+def pack_tuple(*args):
+    tup = []
+    for a in args:
+        n = a.m * a.n
+        tup += a.entries
+    return ti.Vector(tup)
+
+
+def unpack_tuple(tup, *args):
+    tup = tup.entries
+    for a in args:
+        n = a.m * a.n
+        a.entries = tup[:n]
+        tup = tup[n:]
+
+
 
 @ti.data_oriented
 class DataOriented(object):

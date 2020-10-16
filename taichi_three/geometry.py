@@ -180,10 +180,7 @@ def render_triangle(model, camera, face):
                     continue
 
                 posx, texx, nrmx = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
-                if ti.static(camera.fb.deferred):
-                    camera.fb.update(X, dict(mid=mid, pos=posx, tex=texx, nrm=nrmx, tan=tan, bitan=bitan))
-                else:
-                    camera.fb.update(X, dict(color=model.scene.pixel_shader(mid, posx, texx, nrmx, tan, bitan)))
+                camera.fb.update(X, dict(img=model.material.pixel_shader(model, posx, texx, nrmx, tan, bitan)))
 
 
 @ti.func

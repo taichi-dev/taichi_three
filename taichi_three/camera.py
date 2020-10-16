@@ -7,10 +7,9 @@ import math
 
 @ti.data_oriented
 class FrameBuffer:
-    def __init__(self, res=None, taa=False, deferred=False):
+    def __init__(self, res=None, dim=3, taa=False):
         self.res = res or (512, 512)
         self.n_taa = (taa if not isinstance(taa, bool) else 5) if taa else 0
-        self.deferred = deferred
         if self.n_taa:
             assert self.n_taa >= 2
             self.taa = ti.Vector.field(3, float, (self.n_taa, *res))
@@ -18,17 +17,8 @@ class FrameBuffer:
             self.ntaa = ti.field(int, ())
 
         self.buffers = {}
-        self.add_buffer('img', 3)
+        self.add_buffer('img', dim)
         self.add_buffer('idepth', ())
-        if self.deferred:
-            self.add_buffer('mid', (), int)
-            self.add_buffer('pos', 3)
-            self.add_buffer('tex', 2)
-            self.add_buffer('nrm', 3)
-            self.add_buffer('tan', 3)
-            self.add_buffer('bitan', 3)
-
-        self.post_process = None
 
     @ti.func
     def idepth_fixp(self, z):
@@ -54,6 +44,10 @@ class FrameBuffer:
     @property
     def img(self):
         return self.buffers['img']
+
+    @property
+    def idepth(self):
+        return self.buffers['idepth']
 
     def __getitem__(self, name):
         if isinstance(name, tuple):
@@ -98,12 +92,23 @@ class FrameBuffer:
 
     @ti.func
     def update_buffer(self):
-        if ti.static(self.deferred):
-            for I in ti.grouped(self.img):
-                self.update(I, self.scene.pixel_shader(self['mid'][I], self['pos'][I], self['tex'][I], self['nrm'][I], self['tan'][I], self['bitan'][I]))
         if ti.static(self.n_taa):
             for I in ti.grouped(self.img):
                 self.img[I] = sum(self.taa[i, I] for i in range(self.n_taa)) / self.ntaa[None]
+
+
+class SuperSampling2x2(FrameBuffer):
+    def __init__(self, src, dim=3):
+        super().__init__(res=(src.res[0] // 2, src.res[1] // 2), dim=dim)
+        self.src = src
+
+    @ti.kernel
+    def render(self):
+        for i in ti.grouped(self.img):
+            self.img[i] = (self.src.img[i * 2 + ts.D.__]
+                         + self.src.img[i * 2 + ts.D._x]
+                         + self.src.img[i * 2 + ts.D.x_]
+                         + self.src.img[i * 2 + ts.D.xx]) / 4
 
 
 # Used for camera.fb.post_process

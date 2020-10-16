@@ -2,6 +2,7 @@ import taichi as ti
 import taichi_glsl as ts
 from .light import AmbientLight
 from .transform import *
+from .common import *
 import math
 
 
@@ -24,22 +25,36 @@ class Material:
     def __exit__(self, type, val, tb):
         del Material.inputs
 
-    def radiance(self, pos, indir, texcoor, normal, tangent, bitangent):
+    def radiance(self, model, pos, indir, texcoor, normal, tangent, bitangent):
         # TODO: we don't support normal maps in path tracing mode for now
-        with self.specify_inputs(material=self, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent, indir=indir) as shader:
+        with self.specify_inputs(model=model, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent, indir=indir) as shader:
             return shader.radiance()
 
-    def colorize(self, pos, texcoor, normal, tangent, bitangent):
-        with self.specify_inputs(material=self, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent) as shader:
+    def colorize(self, model, pos, texcoor, normal, tangent, bitangent):
+        with self.specify_inputs(model=model, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent) as shader:
             return shader.colorize()
 
     @ti.func
-    def pixel_shader(self, pos, texcoor, normal, tangent, bitangent):
+    def pixel_shader(self, model, pos, texcoor, normal, tangent, bitangent):
         # normal has been no longer normalized due to lerp and ndir errors.
         # so here we re-enforce normalization to get slerp.
         normal = normal.normalized()
-        color = self.colorize(pos, texcoor, normal, tangent, bitangent)
+        color = self.colorize(model, pos, texcoor, normal, tangent, bitangent)
         return color
+
+
+@ti.data_oriented
+class DeferredMaterial:
+    @ti.func
+    def pixel_shader(self, model, pos, texcoor, normal, tangent, bitangent):
+        return pack_tuple(pos, texcoor, normal, tangent, bitangent)
+
+
+@ti.data_oriented
+class MaterialVisualizeNormal:
+    @ti.func
+    def pixel_shader(self, model, pos, texcoor, normal, tangent, bitangent):
+        return normal * 0.5 + 0.5
 
 
 @ti.data_oriented
@@ -94,7 +109,7 @@ class Shading(Node):
         return dict(
             pos = MaterialInput('pos'),
             normal = MaterialInput('normal'),
-            material = MaterialInput('material'),
+            model = MaterialInput('model'),
         )
 
     @Node.method
@@ -110,9 +125,9 @@ class Shading(Node):
         normal = self.normal
         res = ts.vec3(0.0)
         viewdir = pos.normalized()
-        wpos = (self.material.scene.cameras[-1].L2W @ ts.vec4(pos, 1)).xyz  # TODO: get curr camera?
-        if ti.static(self.material.scene.lights):
-            for light in ti.static(self.material.scene.lights):
+        wpos = (self.model.scene.cameras[-1].L2W @ ts.vec4(pos, 1)).xyz  # TODO: get curr camera?
+        if ti.static(self.model.scene.lights):
+            for light in ti.static(self.model.scene.lights):
                 strength = light.shadow_occlusion(wpos)
                 if strength >= 1e-3:
                     subclr = self.render_func(pos, normal, viewdir, light)
@@ -151,7 +166,7 @@ class BlinnPhong(Shading):
         return dict(
             pos = MaterialInput('pos'),
             normal = MaterialInput('normal'),
-            material = MaterialInput('material'),
+            model = MaterialInput('model'),
             color = Constant(1.0),
             ambient = Constant(1.0),
             specular = Constant(1.0),
@@ -182,7 +197,7 @@ class CookTorrance(Shading):
         return dict(
             pos = MaterialInput('pos'),
             normal = MaterialInput('normal'),
-            material = MaterialInput('material'),
+            model = MaterialInput('model'),
             color = Constant(1.0),
             ambient = Constant(1.0),
             emission = Constant(0.0),
@@ -233,7 +248,7 @@ class IdealRT(Shading):
         return dict(
             pos = MaterialInput('pos'),
             normal = MaterialInput('normal'),
-            material = MaterialInput('material'),
+            model = MaterialInput('model'),
             indir = MaterialInput('indir'),
             emission = Constant(0.0),
             diffuse = Constant(1.0),

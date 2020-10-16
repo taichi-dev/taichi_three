@@ -71,7 +71,7 @@ class Mesh:
 
     @ti.func
     def get_face(self, i, j: ti.template()):
-        return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm, ti.static(self.mid if isinstance(self.mid, int) else ti.subscript(self.mid, i)))
+        return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm, self.mid)
 
     @classmethod
     def from_obj(cls, obj, mid=1):
@@ -83,9 +83,6 @@ class Mesh:
         pos = create_field(3, float, len(obj['vp']))
         tex = create_field(2, float, len(obj['vt']))
         nrm = create_field(3, float, len(obj['vn']))
-        if mid == 'multiple':
-            mid = create_field((), int, len(obj['f']))
-            assert len(obj['f']) == len(obj['fm'])
 
         @ti.materialize_callback
         def init_mesh_data():
@@ -154,6 +151,8 @@ class Model(ModelBase):
     def __init__(self, mesh, mid=1):
         super().__init__()
         self.mesh = mesh
+        from .shading import Material, CookTorrance
+        self.material = Material(CookTorrance())
 
     @ti.func
     def render(self, camera):
