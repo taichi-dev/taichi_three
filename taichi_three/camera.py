@@ -101,19 +101,15 @@ class FrameBuffer:
         if ti.static(self.deferred):
             for I in ti.grouped(self.img):
                 color = ts.vec3(0.0)
-                for i, model in ti.static(enumerate(self.scene.models)):
-                    if i == self['mid'][I] - 1:
-                        color = model.pixel_shader(self['pos'][I], self['tex'][I], self['nrm'][I], self['tan'][I], self['bitan'][I])  # TODO: material.pixel_shader
-                self['img'][I] = color
-        if ti.static(self.n_taa or self.post_process is not None):
-            for I in ti.grouped(self.img):
-                color = self.img[I] * 0
-                if ti.static(self.n_taa):
-                    color = sum(self.taa[i, I] for i in range(self.n_taa)) / self.ntaa[None]
-                else:
-                    color = self.img[I]
+                for mid, material in ti.static(self.scene.materials.items()):
+                    if mid == self['mid'][I]:
+                        color = material.pixel_shader(self['pos'][I], self['tex'][I], self['nrm'][I], self['tan'][I], self['bitan'][I])
                 if ti.static(self.post_process is not None):
-                    self.img[I] = self.post_process(color)
+                    color = self.post_process(color)
+                self['img'][I] = color
+        if ti.static(self.n_taa):
+            for I in ti.grouped(self.img):
+                self.img[I] = sum(self.taa[i, I] for i in range(self.n_taa)) / self.ntaa[None]
 
 
 # Used for camera.fb.post_process

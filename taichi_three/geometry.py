@@ -109,11 +109,12 @@ def v4trans(mat, vec, wei):
 
 @ti.func
 def render_triangle(model, camera, face):
-    scene = model.scene
     L2C = model.L2C[None]  # Local to Camera, i.e. ModelView in OpenGL
-    posa, posb, posc = face.pos
-    texa, texb, texc = face.tex
-    nrma, nrmb, nrmc = face.nrm
+
+    mid = face.mid                # Material ID
+    posa, posb, posc = face.pos   # Position
+    texa, texb, texc = face.tex   # TexCoord
+    nrma, nrmb, nrmc = face.nrm   # Normal
     posa = v4trans(L2C, posa, 1)
     posb = v4trans(L2C, posb, 1)
     posc = v4trans(L2C, posc, 1)
@@ -179,9 +180,9 @@ def render_triangle(model, camera, face):
 
                 posx, texx, nrmx = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
                 if ti.static(camera.fb.deferred):
-                    camera.fb.update(X, dict(mid=model.id + 1, pos=posx, tex=texx, nrm=nrmx, tan=tan, bitan=bitan))
+                    camera.fb.update(X, dict(mid=mid, pos=posx, tex=texx, nrm=nrmx, tan=tan, bitan=bitan))
                 else:
-                    camera.fb.update(X, dict(img=model.pixel_shader(posx, texx, nrmx, tan, bitan)))
+                    camera.fb.update(X, dict(img=model.scene.materials[mid].pixel_shader(posx, texx, nrmx, tan, bitan)))
 
 
 @ti.func

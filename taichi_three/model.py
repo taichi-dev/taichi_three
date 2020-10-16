@@ -2,7 +2,6 @@ import numpy as np
 import taichi as ti
 import taichi_glsl as ts
 from .geometry import *
-from .shading import *
 from .transform import *
 from .common import *
 import math
@@ -20,8 +19,6 @@ class ModelBase:
             self.L2W[None] = ti.Matrix.identity(float, 4)
             self.L2C[None] = ti.Matrix.identity(float, 4)
 
-        self.material = Material(CookTorrance())
-
     @ti.func
     def set_view(self, camera):
         self.L2C[None] = camera.L2W[None].inverse() @ self.L2W[None]
@@ -29,11 +26,12 @@ class ModelBase:
 
 @ti.data_oriented
 class IndicedFace:
-    def __init__(self, face, postab, textab, nrmtab):
+    def __init__(self, face, postab, textab, nrmtab, mid):
         self.face = face
         self.postab = postab
         self.textab = textab
         self.nrmtab = nrmtab
+        self.mid = mid
 
     @property
     @ti.func
@@ -53,11 +51,12 @@ class IndicedFace:
 
 @ti.data_oriented
 class Mesh:
-    def __init__(self, faces, pos, tex, nrm):
+    def __init__(self, faces, pos, tex, nrm, mid=1):
         self.faces = faces
         self.pos = pos
         self.tex = tex
         self.nrm = nrm
+        self.mid = mid
 
     @property
     def shape(self):
@@ -72,7 +71,7 @@ class Mesh:
 
     @ti.func
     def get_face(self, i, j: ti.template()):
-        return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm)
+        return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm, self.mid)
 
     @classmethod
     def from_obj(cls, obj):
@@ -92,7 +91,7 @@ class Mesh:
             tex.from_numpy(obj['vt'])
             nrm.from_numpy(obj['vn'])
 
-        mesh = cls(faces=faces, pos=pos, tex=tex, nrm=nrm)
+        mesh = cls(faces=faces, pos=pos, tex=tex, nrm=nrm, mid=mid)
         return mesh
 
 
@@ -102,6 +101,11 @@ class MeshMakeNormal:
     class MakeNormalFace:
         def __init__(self, face):
             self.face = face
+
+        @property
+        @ti.func
+        def mid(self):
+            return self.face.mid
 
         @property
         @ti.func
@@ -142,7 +146,7 @@ class MeshMakeNormal:
 
 @ti.data_oriented
 class Model(ModelBase):
-    def __init__(self, mesh):
+    def __init__(self, mesh, mid=1):
         super().__init__()
         self.mesh = mesh
 
@@ -166,23 +170,6 @@ class Model(ModelBase):
                 hit, orig, dir, clr = ihit, iorig, idir, iclr
         return hit, orig, dir, clr
 
-    def radiance(self, pos, indir, texcoor, normal, tangent, bitangent):
-        # TODO: we don't support normal maps in path tracing mode for now
-        with self.material.specify_inputs(model=self, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent, indir=indir) as shader:
-            return shader.radiance()
-
-    def colorize(self, pos, texcoor, normal, tangent, bitangent):
-        with self.material.specify_inputs(model=self, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent) as shader:
-            return shader.colorize()
-
-    @ti.func
-    def pixel_shader(self, pos, texcoor, normal, tangent, bitangent):
-        # normal has been no longer normalized due to lerp and ndir errors.
-        # so here we re-enforce normalization to get slerp.
-        normal = normal.normalized()
-        color = self.colorize(pos, texcoor, normal, tangent, bitangent)
-        return color
-
 
 @ti.data_oriented
 class MeshGrid:
@@ -191,6 +178,11 @@ class MeshGrid:
         def __init__(self, parent, i):
             self.parent = parent
             self.i = i
+
+        @property
+        @ti.func
+        def mid(self):
+            return self.parent.mid
 
         @property
         @ti.func
@@ -207,11 +199,12 @@ class MeshGrid:
         def nrm(self):
             return [self.parent.snrm[i] for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
 
-    def __init__(self, res):
+    def __init__(self, res, mid=1):
         super().__init__()
         self.res = res
         self.pos = ti.Vector.field(3, float, self.res)
         self.snrm = ti.Vector.field(3, float, self.res)
+        self.mid = mid
 
         @ti.materialize_callback
         @ti.kernel
@@ -267,12 +260,14 @@ class QuadToTri:
         ret = DataOriented()
         if ti.static(j.x == 0):
             ret.__dict__.update(
+                mid = face.mid,
                 pos = [face.pos[i] for i in [0, 1, 2]],
                 tex = [face.tex[i] for i in [0, 1, 2]],
                 nrm = [face.nrm[i] for i in [0, 1, 2]],
             )
         else:
             ret.__dict__.update(
+                mid = face.mid,
                 pos = [face.pos[i] for i in [0, 2, 3]],
                 tex = [face.tex[i] for i in [0, 2, 3]],
                 nrm = [face.nrm[i] for i in [0, 2, 3]],

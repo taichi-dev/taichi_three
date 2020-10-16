@@ -1,6 +1,7 @@
 import taichi as ti
 import taichi_glsl as ts
 from .transform import *
+from .shading import *
 from .light import *
 
 
@@ -11,6 +12,7 @@ class Scene:
         self.cameras = []
         self.shadows = []
         self.models = []
+        self.materials = {1: Material(CookTorrance())}
 
     def set_light_dir(self, ldir):
         # changes light direction input to the direction
@@ -24,8 +26,11 @@ class Scene:
 
     def add_model(self, model):
         model.scene = self
-        model.id = len(self.models)
         self.models.append(model)
+
+    def set_material(self, mid, material):
+        material.scene = self
+        self.materials[mid] = material
 
     def add_camera(self, camera):
         camera.scene = self

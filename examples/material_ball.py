@@ -7,10 +7,10 @@ ti.init(ti.cpu)
 scene = t3.Scene()
 obj = t3.readobj('assets/sphere.obj', scale=0.9)
 model = t3.Model(t3.Mesh.from_obj(obj))
-model.material = t3.Material(t3.CookTorrance(
+scene.set_material(1, t3.Material(t3.CookTorrance(
     roughness=t3.Uniform((), float),
     metallic=t3.Uniform((), float),
-    ))
+    )))
 scene.add_model(model)
 camera = t3.Camera()
 camera.fb.post_process = t3.make_tonemap()

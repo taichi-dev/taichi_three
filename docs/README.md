@@ -14,11 +14,11 @@ Taichi THREE is a node-based soft renderer based on the [Taichi Programming Lang
 High-level features are:
 
 - Both CPU / GPU available
-- Multi-camera support
 - Physically-based rendering
 - Node-based materials
+- Loading textures
+- Deferred shading
 - A built-in OBJ loader
-- Shadow mapping
 
 
 # Installation
