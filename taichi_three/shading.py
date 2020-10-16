@@ -188,7 +188,7 @@ class CookTorrance(Shading):
             emission = Constant(0.0),
             roughness = Constant(0.3),
             metallic = Constant(0.0),
-            specular = Constant(0.04),
+            specular = Constant(0.5),
             kd = Constant(1.0),
             ks = Constant(1.0),
             )
@@ -201,6 +201,7 @@ class CookTorrance(Shading):
     @ti.func
     def fresnel(self, f0, HoV):
         return f0 + (1 - f0) * (1 - HoV)**5
+        
 
     @ti.func
     def brdf(self, normal, lightdir, viewdir):
@@ -211,7 +212,7 @@ class CookTorrance(Shading):
         HoV = min(1 - EPS, max(EPS, ts.dot(halfway, viewdir)))
         ndf = self.roughness**2 / (NoH**2 * (self.roughness**2 - 1) + 1)**2
         vdf = 0.25 / (self.ischlick(NoL) * self.ischlick(NoV))
-        f0 = self.metallic * self.color + (1 - self.metallic) * self.specular
+        f0 = self.metallic * self.color + (1 - self.metallic) * 0.16 * self.specular**2
         ks, kd = self.ks * f0, self.kd * (1 - f0) * (1 - self.metallic)
         fdf = self.fresnel(f0, NoV)
         strength = kd * self.color + ks * fdf * vdf * ndf / math.pi

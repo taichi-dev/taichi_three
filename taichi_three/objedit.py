@@ -116,7 +116,7 @@ def objmerge(obj, other):
     return obj
 
 
-def objautoscale(self):
+def objautoscale(obj):
     obj['vp'] -= np.average(obj['vp'], axis=0)
     obj['vp'] /= np.max(np.abs(obj['vp']))
 

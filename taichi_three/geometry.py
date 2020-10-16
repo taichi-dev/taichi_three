@@ -2,6 +2,7 @@ import math
 import taichi as ti
 import taichi_glsl as ts
 from .transform import *
+from .camera import *
 
 
 @ti.func
@@ -182,7 +183,7 @@ def render_triangle(model, camera, face):
                 if ti.static(camera.fb.deferred):
                     camera.fb.update(X, dict(mid=mid, pos=posx, tex=texx, nrm=nrmx, tan=tan, bitan=bitan))
                 else:
-                    camera.fb.update(X, dict(img=model.scene.materials[mid].pixel_shader(posx, texx, nrmx, tan, bitan)))
+                    camera.fb.update(X, dict(img=model.scene.pixel_shader(mid, posx, texx, nrmx, tan, bitan)))
 
 
 @ti.func

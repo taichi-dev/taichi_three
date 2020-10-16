@@ -60,3 +60,13 @@ class Scene:
 
         else:
             ti.static_print('Warning: no cameras')
+
+    @ti.func
+    def pixel_shader(self, mid, pos, tex, nrm, tan, bitan):
+        color = ts.vec3(0.0)
+        if mid != 0:
+            color = ts.vec3(1.0, 0.0, 1.0)  # magenta, for debugging missing materials
+        for i, material in ti.static(self.materials.items()):
+            if mid == i:
+                color = material.pixel_shader(pos, tex, nrm, tan, bitan)
+        return color

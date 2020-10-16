@@ -7,9 +7,9 @@ import math
 
 @ti.data_oriented
 class FrameBuffer:
-    def __init__(self, res=None, taa=False, deferred=True):
+    def __init__(self, res=None, taa=False, deferred=False):
         self.res = res or (512, 512)
-        self.n_taa = (taa if not isinstance(taa, bool) else 9) if taa else 0
+        self.n_taa = (taa if not isinstance(taa, bool) else 5) if taa else 0
         self.deferred = deferred
         if self.n_taa:
             assert self.n_taa >= 2
@@ -100,15 +100,7 @@ class FrameBuffer:
     def update_buffer(self):
         if ti.static(self.deferred):
             for I in ti.grouped(self.img):
-                color = ts.vec3(0.0)
-                if self['mid'][I] != 0:
-                    color = ts.vec3(1.0, 0.0, 1.0)  # magenta, for debugging missing materials
-                for mid, material in ti.static(self.scene.materials.items()):
-                    if self['mid'][I] == mid:
-                        color = material.pixel_shader(self['pos'][I], self['tex'][I], self['nrm'][I], self['tan'][I], self['bitan'][I])
-                #color.x = abs(self['mid'][I] == 1)
-                #color.y = abs(self['mid'][I] == 2)
-                #color.z = abs(self['mid'][I] == 3)
+                color = self.scene.pixel_shader(self['mid'][I], self['pos'][I], self['tex'][I], self['nrm'][I], self['tan'][I], self['bitan'][I])
                 if ti.static(self.post_process is not None):
                     color = self.post_process(color)
                 self['img'][I] = color
