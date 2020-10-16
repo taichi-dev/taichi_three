@@ -7,23 +7,23 @@ scene.add_camera(camera)
 light = t3.Light(dir=[-0.2, -0.6, -1.0])
 scene.add_light(light)
 
-cube = t3.Geometry.cube()
-xplus = t3.Model.from_obj(cube)
+mesh = t3.Mesh.from_obj(t3.Geometry.cube())
+xplus = t3.Model(mesh)
 xplus.material = t3.Material(t3.CookTorrance(
     color=t3.Constant(t3.RGB(1, 0, 0)),
 ))
 scene.add_model(xplus)
-yplus = t3.Model.from_obj(cube)
+yplus = t3.Model(mesh)
 yplus.material = t3.Material(t3.CookTorrance(
     color=t3.Constant(t3.RGB(0, 1, 0)),
 ))
 scene.add_model(yplus)
-zplus = t3.Model.from_obj(cube)
+zplus = t3.Model(mesh)
 zplus.material = t3.Material(t3.CookTorrance(
     color=t3.Constant(t3.RGB(0, 0, 1)),
 ))
 scene.add_model(zplus)
-center = t3.Model.from_obj(cube)
+center = t3.Model(mesh)
 center.material = t3.Material(t3.CookTorrance(
     color=t3.Constant(t3.RGB(1, 1, 1)),
 ))

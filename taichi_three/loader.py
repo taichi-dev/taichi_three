@@ -64,6 +64,7 @@ def read_OBJ(path):
     # cache vertices
     for line in lines:
         line = line.strip()
+        assert isinstance(line, bytes), f'BytesIO expected! (got {type(line)})'
         try:
             type, fields = line.split(maxsplit=1)
             fields = [float(_) for _ in fields.split()]

@@ -7,7 +7,7 @@
   ----
   - **Sections below are WIP:**
   - [More geometries](more_geometries.md)
-  - [Camera control](camera_control.md)
+  - [Loading OBJ models](loading_obj_models.md)
 
 - Advanced topics
 

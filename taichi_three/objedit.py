@@ -8,20 +8,24 @@ def _t(x):
 
 class Geometry:
     @classmethod
-    def fromobjstr(cls, code):
+    def fromobjstr(cls, code, flip=False):
         from .loader import readobj
-        from io import StringIO
-        obj = readobj(StringIO(code))
+        from io import BytesIO
+        obj = readobj(BytesIO(code))
+        if flip:
+            objflipface(obj)
         return obj
 
     @classmethod
-    def fromarrays(cls, vertices, faces, texcoords, normals):
+    def fromarrays(cls, vertices, faces, texcoords, normals, flip=False):
         vertices = np.array(vertices, dtype=np.float32)
         faces = np.array(faces, dtype=np.int32)
         texcoords = np.array(texcoords, dtype=np.float32)
         normals = np.array(normals, dtype=np.float32)
         obj = dict(vp=vertices, f=faces, vn=normals, vt=texcoords)
         objswapaxis(obj, 1, 2)
+        if flip:
+            objflipface(obj)
         return obj
 
     @classmethod
@@ -45,7 +49,7 @@ class Geometry:
             faces.append(_t([[0, a, b], [0, i, j], [0, 0, 0]]))
             faces.append(_t([[1, c, d], [0, j, i], [1, 1, 1]]))
             _tri_append(faces, _t([[d, c, b, a], [i, j, j, i], [i + 2, j + 2, j + 2, i + 2]]))
-        return cls.fromarrays(vertices, faces, texcoords, normals)
+        return cls.fromarrays(vertices, faces, texcoords, normals, flip=True)
 
     @classmethod
     def meshgrid(cls, n):
@@ -69,7 +73,7 @@ class Geometry:
 
     @classmethod
     def cube(cls):
-        return cls.fromobjstr('''o Cube
+        return cls.fromobjstr(b'''o Cube
 v 1.0 1.0 -1.0
 v 1.0 -1.0 -1.0
 v 1.0 1.0 1.0
