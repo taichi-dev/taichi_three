@@ -13,9 +13,9 @@ model.material = t3.Material(t3.CookTorrance(
 ))
 scene.add_model(model)
 camera = t3.Camera()
-camera.ctl = t3.CameraCtl(pos=[0, 1, -1.8])
+camera.ctl = t3.CameraCtl(pos=[0, 1, 1.8])
 scene.add_camera(camera)
-light = t3.Light([0.4, -1.5, 1.8])
+light = t3.Light([0.4, -0.8, -1.7])
 scene.add_light(light)
 
 gui = ti.GUI('Normal map', camera.res)

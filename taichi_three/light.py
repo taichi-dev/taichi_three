@@ -41,6 +41,8 @@ class Light:
         norm = math.sqrt(sum(x ** 2 for x in dir))
         dir = [-x / norm for x in dir]
         color = color or [1, 1, 1]
+        if not isinstance(color, (list, tuple)):
+            color = [color for i in range(3)]
  
         @ti.materialize_callback
         def init_light():
@@ -119,6 +121,8 @@ class PointLight(Light):
     def __init__(self, pos=None, color=None, c1=None, c2=None):
         pos = pos or [0, 0, -2]
         color = color or [1, 1, 1]
+        if not isinstance(color, (list, tuple)):
+            color = [color for i in range(3)]
         self.c1 = c1 or 1
         self.c2 = c2 or 1
         self.pos = ti.Vector.field(3, float, ())

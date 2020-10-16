@@ -336,6 +336,9 @@ class NormalMap(Node):
     def get_default_params(cls):
         return dict(
             texture = PlaceHolder('texture'),
+            normal = MaterialInput('normal'),
+            tangent = MaterialInput('tangent'),
+            bitangent = MaterialInput('bitangent'),
             )
 
     @Node.method

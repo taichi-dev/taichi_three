@@ -117,7 +117,7 @@ def render_triangle(model, camera, face):
     # be COUNTER-CLOCKWISE, i.e., glFrontFace(GL_CCW);
     # this is to be compatible with obj model loading.
     if ts.dot(pos_center, normal) <= 0:
-        tan, bitan = compute_tangent(-dpab, -dpac, -dtab, -dtac)
+        tan, bitan = compute_tangent(-dpab, -dpac, -dtab, -dtac)  # TODO: node-ize this
 
         clra = model.vertex_shader(posa, texa, nrma, tan, bitan)  # TODO: interpolate tan and bitan? merge with nrm?
         clrb = model.vertex_shader(posb, texb, nrmb, tan, bitan)
