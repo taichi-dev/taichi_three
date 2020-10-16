@@ -100,10 +100,7 @@ class FrameBuffer:
     def update_buffer(self):
         if ti.static(self.deferred):
             for I in ti.grouped(self.img):
-                color = self.scene.pixel_shader(self['mid'][I], self['pos'][I], self['tex'][I], self['nrm'][I], self['tan'][I], self['bitan'][I])
-                if ti.static(self.post_process is not None):
-                    color = self.post_process(color)
-                self['img'][I] = color
+                self.update(I, self.scene.pixel_shader(self['mid'][I], self['pos'][I], self['tex'][I], self['nrm'][I], self['tan'][I], self['bitan'][I]))
         if ti.static(self.n_taa):
             for I in ti.grouped(self.img):
                 self.img[I] = sum(self.taa[i, I] for i in range(self.n_taa)) / self.ntaa[None]

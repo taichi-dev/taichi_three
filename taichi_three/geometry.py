@@ -112,7 +112,7 @@ def v4trans(mat, vec, wei):
 def render_triangle(model, camera, face):
     L2C = model.L2C[None]  # Local to Camera, i.e. ModelView in OpenGL
 
-    mid = face.mid                # Material ID
+    mid = ti.static(face.mid)     # Material ID
     posa, posb, posc = face.pos   # Position
     texa, texb, texc = face.tex   # TexCoord
     nrma, nrmb, nrmc = face.nrm   # Normal
@@ -183,7 +183,7 @@ def render_triangle(model, camera, face):
                 if ti.static(camera.fb.deferred):
                     camera.fb.update(X, dict(mid=mid, pos=posx, tex=texx, nrm=nrmx, tan=tan, bitan=bitan))
                 else:
-                    camera.fb.update(X, dict(img=model.scene.pixel_shader(mid, posx, texx, nrmx, tan, bitan)))
+                    camera.fb.update(X, dict(color=model.scene.pixel_shader(mid, posx, texx, nrmx, tan, bitan)))
 
 
 @ti.func

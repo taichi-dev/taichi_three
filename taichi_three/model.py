@@ -71,10 +71,10 @@ class Mesh:
 
     @ti.func
     def get_face(self, i, j: ti.template()):
-        return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm, self.mid[i])
+        return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm, ti.static(self.mid if isinstance(self.mid, int) else ti.subscript(self.mid, i)))
 
     @classmethod
-    def from_obj(cls, obj):
+    def from_obj(cls, obj, mid=1):
         if isinstance(obj, str):
             from .loader import readobj
             obj = readobj(obj)
@@ -83,8 +83,9 @@ class Mesh:
         pos = create_field(3, float, len(obj['vp']))
         tex = create_field(2, float, len(obj['vt']))
         nrm = create_field(3, float, len(obj['vn']))
-        mid = create_field((), int, len(obj['f']))
-        assert len(obj['f']) == len(obj['fm'])
+        if mid == 'multiple':
+            mid = create_field((), int, len(obj['f']))
+            assert len(obj['f']) == len(obj['fm'])
 
         @ti.materialize_callback
         def init_mesh_data():
@@ -92,7 +93,8 @@ class Mesh:
             pos.from_numpy(obj['vp'])
             tex.from_numpy(obj['vt'])
             nrm.from_numpy(obj['vn'])
-            mid.from_numpy(obj['fm'])
+            if not isinstance(mid, int):
+                mid.from_numpy(obj['fm'])
 
         mesh = cls(faces=faces, pos=pos, tex=tex, nrm=nrm, mid=mid)
         return mesh
