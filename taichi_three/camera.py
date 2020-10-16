@@ -7,7 +7,7 @@ import math
 
 @ti.data_oriented
 class FrameBuffer:
-    def __init__(self, res=None, taa=False, deferred=False):
+    def __init__(self, res=None, taa=False, deferred=True):
         self.res = res or (512, 512)
         self.n_taa = (taa if not isinstance(taa, bool) else 9) if taa else 0
         self.deferred = deferred

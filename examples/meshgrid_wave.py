@@ -21,7 +21,7 @@ def Z(xy, t):
 
 @ti.kernel
 def deform_mesh(t: float):
-    for i, j in model.mesh.mesh.pos:
+    for i, j in mesh.pos:
         mesh.pos[i, j].y = Z(mesh.pos[i, j].xZ, t)
 
 

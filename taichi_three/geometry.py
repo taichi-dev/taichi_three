@@ -131,9 +131,9 @@ def render_triangle(model, camera, face):
     if ts.dot(pos_center, ts.cross(posa - posc, posa - posb)) >= 0:
         tan, bitan = compute_tangent(posb - posa, posc - posa, texb - texa, texc - texa)  # TODO: node-ize this
 
-        clra = [posa, texa, nrma, tan, bitan]  # TODO: interpolate tan and bitan? merge with nrm?
-        clrb = [posb, texb, nrmb, tan, bitan]
-        clrc = [posc, texc, nrmc, tan, bitan]
+        clra = [posa, texa, nrma]  # TODO: interpolate tan and bitan? merge with nrm?
+        clrb = [posb, texb, nrmb]
+        clrc = [posc, texc, nrmc]
 
         A = camera.uncook(posa)
         B = camera.uncook(posb)
@@ -177,12 +177,11 @@ def render_triangle(model, camera, face):
                 if camera.fb.atomic_depth(X, depth):
                     continue
 
-                clr = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
+                posx, texx, nrmx = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
                 if ti.static(camera.fb.deferred):
-                    posx, texx, nrmx, tanx, bitanx = clr
-                    camera.fb.update(X, dict(mid=model.id + 1, pos=posx, tex=texx, nrm=nrmx, tan=tanx, bitan=bitanx))
+                    camera.fb.update(X, dict(mid=model.id + 1, pos=posx, tex=texx, nrm=nrmx, tan=tan, bitan=bitan))
                 else:
-                    camera.fb.update(X, dict(img=model.pixel_shader(*clr)))
+                    camera.fb.update(X, dict(img=model.pixel_shader(posx, texx, nrmx, tan, bitan)))
 
 
 @ti.func

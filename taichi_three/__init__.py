@@ -14,8 +14,8 @@ import taichi_glsl as ts
 import numpy as np
 
 print(f'[Tai3D] version {".".join(map(str, __version__))}')
-print(f'[Tai3D] GitHub: https://github.com/taichi-dev/taichi_three')
 print(f'[Tai3D] Documentation: https://t3.142857.red')
+print(f'[Tai3D] GitHub: https://github.com/taichi-dev/taichi_three')
 
 from .scene import *
 from .model import *

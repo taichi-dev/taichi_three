@@ -93,6 +93,9 @@ Other updates:
 New in latest master
 --------------------
 
+Notable changes:
+* Switch to deferred rendering (by default).
+
 TODO list
 ---------
 
@@ -102,7 +105,7 @@ Minor fixes:
 * Fix shadow artifects on 90-deg faces.
 * Make camera buffer update less ad-hoc.
 * Adapt ambient occulsion to node system.
-* Fix broken shadow mapping snice v0.0.7.
+* Fix broken shadow mapping since v0.0.7.
 * Support scaling in ORTHO mode.
 
 Major steps:
@@ -112,7 +115,7 @@ Major steps:
 
 Ambitions:
 * Standardize path tracing scheme, e.g. cornell box.
-* Further push forward node-alike system in other fields.
+* Further push forward node-alike system in all other fields.
 * Support image-based lighting and environment maps (skybox).
 * Support deferred shading and SSAO.
 * Support screen-space reflection.
