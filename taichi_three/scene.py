@@ -24,10 +24,12 @@ class Scene:
 
     def add_model(self, model):
         model.scene = self
+        model.id = len(self.models)
         self.models.append(model)
 
     def add_camera(self, camera):
         camera.scene = self
+        camera.fb.scene = self
         self.cameras.append(camera)
 
     def add_shadow_camera(self, shadow):

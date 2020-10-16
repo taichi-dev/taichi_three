@@ -40,6 +40,14 @@ class DataOriented(object):
     pass
 
 
+@ti.func
+def list_subscript(a, i):
+    ret = sum(a) * 0
+    for j in ti.static(range(len(a))):
+        if i == j:
+            ret = a[j]
+    return ret
+
 
 class subscriptable(property):
     def __init__(self, func):

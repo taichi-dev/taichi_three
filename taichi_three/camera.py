@@ -7,9 +7,10 @@ import math
 
 @ti.data_oriented
 class FrameBuffer:
-    def __init__(self, res=None, taa=False):
+    def __init__(self, res=None, taa=False, deferred=False):
         self.res = res or (512, 512)
         self.n_taa = (taa if not isinstance(taa, bool) else 9) if taa else 0
+        self.deferred = deferred
         if self.n_taa:
             assert self.n_taa >= 2
             self.taa = ti.Vector.field(3, float, (self.n_taa, *res))
@@ -19,6 +20,13 @@ class FrameBuffer:
         self.buffers = {}
         self.add_buffer('img', 3)
         self.add_buffer('idepth', ())
+        if self.deferred:
+            self.add_buffer('mid', (), int)
+            self.add_buffer('pos', 3)
+            self.add_buffer('tex', 2)
+            self.add_buffer('nrm', 3)
+            self.add_buffer('tan', 3)
+            self.add_buffer('bitan', 3)
 
         self.post_process = None
 
@@ -90,6 +98,13 @@ class FrameBuffer:
 
     @ti.func
     def update_buffer(self):
+        if ti.static(self.deferred):
+            for I in ti.grouped(self.img):
+                color = ts.vec3(0.0)
+                for i, model in ti.static(enumerate(self.scene.models)):
+                    if i == self['mid'][I] - 1:
+                        color = model.pixel_shader(self['pos'][I], self['tex'][I], self['nrm'][I], self['tan'][I], self['bitan'][I])  # TODO: material.pixel_shader
+                self['img'][I] = color
         if ti.static(self.n_taa or self.post_process is not None):
             for I in ti.grouped(self.img):
                 color = self.img[I] * 0

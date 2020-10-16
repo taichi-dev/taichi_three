@@ -181,8 +181,7 @@ class Model(ModelBase):
         # so here we re-enforce normalization to get slerp.
         normal = normal.normalized()
         color = self.colorize(pos, texcoor, normal, tangent, bitangent)
-        return dict(img=color, pos=pos, texcoor=texcoor, normal=normal,
-                    tangent=tangent, bitangent=bitangent)
+        return color
 
 
 @ti.data_oriented
@@ -222,9 +221,8 @@ class MeshGrid:
 
     @ti.func
     def before_rendering(self):
-        if ti.static(self.snrm.required):
-            for i in ti.grouped(self.snrm):
-                self.snrm[i] = self.get_normal_at(i)
+        for i in ti.grouped(self.snrm):
+            self.snrm[i] = self.get_normal_at(i)
 
     @ti.func
     def get_normal_at(self, i):
