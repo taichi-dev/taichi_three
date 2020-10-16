@@ -12,7 +12,8 @@ class Scene:
         self.cameras = []
         self.shadows = []
         self.models = []
-        self.materials = {1: Material(CookTorrance())}
+        self.materials = {}
+        self.set_material(1, Material(CookTorrance()))
 
     def set_light_dir(self, ldir):
         # changes light direction input to the direction

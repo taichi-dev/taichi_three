@@ -50,7 +50,12 @@ def writeobj(path, obj):
 
 
 def mtl_name_to_id(name):
-    return hash(name) % 65536
+    if name not in mtltable:
+        mtltable.append(name)
+    return mtltable.index(name)
+
+
+mtltable = [None]
 
 
 def read_OBJ(path):

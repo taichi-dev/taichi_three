@@ -83,7 +83,7 @@ class Mesh:
         pos = create_field(3, float, len(obj['vp']))
         tex = create_field(2, float, len(obj['vt']))
         nrm = create_field(3, float, len(obj['vn']))
-        mid = create_field((), int, len(obj['fm']))
+        mid = create_field((), int, len(obj['f']))
         assert len(obj['f']) == len(obj['fm'])
 
         @ti.materialize_callback
