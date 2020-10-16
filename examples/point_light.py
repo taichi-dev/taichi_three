@@ -6,9 +6,9 @@ import time
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-model = t3.Model.from_obj(t3.readobj('assets/torus.obj', scale=0.8))
+model = t3.Model(t3.Mesh.from_obj(t3.readobj('assets/torus.obj', scale=0.8)))
 scene.add_model(model)
-ball = t3.Model.from_obj(t3.readobj('assets/sphere.obj', scale=0.2))
+ball = t3.Model(t3.Mesh.from_obj(t3.readobj('assets/sphere.obj', scale=0.2)))
 ball.material = t3.Material(t3.BlinnPhong(
     emission=t3.Constant(t3.RGB(1.0, 1.0, 1.0)),
 ))

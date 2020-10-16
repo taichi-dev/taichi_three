@@ -5,8 +5,7 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-obj = t3.readobj('assets/monkey.obj')
-model = t3.Model.from_obj(obj)
+model = t3.Model(t3.Mesh.from_obj('assets/monkey.obj'))
 scene.add_model(model)
 camera = t3.Camera(taa=True)
 scene.add_camera(camera)

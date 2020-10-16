@@ -95,9 +95,10 @@ API breaking changes:
 
 Notable changes:
 * Set up a node-alike system for materials, see `examples/physics_based_rendering.py` for example.
-* Add `t3.Geometry.cube()`, `t3.Geometry.cylinder()`, and `t3.Geometry.meshgrid()` for creating mesh without reading disk.
+* Add `t3.Geometry.cube()`, `t3.Geometry.cylinder()` for creating mesh without reading disk.
 * Support Temporal Anti-Aliasing (TAA), use `t3.Camera(taa=True)` to enable it.
 * Support `t3.readobj('cube.obj', orient='xyZ')` for orientation fixes.
+* Add `t3.MeshMakeNormal`, `t3.MeshGrid`, and `t3.QuadToTri` mesh nodes.
 
 Minor updates:
 * Add `t3.objmerge`, `t3.objbreakdown` and `t3.objautoscale` for OBJ editing helpers.

@@ -11,7 +11,7 @@ In Taichi THREE, materials are considered as **nodes**. You may override the def
 Let's get started by replace the default white color by red:
 
 ```py
-model.material = t3.Material(t3.BlinnPhong(
+model.material = t3.Material(t3.BlinnPhong(    # use Blinn-Phong shader
     color=t3.Constant(t3.RGB(1.0, 0.0, 0.0)),  # red
 ))
 ```
@@ -79,7 +79,6 @@ And replace the `add_uniform` with this line in our script:
 
 ```py
 model.add_texture('specular', t3.imread())
-model.shading = t3.BlinnPhong       # use Blinn-Phong shader
 model.material = t3.Material(t3.BlinnPhong(
     color=t3.Texture('container2.png'),
     specular=t3.Texture('container2_specular.png'),  # let Taichi THREE sample specular from this texture

@@ -8,7 +8,7 @@ light = t3.Light(dir=[-0.2, -0.6, -1.0])
 scene.add_light(light)
 
 obj = t3.Geometry.cube()
-model = t3.Model.from_obj(obj)
+model = t3.Model(t3.Mesh.from_obj(obj))
 scene.add_model(model)
 
 gui = t3.GUI('Hello Cube')

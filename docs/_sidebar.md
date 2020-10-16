@@ -11,6 +11,7 @@
 
 - Advanced topics
 
+  - [Node system](node_system.md)
   - [Physically-based rendering](physically_based_rendering.md)
   - [Light and shadows](light_and_shadows.md)
   - [Ambient occlusion](ambient_occlusion.md)

@@ -5,7 +5,7 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-model = t3.ModelPBR.from_obj(t3.readobj('assets/sphere.obj', scale=0.6))
+model = t3.Model(t3.Mesh.from_obj(t3.readobj('assets/sphere.obj', scale=0.6)))
 model.add_texture('roughness', np.array([[0.4]]))
 model.add_texture('metallic', np.array([[0.8]]))
 scene.add_model(model)

@@ -8,13 +8,13 @@ ti.init(ti.cpu)
 scene = t3.Scene()
 cornell = t3.readobj('assets/cornell.obj', orient='-xyz')
 cube = t3.readobj('assets/plane.obj')
-model = t3.Model.from_obj(cornell)
+model = t3.Model(t3.Mesh.from_obj(cornell))
 model.material = t3.Material(t3.IdealRT(
     diffuse=t3.Constant(1.0),
     emission=t3.Constant(0.0),
 ))
 scene.add_model(model)
-light = t3.Model.from_obj(cube)
+light = t3.Model(t3.Mesh.from_obj(cube))
 light.material = t3.Material(t3.IdealRT(
     diffuse=t3.Constant(0.0),
     emission=t3.Constant(1.0),

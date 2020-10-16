@@ -1,6 +1,6 @@
 # Hello cube
 
-The goal of this section is to give a brief introduction to Taichi THREE. We will start by setting up a scene, with a simple triangle, as many OpenGL tutorial starts from too.
+The goal of this section is to give a brief introduction to Taichi THREE. We will start by setting up a scene, with a simple cube, as THREE.js tutorial starts from too.
 A working example is provided at the bottom of the page in case you get stuck and need help.
 
 ## Creating the scene
@@ -25,8 +25,8 @@ To make the model display the geometry we desired (cube in this case), we need t
 
 
 ```py
-obj = t3.Geometry.cube()        # create a cube geometry object
-model = t3.Model.from_obj(obj)  # create a model from a geometry object
+obj = t3.Geometry.cube()                 # create a cube geometry object
+model = t3.Model(t3.Mesh.from_obj(obj))  # create a mesh model from a geometry object
 scene.add_model(model)
 ```
 

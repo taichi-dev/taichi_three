@@ -6,7 +6,7 @@ ti.init(ti.cpu)
 
 scene = t3.Scene()
 obj = t3.readobj('assets/torus.obj', scale=0.8)
-model = t3.Model.from_obj(obj)
+model = t3.Model(t3.Mesh.from_obj(obj))
 model.material = t3.Material(t3.CookTorrance(
     color=t3.Texture(ti.imread('assets/cloth.jpg')),
     ))

@@ -52,29 +52,6 @@ class IndicedFace:
 
 
 @ti.data_oriented
-class MakeNormalFace:
-    def __init__(self, face):
-        self.face = face
-
-    @property
-    @ti.func
-    def pos(self):
-        return self.face.pos
-
-    @property
-    @ti.func
-    def tex(self):
-        return self.face.tex
-
-    @property
-    @ti.func
-    def nrm(self):
-        posa, posb, posc = self.pos
-        normal = ts.cross(posa - posc, posa - posb)
-        return normal, normal, normal
-
-
-@ti.data_oriented
 class Mesh:
     def __init__(self, faces, pos, tex, nrm):
         self.faces = faces
@@ -118,6 +95,28 @@ class Mesh:
 
 @ti.data_oriented
 class MeshMakeNormal:
+    @ti.data_oriented
+    class MakeNormalFace:
+        def __init__(self, face):
+            self.face = face
+
+        @property
+        @ti.func
+        def pos(self):
+            return self.face.pos
+
+        @property
+        @ti.func
+        def tex(self):
+            return self.face.tex
+
+        @property
+        @ti.func
+        def nrm(self):
+            posa, posb, posc = self.pos
+            normal = ts.cross(posa - posc, posa - posb)
+            return normal, normal, normal
+
     def __init__(self, mesh):
         self.mesh = mesh
 
@@ -132,7 +131,7 @@ class MeshMakeNormal:
     @ti.func
     def get_face(self, i, j: ti.template()):
         face = self.mesh.get_face(i, j)
-        return MakeNormalFace(face)
+        return self.MakeNormalFace(face)
 
 
 @ti.data_oriented
@@ -184,30 +183,28 @@ class Model(ModelBase):
 
 
 @ti.data_oriented
-class MeshGridFace:
-    def __init__(self, parent, i):
-        self.parent = parent
-        self.i = i
-
-    @property
-    @ti.func
-    def pos(self):
-        return [self.parent.pos[i] for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
-
-    @property
-    @ti.func
-    def tex(self):
-        return [i / ts.vec2(*self.parent.res) for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
-
-    @property
-    @ti.func
-    def nrm(self):
-        return [self.parent.get_normal_at(i) for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
-        #return ts.vec3(0.0, 1.0, 0.0), ts.vec3(0.0, 1.0, 0.0), ts.vec3(0.0, 1.0, 0.0)
-
-
-@ti.data_oriented
 class MeshGrid:
+    @ti.data_oriented
+    class MeshGridFace:
+        def __init__(self, parent, i):
+            self.parent = parent
+            self.i = i
+
+        @property
+        @ti.func
+        def pos(self):
+            return [self.parent.pos[i] for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
+
+        @property
+        @ti.func
+        def tex(self):
+            return [i / ts.vec2(*self.parent.res) for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
+
+        @property
+        @ti.func
+        def nrm(self):
+            return [self.parent.get_normal_at(i) for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
+
     def __init__(self, res):
         super().__init__()
         self.res = res
@@ -237,7 +234,7 @@ class MeshGrid:
 
     @ti.func
     def get_face(self, i, j: ti.template()):
-        return MeshGridFace(self, i)
+        return self.MeshGridFace(self, i)
 
 
 @ti.data_oriented
