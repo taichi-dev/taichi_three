@@ -21,6 +21,7 @@ scene.add_light(light)
 ambient = t3.AmbientLight(0.3)
 scene.add_light(ambient)
 
+model.mesh.mid.fill(1)
 gui = ti.GUI('Model', camera.res)
 while gui.running:
     gui.get_event(None)

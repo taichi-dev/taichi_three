@@ -49,11 +49,17 @@ def writeobj(path, obj):
         assert False, f'Unrecognized file format: {path}'
 
 
+def mtl_name_to_id(name):
+    return hash(name) % 65536
+
+
 def read_OBJ(path):
     vp = []
     vt = []
     vn = []
     faces = []
+    mtls = []
+    curr_mtl = 1
 
     if callable(getattr(path, 'read', 'none')):
         lines = path.readlines()
@@ -80,10 +86,15 @@ def read_OBJ(path):
 
     # cache faces
     for line in lines:
+        line = line.strip()
         try:
             type, fields = line.split(maxsplit=1)
             fields = fields.split()
         except ValueError:
+            continue
+
+        if type == b'usemtl':
+            curr_mtl = mtl_name_to_id(fields[0])
             continue
 
         # line looks like 'f 5/1/1 1/2/1 4/3/1'
@@ -97,12 +108,15 @@ def read_OBJ(path):
         indices = [[int(_) - 1 if _ else 0 for _ in field.split(b'/')] for field in fields]
 
         _tri_append(faces, indices)
+        for _ in range(max(1, len(indices) - 2)):
+            mtls.append(curr_mtl)
 
     ret = {}
     ret['vp'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vp) == 0 else np.array(vp, dtype=np.float32)
     ret['vt'] = np.array([[0, 0]], dtype=np.float32) if len(vt) == 0 else np.array(vt, dtype=np.float32)
     ret['vn'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vn) == 0 else np.array(vn, dtype=np.float32)
     ret['f'] = np.zeros((1, 3, 3), dtype=np.int32) if len(faces) == 0 else np.array(faces, dtype=np.int32)
+    ret['fm'] = np.array([1], dtype=np.int32) if len(mtls) == 0 else np.array(mtls, dtype=np.int32)
     return ret
 
 
@@ -121,8 +135,7 @@ def write_OBJ(path, obj, name='Object'):
             f.write(f'vt {" ".join(map(str, pos))}\n')
         for pos in obj['vn']:
             f.write(f'vn {" ".join(map(str, pos))}\n')
-        f.write('s off\n')
-        for face in obj['f']:
+        for i, face in enumerate(obj['f']):
             f.write(f'f {" ".join("/".join(map(str, f + 1)) for f in face)}\n')
 
 
@@ -132,6 +145,7 @@ def write_NPZ(path, obj):
     data['vt'] = obj['vt']
     data['vn'] = (obj['vn'] * (2**15 - 1)).astype(np.int16)
     data['f'] = obj['f'].astype(np.uint16)
+    data['mtl'] = obj['mtl'].astype(np.uint8)
     np.savez(path, **data)
 
 def read_NPZ(path):
@@ -142,4 +156,5 @@ def read_NPZ(path):
     ret['vt'] = data['vt']
     ret['vn'] = data['vn'].astype(np.float32) / (2**15 - 1)
     ret['f'] = data['f'].astype(np.int32)
+    ret['mtl'] = data['mtl'].astype(np.int32)
     return ret

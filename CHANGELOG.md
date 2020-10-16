@@ -93,8 +93,12 @@ Other updates:
 New in latest master
 --------------------
 
+API breaking changes:
+* `model.material = ...` is deprecated, use `scene.set_material(233, ...)` and `model.mesh.mid.fill(233)` instead.
+
 Notable changes:
 * Switch to deferred rendering (by default).
+* Set up multi-material ID system.
 
 TODO list
 ---------
