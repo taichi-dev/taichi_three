@@ -18,7 +18,7 @@ class FrameBuffer:
 
         self.buffers = {}
         self.add_buffer('img', 3)
-        self.add_buffer('idepth', 0)
+        self.add_buffer('idepth', ())
 
         self.post_process = None
 
@@ -35,10 +35,7 @@ class FrameBuffer:
         return idepth < ti.atomic_max(self['idepth'][X], idepth)
 
     def add_buffer(self, name, dim, dtype=float):
-        if dim == 0:
-            buf = ti.field(dtype, self.res)
-        else:
-            buf = ti.Vector.field(dim, dtype, self.res)
+        buf = create_field(dim, dtype, self.res)
         self.buffers[name] = buf
 
     @subscriptable

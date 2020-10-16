@@ -119,9 +119,9 @@ def render_triangle(model, camera, face):
     if ts.dot(pos_center, normal) <= 0:
         tan, bitan = compute_tangent(-dpab, -dpac, -dtab, -dtac)  # TODO: node-ize this
 
-        clra = model.vertex_shader(posa, texa, nrma, tan, bitan)  # TODO: interpolate tan and bitan? merge with nrm?
-        clrb = model.vertex_shader(posb, texb, nrmb, tan, bitan)
-        clrc = model.vertex_shader(posc, texc, nrmc, tan, bitan)
+        clra = [posa, texa, nrma, tan, bitan]  # TODO: interpolate tan and bitan? merge with nrm?
+        clrb = [posb, texb, nrmb, tan, bitan]
+        clrc = [posc, texc, nrmc, tan, bitan]
 
         A = camera.uncook(posa)
         B = camera.uncook(posb)

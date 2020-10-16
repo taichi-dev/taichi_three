@@ -184,10 +184,6 @@ class Model(ModelBase):
         return dict(img=color, pos=pos, texcoor=texcoor, normal=normal,
                     tangent=tangent, bitangent=bitangent)
 
-    @ti.func
-    def vertex_shader(self, pos, texcoor, normal, tangent, bitangent):
-        return pos, texcoor, normal, tangent, bitangent
-
 
 @ti.data_oriented
 class MeshGrid:
@@ -226,8 +222,9 @@ class MeshGrid:
 
     @ti.func
     def before_rendering(self):
-        for i in ti.grouped(self.snrm):
-            self.snrm[i] = self.get_normal_at(i)
+        if ti.static(self.snrm.required):
+            for i in ti.grouped(self.snrm):
+                self.snrm[i] = self.get_normal_at(i)
 
     @ti.func
     def get_normal_at(self, i):

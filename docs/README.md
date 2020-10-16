@@ -5,7 +5,7 @@
 
 Taichi THREE is a node-based soft renderer based on the [Taichi Programming Language](https://github.com/taichi-dev/taichi) to render 3D scenes into nice-looking 2D images in real-time (work in progress).
 
-[GitHub](https://github.com/taichi-dev/taichi_three) | [Examples](https://github.com/taichi-dev/taichi_three/tree/master/examples) | [Getting started](https://t3.142857.red/#/hello_cube.md)
+[GitHub](https://github.com/taichi-dev/taichi_three) | [Examples](https://github.com/taichi-dev/taichi_three/tree/master/examples) | [Getting started](https://t3.142857.red/#/hello_cube)
 
 ![Example](https://github.com/taichi-dev/public_files/raw/master/binding_textures.png)
 ![Example](https://github.com/taichi-dev/public_files/raw/master/transform_models.png)
