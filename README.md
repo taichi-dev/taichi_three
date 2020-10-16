@@ -43,12 +43,18 @@ See https://taichi.readthedocs.io/en/latest/install.html#troubleshooting for iss
 
 If you encounter problems using Taichi THREE, please let me know by [opening an issue at GitHub](https://github.com/taichi-dev/taichi_three/issues/new), many thanks!
 
-## Install from GitHub repo
+## Install from latest master branch
 
-You may clone and install from the GitHub repository to get latest changes in Taichi THREE:
+If you'd like to keep catching up with latest Taichi THREE updates, please clone it from [our GitHub repository](https://github.com/taichi-dev/taichi_three). Then build and install it:
 
-```py
-git clone https://github.com/taichi-dev/taichi_three.git --depth=5
-pip install taichi taichi_glsl
-python setup.py build install
+```bash
+git clone https://github.com/taichi-dev/taichi_three.git
+# try this mirror repository on Gitee if the above is too slow:
+# git clone https://gitee.com/archibate/taichi_three.git
+
+cd taichi_three
+python3 -m pip install -r requirements.txt  # install `taichi` and `taichi-glsl`
+python3 -m pip install wheel                # required for the next step
+python3 setup.py bdist_wheel                # create a `.whl` file
+pip install -U dist/taichi_three-0.0.6-py3-none-any.whl
 ```

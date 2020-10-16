@@ -3,6 +3,15 @@
 The goal of this section is to give a brief introduction to Taichi THREE. We will start by setting up a scene, with a simple cube, as THREE.js tutorial starts from too.
 A working example is provided at the bottom of the page in case you get stuck and need help.
 
+
+## Before we get started
+
+First of all, make sure you have installed `taichi_three` (see [README.md](/README.md)), then import the it as a package:
+
+```py
+import taichi_three as t3
+```
+
 ## Creating the scene
 
 To actually be able to display anything with Taichi THREE, we need three things: scene, camera, and model, so that we can render the scene with camera.
