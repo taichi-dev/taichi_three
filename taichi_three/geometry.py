@@ -90,25 +90,6 @@ TAA_SHAKES = [(0, 0),
 
 
 @ti.func
-def v4trans(mat, vec, wei):
-    ti.static_assert(vec.n == 3, vec.n)
-
-    if ti.static(vec.m == 1):
-        return (mat @ ts.vec4(vec, wei)).xyz
-
-    tmp = ti.Matrix.zero(float, 4, vec.m)
-    for i, j in ti.static(ti.ndrange(vec.n, vec.m)):
-        tmp[i, j] = vec[i, j]
-    for i in ti.static(range(vec.m)):
-        tmp[3, i] = wei
-    tmp = mat @ tmp
-    ret = ti.Matrix.zero(float, vec.n, vec.m)
-    for i, j in ti.static(ti.ndrange(vec.n, vec.m)):
-        ret[i, j] = tmp[i, j]
-    return ret
-
-
-@ti.func
 def render_triangle(model, camera, face):
     L2C = model.L2C[None]  # Local to Camera, i.e. ModelView in OpenGL
 
@@ -180,7 +161,8 @@ def render_triangle(model, camera, face):
                     continue
 
                 posx, texx, nrmx = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
-                camera.fb.update(X, dict(img=model.material.pixel_shader(model, posx, texx, nrmx, tan, bitan)))
+                color = model.material.pixel_shader(model, posx, texx, nrmx, tan, bitan)
+                camera.fb.update(X, dict(img=color))
 
 
 @ti.func

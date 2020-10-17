@@ -204,6 +204,8 @@ class MeshGrid:
             return [self.parent.snrm[i] for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
 
     def __init__(self, res, mid=1):
+        if not isinstance(res, (list, tuple)):
+            res = (res, res)
         super().__init__()
         self.res = res
         self.pos = ti.Vector.field(3, float, self.res)

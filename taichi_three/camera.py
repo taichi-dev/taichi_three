@@ -76,7 +76,7 @@ class Camera:
         return self.fb.img
 
     @ti.func
-    def cook(self, pos, translate=True):
+    def cook(self, pos, translate: ti.template() = True):
         if ti.static(self.type == self.ORTHO):
             if ti.static(translate):
                 pos[0] -= self.intrinsic[None][0, 2]
@@ -117,6 +117,25 @@ class Camera:
             raise NotImplementedError("Curvilinear projection matrix not implemented!")
 
         return ts.vec2(pos[0], pos[1])
+
+
+@ti.func
+def v4trans(mat, vec, wei):
+    ti.static_assert(vec.n == 3, vec.n)
+
+    if ti.static(vec.m == 1):
+        return (mat @ ts.vec4(vec, wei)).xyz
+
+    tmp = ti.Matrix.zero(float, 4, vec.m)
+    for i, j in ti.static(ti.ndrange(vec.n, vec.m)):
+        tmp[i, j] = vec[i, j]
+    for i in ti.static(range(vec.m)):
+        tmp[3, i] = wei
+    tmp = mat @ tmp
+    ret = ti.Matrix.zero(float, vec.n, vec.m)
+    for i, j in ti.static(ti.ndrange(vec.n, vec.m)):
+        ret[i, j] = tmp[i, j]
+    return ret
 
 
 class CameraCtl:
