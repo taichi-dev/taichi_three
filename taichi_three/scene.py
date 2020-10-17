@@ -1,7 +1,6 @@
 import taichi as ti
 import taichi_glsl as ts
 from .transform import *
-from .shading import *
 from .light import *
 
 
@@ -12,8 +11,6 @@ class Scene:
         self.cameras = []
         self.buffers = []
         self.models = []
-        self.materials = {}
-        self.set_material(1, Material(CookTorrance()))
 
     def set_light_dir(self, ldir):
         # changes light direction input to the direction
@@ -29,11 +26,13 @@ class Scene:
         model.scene = self
         self.models.append(model)
 
-    def set_material(self, mid, material):
-        material.scene = self
-        self.materials[mid] = material
-
     def add_camera(self, camera):
+        self.add_camera_d(camera)
+        from .camera import FrameBuffer
+        buffer = FrameBuffer(camera)
+        self.add_buffer(buffer)
+
+    def add_camera_d(self, camera):
         camera.scene = self
         self.cameras.append(camera)
 
@@ -50,9 +49,8 @@ class Scene:
         if ti.static(len(self.buffers)):
             for buffer in ti.static(self.buffers):
                 buffer.render()
-
         else:
-            ti.static_print('Warning: no cameras')
+            ti.static_print('Warning: no cameras / buffers')
 
     @ti.func
     def pixel_shader(self, mid: ti.template(), pos, tex, nrm, tan, bitan):

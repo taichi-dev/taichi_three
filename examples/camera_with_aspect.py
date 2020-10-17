@@ -13,7 +13,7 @@ scene.add_camera(camera)
 light = t3.Light([0.4, -1.5, -1.8])
 scene.add_light(light)
 
-gui = ti.GUI('Model', camera.res)
+gui = ti.GUI('Camera', camera.res)
 while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)

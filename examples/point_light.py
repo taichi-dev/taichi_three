@@ -21,7 +21,7 @@ scene.add_light(light)
 ambient = t3.AmbientLight(0.2)
 scene.add_light(ambient)
 
-gui = ti.GUI('Model', camera.res)
+gui = ti.GUI('Point light', camera.res)
 while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)

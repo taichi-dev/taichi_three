@@ -22,6 +22,7 @@ from .model import *
 from .interme import *
 from .scatter import *
 from .camera import *
+from .buffer import *
 from .loader import *
 from .light import *
 from .raycast import *

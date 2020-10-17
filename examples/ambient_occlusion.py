@@ -18,7 +18,7 @@ scene.add_camera(camera)
 ambient_light = t3.AmbientLight()
 scene.add_light(ambient_light)
 
-gui = ti.GUI('Model', camera.res)
+gui = ti.GUI('AO test', camera.res)
 while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)

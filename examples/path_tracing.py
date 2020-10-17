@@ -27,7 +27,7 @@ scene.add_camera(camera)
 accumator = t3.Accumator(camera.res)
 
 light.L2W[None] = t3.translate(0, 3.9, 0) @ t3.scale(0.25)
-gui = ti.GUI('Model', camera.res)
+gui = ti.GUI('Path tracing', camera.res)
 while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
