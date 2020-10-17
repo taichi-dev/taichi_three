@@ -7,8 +7,10 @@ import math
 
 @ti.data_oriented
 class FrameBuffer:
-    def __init__(self, res=None, dim=3, taa=False):
-        self.res = res or (512, 512)
+    def __init__(self, camera, dim=3, taa=False):
+        self.camera = camera
+        camera.fb = self
+        self.res = camera.res
         self.n_taa = (taa if not isinstance(taa, bool) else 5) if taa else 0
         if self.n_taa:
             assert self.n_taa >= 2
@@ -19,6 +21,12 @@ class FrameBuffer:
         self.buffers = {}
         self.add_buffer('img', dim)
         self.add_buffer('idepth', ())
+
+    @ti.func
+    def render(self):
+        self.clear_buffer()
+        self.camera.render()
+        self.update_buffer()
 
     @ti.func
     def idepth_fixp(self, z):
@@ -105,8 +113,9 @@ class DeferredShading:
         self.material = material
         self.src = src
 
-    @ti.kernel
+    @ti.func
     def render(self):
+        self.src.render()
         for i in ti.grouped(self.img):
             pos = ts.vec3(0.0)
             texcoor = ts.vec2(0.0)
@@ -125,8 +134,9 @@ class SuperSampling2x2:
         self.img = create_field(dim, float, self.res)
         self.src = src
 
-    @ti.kernel
+    @ti.func
     def render(self):
+        self.src.render()
         for i in ti.grouped(self.img):
             self.img[i] = (self.src.img[i * 2 + ts.D.__]
                          + self.src.img[i * 2 + ts.D._x]
@@ -150,9 +160,8 @@ class Camera:
     TAN_FOV = 'Tangent Perspective' # rectilinear perspective
     COS_FOV = 'Cosine Perspective' # curvilinear perspective, see en.wikipedia.org/wiki/Curvilinear_perspective
 
-    def __init__(self, res=None, *args, **kwargs):
+    def __init__(self, res=None):
         self.res = res or (512, 512)
-        self.fb = FrameBuffer(self.res, *args, **kwargs)
         self.L2W = ti.Matrix.field(4, 4, float, ())
         self.intrinsic = ti.Matrix.field(3, 3, float, ())
         self.type = self.TAN_FOV
@@ -188,25 +197,21 @@ class Camera:
         return changed
 
     @ti.func
-    def render(self, scene):
-        self.fb.clear_buffer()
-
+    def render(self):
         # sets up light directions
-        if ti.static(len(scene.lights)):
-            for light in ti.static(scene.lights):
+        if ti.static(len(self.scene.lights)):
+            for light in ti.static(self.scene.lights):
                 light.set_view(self)  # TODO: t3.Light should be a subclass of t3.ModelBase?
         else:
             ti.static_print('Warning: no lights')
 
-        if ti.static(len(scene.models)):
-            for model in ti.static(scene.models):
+        if ti.static(len(self.scene.models)):
+            for model in ti.static(self.scene.models):
                 model.set_view(self)  # sets up ModelView matrix
-            for model in ti.static(scene.models):
+            for model in ti.static(self.scene.models):
                 model.render(self)
         else:
             ti.static_print('Warning: no models')
-
-        self.fb.update_buffer()
 
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
         # see http://ais.informatik.uni-freiburg.de/teaching/ws09/robotics2/pdfs/rob2-08-camera-calibration.pdf

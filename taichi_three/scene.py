@@ -10,7 +10,7 @@ class Scene:
     def __init__(self):
         self.lights = []
         self.cameras = []
-        self.shadows = []
+        self.buffers = []
         self.models = []
         self.materials = {}
         self.set_material(1, Material(CookTorrance()))
@@ -35,28 +35,21 @@ class Scene:
 
     def add_camera(self, camera):
         camera.scene = self
-        camera.fb.scene = self
         self.cameras.append(camera)
 
-    def add_shadow_camera(self, shadow):
-        shadow.scene = self
-        self.shadows.append(shadow)
+    def add_buffer(self, buffer):
+        buffer.scene = self
+        self.buffers.append(buffer)
 
     def add_light(self, light):
         light.scene = self
         self.lights.append(light)
 
     @ti.kernel
-    def render_shadows(self):
-        if ti.static(len(self.shadows)):
-            for shadow in ti.static(self.shadows):
-                shadow.render(self)
-
-    @ti.kernel
     def render(self):
-        if ti.static(len(self.cameras)):
-            for camera in ti.static(self.cameras):
-                camera.render(self)
+        if ti.static(len(self.buffers)):
+            for buffer in ti.static(self.buffers):
+                buffer.render()
 
         else:
             ti.static_print('Warning: no cameras')
