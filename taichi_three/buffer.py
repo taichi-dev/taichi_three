@@ -3,6 +3,7 @@ import taichi_glsl as ts
 from .common import *
 from .transform import *
 from .camera import *
+import math
 
 
 @ti.data_oriented
@@ -12,7 +13,7 @@ class FrameBuffer:
         camera.fb = self
         self.res = camera.res
         self.dim = dim
-        self.n_taa = (taa if not isinstance(taa, bool) else 5) if taa else 0
+        self.n_taa = (taa if not isinstance(taa, bool) else 5) if taa else 0  # TODO: nodize TAA
         if self.n_taa:
             assert self.n_taa >= 2
             self.taa = ti.Vector.field(3, float, (self.n_taa, *res))
@@ -163,12 +164,8 @@ class SSAO:
             v = w.cross(u)
             self.repa[i] = ti.Matrix.rows([u, v, w])
         for i in ti.grouped(self.img):
-            color = ts.vec3(0.0)
-            pos = ts.vec3(0.0)
-            normal = ts.vec3(0.0)
-            unpack_tuple(self.src.img[i], color, normal)
-            pos0 = pos
             count = 0
+            normal = self.src['normal'][i]
             d0 = self.invdep(self.src.idepth[i])
             for j in range(self.samples):
                 r = self.repa[i % ts.vec2(*self.repa.shape)] @ self.kern[j]
@@ -185,7 +182,7 @@ class SSAO:
 
 
 @ti.data_oriented
-class StencilBlur:
+class LaplacianBlur:
     def __init__(self, src):
         self.res = src.res
         self.dim = src.dim
@@ -204,23 +201,81 @@ class StencilBlur:
                          ) / 8
 
 
+
 @ti.data_oriented
-class ImgUnpackMult:
-    def __init__(self, src1, src2, dim):
+class ImgUnaryOp:
+    def __init__(self, src, op):
+        self.res = src.res
+        self.dim = src.dim
+        self.img = create_field(self.dim, float, self.res)
+        self.src = src
+        self.op = op
+
+    @ti.func
+    def render(self):
+        self.src.render()
+        for i in ti.grouped(self.src.img):
+            self.img[i] = self.op(self.src.img[i])
+
+
+@ti.data_oriented
+class ImgBinaryOp:
+    def __init__(self, src1, src2, op):
         self.res = src1.res
-        self.dim = dim
+        self.dim = src1.dim
         self.img = create_field(self.dim, float, self.res)
         self.src1 = src1
         self.src2 = src2
+        self.op = op
 
     @ti.func
     def render(self):
         self.src2.render()
         for i in ti.grouped(self.src1.img):
-            color = ti.Vector.zero(float, self.dim)
-            normal = ti.Vector.zero(float, self.src1.dim - self.dim)
-            unpack_tuple(self.src1.img[i], color, normal)
-            self.img[i] = color * self.src2.img[i]
+            self.img[i] = self.op(self.src1.img[i], self.src2.img[i])
+
+
+@ti.data_oriented
+class GaussianBlur:
+    def __init__(self, src, radius):
+        self.res = src.res
+        self.dim = src.dim
+        self.radius = radius
+        self.img = create_field(self.dim, float, self.res)
+        self.tmp = create_field(self.dim, float, self.res)
+        self.wei = create_field((), float, self.radius + 1)
+        self.src = src
+
+        @ti.materialize_callback
+        @ti.kernel
+        def init_wei():
+            total = -1.0
+            for i in self.wei:
+                x = i / self.radius
+                r = ti.exp(-x**2)
+                self.wei[i] = r
+                total += r * 2
+            for i in self.wei:
+                self.wei[i] /= total
+
+    @ti.func
+    def blur(self, dir: ti.template(), src: ti.template(), dst: ti.template()):
+        for i in ti.grouped(src):
+            r = src[i] * self.wei[0]
+            if ti.static(self.radius <= 4):
+                for j in ti.static(range(1, self.radius + 1)):
+                    r += (src[i + dir * j] + src[i - dir * j]) * self.wei[j]
+            else:
+                for j in range(1, self.radius + 1):
+                    r += (src[i + dir * j] + src[i - dir * j]) * self.wei[j]
+            dst[i] = r
+
+    @ti.func
+    def render(self):
+        self.src.render()
+        self.blur(ts.D.x_, self.src.img, self.tmp)
+        self.blur(ts.D._x, self.tmp, self.img)
+
 
 
 @ti.data_oriented
@@ -241,8 +296,6 @@ class SuperSampling2x2:
 
 
 # https://zhuanlan.zhihu.com/p/21983679
-def make_tonemap(adapted_lum=1.2):
-    @ti.func
-    def result(color):
-        color *= adapted_lum
-        return color * (2.51 * color + 0.03) / (color * (2.43 * color + 0.59) + 0.14)
+@ti.func
+def aces_tonemap(color):
+    return color * (2.51 * color + 0.03) / (color * (2.43 * color + 0.59) + 0.14)

@@ -6,12 +6,12 @@ ti.init(ti.cpu)
 
 scene = t3.Scene()
 model = t3.Model(t3.Mesh.from_obj(t3.readobj('assets/multimtl.obj', scale=0.8), mid='multiple'))
-scene.set_material(1, t3.Material(t3.CookTorrance(  # Up: gold
+model.material = t3.Material(t3.CookTorrance(  # Up: gold
     color=t3.Constant(t3.RGB(1.0, 0.96, 0.88)),
     roughness=t3.Constant(0.2),
     metallic=t3.Constant(0.75),
     )))
-scene.set_material(2, t3.Material(t3.CookTorrance(  # Down: cloth
+model.material = t3.Material(t3.CookTorrance(  # Down: cloth
     color=t3.Texture(ti.imread('assets/cloth.jpg')),
     roughness=t3.Constant(0.3),
     metallic=t3.Constant(0.0),

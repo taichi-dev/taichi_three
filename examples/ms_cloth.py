@@ -59,7 +59,6 @@ camera = t3.Camera()
 camera.ctl = t3.CameraCtl(pos=[0, 0.8, -1.1], target=[0, 0.25, 0])
 scene.add_camera(camera)
 light = t3.Light(dir=[0.4, -1.5, 1.8])
-#scene.add_shadow_camera(light.make_shadow_camera())  # comment this if you get too poor FPS
 scene.add_light(light)
 
 mesh = t3.MeshGrid((N, N))

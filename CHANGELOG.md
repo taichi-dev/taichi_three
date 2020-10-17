@@ -94,10 +94,10 @@ New in latest master
 --------------------
 
 API breaking changes:
-* `model.material = ...` is deprecated, use `scene.set_material(233, ...)` and `model.mesh.mid.fill(233)` instead.
 
 Notable changes:
-* Switch to deferred rendering, `t3.Camera(deferred=True)` to turn on.
+* Support deferred shading by using `t3.DeferredMaterial` and `t3.DeferredShading` nodes.
+* Add a variety of nodes, including `t3.GaussianBlur`, `t3.ImgBinaryOp`...
 * Set up multi-material ID system.
 
 TODO list

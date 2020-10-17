@@ -216,7 +216,7 @@ class MeshGrid:
         @ti.kernel
         def init_pos():
             for i in ti.grouped(self.pos):
-                self.pos[i] = ts.vec(i / ts.vec(*self.pos.shape) * 2 - 1, 0.0).xzy
+                self.pos[i] = ts.vec(i / (ts.vec(*self.res) - 1) * 2 - 1, 0.0).xzy
 
     @ti.func
     def before_rendering(self):

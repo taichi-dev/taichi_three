@@ -51,17 +51,6 @@ class DeferredMaterial:
 
 
 @ti.data_oriented
-class PackColorForSSAO:
-    def __init__(self, material):
-        self.material = material
-
-    @ti.func
-    def pixel_shader(self, model, pos, texcoor, normal, tangent, bitangent):
-        color = self.material.pixel_shader(model, pos, texcoor, normal, tangent, bitangent)
-        return pack_tuple(color, normal)
-
-
-@ti.data_oriented
 class VisualizeNormal:
     @ti.func
     def pixel_shader(self, model, pos, texcoor, normal, tangent, bitangent):

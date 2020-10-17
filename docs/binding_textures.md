@@ -66,7 +66,7 @@ But wait, we don't want the wood shine too!
 So, `t3.Constant` can only specify an parameter uniformly over the whole model.
 It can't deal with a model with multiple materials on its face.
 
-To specify a different specular rate per-pixel, we need a **specular map**, it's also a kind of texture.
+To specify a different specular rate for each pixel, we need a **specular map**, it's also a kind of texture.
 Each pixel in the specular map represents how specular rate is at that point.
 
 Let's download this image and save to `container2_specular.png`:
@@ -75,7 +75,7 @@ Let's download this image and save to `container2_specular.png`:
 
 ?> See? Only the metal border pixels are set so only these pixels will shine.
 
-And replace the `add_uniform` with this line in our script:
+And replace the `t3.Constant` with this line in our script:
 
 ```py
 model.add_texture('specular', t3.imread())
