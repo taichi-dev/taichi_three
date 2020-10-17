@@ -97,9 +97,32 @@ class FrameBuffer:
                 self.img[I] = sum(self.taa[i, I] for i in range(self.n_taa)) / self.ntaa[None]
 
 
+@ti.data_oriented
+class DeferredShading:
+    def __init__(self, src, material, dim=3):
+        self.res = src.res
+        self.img = create_field(dim, float, self.res)
+        self.material = material
+        self.src = src
+
+    @ti.kernel
+    def render(self):
+        for i in ti.grouped(self.img):
+            pos = ts.vec3(0.0)
+            texcoor = ts.vec2(0.0)
+            normal = ts.vec3(0.0)
+            tangent = ts.vec3(0.0)
+            bitangent = ts.vec3(0.0)
+            unpack_tuple(self.src.img[i], pos, texcoor, normal, tangent, bitangent)
+            color = self.material.pixel_shader(self, pos, texcoor, normal, tangent, bitangent)
+            self.img[i] = color
+
+
+@ti.data_oriented
 class SuperSampling2x2:
     def __init__(self, src, dim=3):
-        self.img = create_field(dim, float, (src.res[0] // 2, src.res[1] // 2))
+        self.res = (src.res[0] // 2, src.res[1] // 2)
+        self.img = create_field(dim, float, self.res)
         self.src = src
 
     @ti.kernel
