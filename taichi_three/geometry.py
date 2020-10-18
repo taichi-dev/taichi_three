@@ -61,7 +61,7 @@ def intersect_triangle(model, orig, dir, face):
         nrm = nrma * sa + nrmb * sb + nrmc * sc
         if dir.dot(pos - orig) > 1e-4:
             hit = (pos - orig).norm()
-            orig, dir, clr = model.radiance(pos, dir, tex, nrm, tan, bitan)
+            orig, dir, clr = model.material.radiance(model, pos, dir, tex, nrm, tan, bitan)
 
     return hit, orig, dir, clr
 

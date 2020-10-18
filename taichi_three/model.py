@@ -167,11 +167,12 @@ class Model(ModelBase):
         hit = 1e6
         sorig, sdir = orig, dir
         clr = ts.vec3(0.0)
-        for i in range(self.faces.shape[0]):
-            face = IndicedFace(self.faces[i], self.pos, self.tex, self.nrm)
-            ihit, iorig, idir, iclr = intersect_triangle(self, sorig, sdir, face)
-            if ihit < hit:
-                hit, orig, dir, clr = ihit, iorig, idir, iclr
+        for i in ti.grouped(ti.ndrange(*self.mesh.shape)):
+            for j in ti.static(ti.grouped(ti.ndrange(*self.mesh.static_shape))):
+                face = self.mesh.get_face(i, j)
+                ihit, iorig, idir, iclr = intersect_triangle(self, sorig, sdir, face)
+                if ihit < hit:
+                    hit, orig, dir, clr = ihit, iorig, idir, iclr
         return hit, orig, dir, clr
 
 

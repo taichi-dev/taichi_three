@@ -36,7 +36,7 @@ class Accumator:
                 #if center <= amin + throttle or center >= amax - throttle:
                 self.buf[I] = center * (1 - alpha) + around * alpha
 
-    def render(self, camera, depth, baseres=2, regrate=32):
+    def render(self, camera, depth, baseres=1, regrate=16):
         rate = max(0, baseres - self.count[None] // regrate)
         region = camera.res[0] // 2**rate, camera.res[1] // 2**rate
         base = ((self.count[None] % 2) * 2 - 1) * 2**rate // 4

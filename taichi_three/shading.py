@@ -26,21 +26,17 @@ class Material:
         del Material.inputs
 
     def radiance(self, model, pos, indir, texcoor, normal, tangent, bitangent):
+        normal = normal.normalized()
         # TODO: we don't support normal maps in path tracing mode for now
         with self.specify_inputs(model=model, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent, indir=indir) as shader:
             return shader.radiance()
 
-    def colorize(self, model, pos, texcoor, normal, tangent, bitangent):
-        with self.specify_inputs(model=model, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent) as shader:
-            return shader.colorize()
-
-    @ti.func
     def pixel_shader(self, model, pos, texcoor, normal, tangent, bitangent):
         # normal has been no longer normalized due to lerp and ndir errors.
         # so here we re-enforce normalization to get slerp.
         normal = normal.normalized()
-        color = self.colorize(model, pos, texcoor, normal, tangent, bitangent)
-        return color
+        with self.specify_inputs(model=model, pos=pos, texcoor=texcoor, normal=normal, tangent=tangent, bitangent=bitangent) as shader:
+            return shader.colorize()
 
 
 @ti.data_oriented
