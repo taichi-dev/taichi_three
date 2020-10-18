@@ -26,12 +26,11 @@ class ModelBase:
 
 @ti.data_oriented
 class IndicedFace:
-    def __init__(self, face, postab, textab, nrmtab, mid):
+    def __init__(self, face, postab, textab, nrmtab):
         self.face = face
         self.postab = postab
         self.textab = textab
         self.nrmtab = nrmtab
-        self.mid = mid
 
     @property
     @ti.func
@@ -51,12 +50,11 @@ class IndicedFace:
 
 @ti.data_oriented
 class Mesh:
-    def __init__(self, faces, pos, tex, nrm, mid=1):
+    def __init__(self, faces, pos, tex, nrm):
         self.faces = faces
         self.pos = pos
         self.tex = tex
         self.nrm = nrm
-        self.mid = mid
 
     @property
     def shape(self):
@@ -71,10 +69,10 @@ class Mesh:
 
     @ti.func
     def get_face(self, i, j: ti.template()):
-        return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm, self.mid)
+        return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm)
 
     @classmethod
-    def from_obj(cls, obj, mid=1):
+    def from_obj(cls, obj):
         if isinstance(obj, str):
             from .loader import readobj
             obj = readobj(obj)
@@ -90,10 +88,8 @@ class Mesh:
             pos.from_numpy(obj['vp'])
             tex.from_numpy(obj['vt'])
             nrm.from_numpy(obj['vn'])
-            if not isinstance(mid, int):
-                mid.from_numpy(obj['fm'])
 
-        mesh = cls(faces=faces, pos=pos, tex=tex, nrm=nrm, mid=mid)
+        mesh = cls(faces=faces, pos=pos, tex=tex, nrm=nrm)
         return mesh
 
 
@@ -103,11 +99,6 @@ class MeshMakeNormal:
     class MakeNormalFace:
         def __init__(self, face):
             self.face = face
-
-        @property
-        @ti.func
-        def mid(self):
-            return self.face.mid
 
         @property
         @ti.func
@@ -148,7 +139,7 @@ class MeshMakeNormal:
 
 @ti.data_oriented
 class Model(ModelBase):
-    def __init__(self, mesh, mid=1):
+    def __init__(self, mesh):
         super().__init__()
         self.mesh = mesh
         from .shading import Material, CookTorrance
@@ -186,11 +177,6 @@ class MeshGrid:
 
         @property
         @ti.func
-        def mid(self):
-            return self.parent.mid
-
-        @property
-        @ti.func
         def pos(self):
             return [self.parent.pos[i] for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
 
@@ -204,14 +190,13 @@ class MeshGrid:
         def nrm(self):
             return [self.parent.snrm[i] for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
 
-    def __init__(self, res, mid=1):
+    def __init__(self, res):
         if not isinstance(res, (list, tuple)):
             res = (res, res)
         super().__init__()
         self.res = res
         self.pos = ti.Vector.field(3, float, self.res)
         self.snrm = ti.Vector.field(3, float, self.res)
-        self.mid = mid
 
         @ti.materialize_callback
         @ti.kernel
@@ -267,14 +252,12 @@ class QuadToTri:
         ret = DataOriented()
         if ti.static(j.x == 0):
             ret.__dict__.update(
-                mid = face.mid,
                 pos = [face.pos[i] for i in [0, 1, 2]],
                 tex = [face.tex[i] for i in [0, 1, 2]],
                 nrm = [face.nrm[i] for i in [0, 1, 2]],
             )
         else:
             ret.__dict__.update(
-                mid = face.mid,
                 pos = [face.pos[i] for i in [0, 2, 3]],
                 tex = [face.tex[i] for i in [0, 2, 3]],
                 nrm = [face.nrm[i] for i in [0, 2, 3]],

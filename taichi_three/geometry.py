@@ -93,7 +93,6 @@ TAA_SHAKES = [(0, 0),
 def render_triangle(model, camera, face):
     L2C = model.L2C[None]  # Local to Camera, i.e. ModelView in OpenGL
 
-    mid = ti.static(face.mid)     # Material ID
     posa, posb, posc = face.pos   # Position
     texa, texb, texc = face.tex   # TexCoord
     nrma, nrmb, nrmc = face.nrm   # Normal

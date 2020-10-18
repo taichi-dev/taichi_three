@@ -14,21 +14,20 @@ class Camera:
     def __init__(self, res=None):
         self.res = res or (512, 512)
         self.L2W = ti.Matrix.field(4, 4, float, ())
-        self.intrinsic = ti.Matrix.field(3, 3, float, ())
         self.type = self.TAN_FOV
         self.fov = math.radians(30)
-
-        minres = min(self.res)
-        self.cx = self.res[0] / 2
-        self.cy = self.res[1] / 2
-        self.fx = minres / (2 * math.tan(self.fov))
-        self.fy = minres / (2 * math.tan(self.fov))
-
         self.ctl = CameraCtl()
 
         @ti.materialize_callback
         def init_camera_ctl():
             self.ctl.apply(self)
+
+        self.intrinsic = ti.Matrix.field(3, 3, float, ())
+        minres = min(self.res)
+        self.cx = self.res[0] / 2
+        self.cy = self.res[1] / 2
+        self.fx = minres / (2 * math.tan(self.fov))
+        self.fy = minres / (2 * math.tan(self.fov))
 
         @ti.materialize_callback
         @ti.kernel
