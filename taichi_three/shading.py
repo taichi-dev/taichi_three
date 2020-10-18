@@ -45,9 +45,16 @@ class Material:
 
 @ti.data_oriented
 class DeferredMaterial:
+    def __init__(self, mtllib, material):
+        self.mtllib = mtllib
+        self.material = material
+        if material not in self.mtllib:
+            self.mtllib.append(material)
+
     @ti.func
     def pixel_shader(self, model, pos, texcoor, normal, tangent, bitangent):
-        return pack_tuple(pos, texcoor, normal, tangent, bitangent)
+        mid = self.mtllib.index(self.material)
+        return mid
 
 
 @ti.data_oriented

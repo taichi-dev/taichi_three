@@ -97,8 +97,8 @@ API breaking changes:
 
 Notable changes:
 * Support deferred shading by using `t3.DeferredMaterial` and `t3.DeferredShading` nodes.
-* Add a variety of nodes, including `t3.GaussianBlur`, `t3.ImgBinaryOp`...
-* Set up multi-material ID system.
+* Set up multi-material ID system. use `t3.objunpackmtls` to separate OBJ by their material.
+* Add a variety of nodes, including `t3.GaussianBlur`, `t3.ImgBinaryOp`, `t3.SuperSampling`...
 
 TODO list
 ---------

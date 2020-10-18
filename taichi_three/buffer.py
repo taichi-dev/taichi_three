@@ -8,7 +8,7 @@ import math
 
 @ti.data_oriented
 class FrameBuffer:
-    def __init__(self, camera, dim=3, taa=False):
+    def __init__(self, camera, dim=3, dtype=float, taa=False):
         self.camera = camera
         camera.fb = self
         self.res = camera.res
@@ -21,7 +21,7 @@ class FrameBuffer:
             self.ntaa = ti.field(int, ())
 
         self.buffers = {}
-        self.add_buffer('img', dim)
+        self.add_buffer('img', dim, dtype)
         self.add_buffer('idepth', ())
 
     @ti.func
@@ -109,25 +109,31 @@ class FrameBuffer:
 
 @ti.data_oriented
 class DeferredShading:
-    def __init__(self, src, material, dim=3):
+    def __init__(self, src, mtllib, dim=3):
         self.res = src.res
         self.dim = dim
         self.img = create_field(dim, float, self.res)
-        self.material = material
+        self.mtllib = mtllib
         self.src = src
 
     @ti.func
     def render(self):
         self.src.render()
-        for i in ti.grouped(self.img):
-            pos = ts.vec3(0.0)
-            texcoor = ts.vec2(0.0)
-            normal = ts.vec3(0.0)
-            tangent = ts.vec3(0.0)
-            bitangent = ts.vec3(0.0)
-            unpack_tuple(self.src.img[i], pos, texcoor, normal, tangent, bitangent)
-            color = self.material.pixel_shader(self, pos, texcoor, normal, tangent, bitangent)
-            self.img[i] = color
+        for I in ti.grouped(self.img):
+            mid = self.src.img[I]
+            pos = self.src['position'][I]
+            texcoor = self.src['texcoord'][I]
+            normal = self.src['normal'][I]
+            tangent = self.src['tangent'][I]
+            bitangent = normal.cross(tangent)
+            color = ts.vec3(0.0)
+            if mid != 0:
+                color = ts.vec3(1.0, 0.0, 1.0)  # magenta for debugging missing material
+            if ti.static(len(self.mtllib)):
+                for i, material in ti.static(enumerate(self.mtllib)):
+                    if i == mid:
+                        color = material.pixel_shader(self, pos, texcoor, normal, tangent, bitangent)
+            self.img[I] = color
 
 
 @ti.data_oriented
