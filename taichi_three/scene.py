@@ -28,7 +28,7 @@ class Scene:
 
     def add_camera(self, camera):
         self.add_camera_d(camera)
-        from .camera import FrameBuffer
+        from .buffer import FrameBuffer
         buffer = FrameBuffer(camera)
         self.add_buffer(buffer)
 

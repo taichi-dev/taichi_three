@@ -5,39 +5,21 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-model = t3.Model(t3.Mesh.from_obj(t3.readobj('assets/multimtl.obj', scale=0.8), mid='multiple'))
-model.material = t3.Material(t3.CookTorrance(  # Up: gold
+parts = t3.objunpackmtls(t3.readobj('assets/multimtl.obj', scale=0.8))
+model1 = t3.Model(t3.Mesh.from_obj(parts[b'Material1']))
+model2 = t3.Model(t3.Mesh.from_obj(parts[b'Material2']))
+model1.material = t3.Material(t3.CookTorrance(  # Up: gold
     color=t3.Constant(t3.RGB(1.0, 0.96, 0.88)),
     roughness=t3.Constant(0.2),
     metallic=t3.Constant(0.75),
-    )))
-model.material = t3.Material(t3.CookTorrance(  # Down: cloth
+    ))
+model2.material = t3.Material(t3.CookTorrance(  # Down: cloth
     color=t3.Texture(ti.imread('assets/cloth.jpg')),
     roughness=t3.Constant(0.3),
     metallic=t3.Constant(0.0),
-    )))
-
-
-'''
-class PixelShader(Node):
-    @classmethod
-    def get_default_params(cls):
-        return dict(
-            pos = t3.ShaderInput('pos'),
-            tex = t3.ShaderInput('tex'),
-            nrm = t3.ShaderInput('nrm'),
-            tan = t3.ShaderInput('tan'),
-            bitan = t3.ShaderInput('bitan'),
-            material = 
-        )
-
-    @Node.method
-    def get(self):
-        self.
-'''
-
-
-scene.add_model(model)
+    ))
+scene.add_model(model1)
+scene.add_model(model2)
 camera = t3.Camera()
 camera.ctl = t3.CameraCtl(pos=[0.8, 0, 2.5])
 scene.add_camera(camera)
@@ -51,7 +33,7 @@ while gui.running:
     gui.get_event(None)
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     camera.from_mouse(gui)
-    model.L2W[None] = t3.rotateX(angle=t3.get_time())
+    model2.L2W[None] = model1.L2W[None] = t3.rotateX(angle=t3.get_time())
     scene.render()
     gui.set_image(camera.img)
     gui.show()

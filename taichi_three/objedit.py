@@ -108,6 +108,24 @@ f 1/3/6 2/4/6 6/1/6
 
 
 
+def objunpackmtls(obj):
+    faces = obj['f']
+    parts = {}
+    ends = []
+    for end, name in obj['usemtl']:
+        ends.append(end)
+    ends.append(len(faces))
+    ends.pop(0)
+    for end, (beg, name) in zip(ends, obj['usemtl']):
+        cur = {}
+        cur['f'] = faces[beg:end]
+        cur['vp'] = obj['vp']
+        cur['vn'] = obj['vn']
+        cur['vt'] = obj['vt']
+        parts[name] = cur
+    return parts
+
+
 def objmerge(obj, other):
     obj['f'] = np.concatenate([obj['f'], other['f'] + len(obj['f'])], axis=0)
     obj['vp'] = np.concatenate([obj['vp'], other['vp']], axis=0)
