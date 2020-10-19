@@ -160,8 +160,11 @@ def render_triangle(model, camera, face):
                     continue
 
                 posx, texx, nrmx = [a * w_A + b * w_B + c * w_C for a, b, c in zip(clra, clrb, clrc)]
-                color = model.material.pixel_shader(model, posx, texx, nrmx, tan, bitan)
-                camera.fb.update(X, dict(img=color, position=posx, texcoord=texx, normal=nrmx, tangent=tan))
+                color = ti.static(model.material.pixel_shader(model, posx, texx, nrmx, tan, bitan))
+                if ti.static(isinstance(color, dict)):
+                    camera.fb.update(X, color)
+                else:
+                    camera.fb.update(X, dict(img=color))
 
 
 @ti.func

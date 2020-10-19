@@ -10,9 +10,11 @@ plane = t3.Model(t3.QuadToTri(t3.MeshGrid(2)))
 scene.add_model(plane)
 camera = t3.Camera()
 scene.add_camera_d(camera)
-camerafb = t3.FrameBuffer(camera)
-camerafb.add_buffer('normal', 3)  # MRT
-ssaobuf = t3.StencilBlur(t3.SSAO(camerafb))
+camerafb = t3.FrameBuffer(camera, buffers=dict(
+    img=[3, float],
+    normal=[3, float],
+))
+ssaobuf = t3.LaplacianBlur(t3.SSAO(camerafb))
 buffer = t3.ImgBinaryOp(camerafb, ssaobuf, lambda x, y: x * y)
 #buffer = ssaobuf
 scene.add_buffer(buffer)

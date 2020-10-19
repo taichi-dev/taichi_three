@@ -50,11 +50,11 @@ class DeferredMaterial:
     @ti.func
     def pixel_shader(self, model, pos, texcoor, normal, tangent, bitangent):
         mid = self.mtllib.index(self.material)
-        return mid
+        return dict(mid=mid, position=pos, texcoord=texcoor, normal=normal, tangent=tangent)
 
 
 @ti.data_oriented
-class VisualizeNormal:
+class MaterialVisualizeNormal:
     @ti.func
     def pixel_shader(self, model, pos, texcoor, normal, tangent, bitangent):
         return normal * 0.5 + 0.5

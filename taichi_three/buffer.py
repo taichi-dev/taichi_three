@@ -8,11 +8,15 @@ import math
 
 @ti.data_oriented
 class FrameBuffer:
-    def __init__(self, camera, dim=3, dtype=float, taa=False):
+    def __init__(self, camera, buffers=None, taa=False):
+        if buffers is None:
+            buffers = dict(img=[3, float])
+
         self.camera = camera
         camera.fb = self
+
         self.res = camera.res
-        self.dim = dim
+
         self.n_taa = (taa if not isinstance(taa, bool) else 5) if taa else 0  # TODO: nodize TAA
         if self.n_taa:
             assert self.n_taa >= 2
@@ -21,7 +25,14 @@ class FrameBuffer:
             self.ntaa = ti.field(int, ())
 
         self.buffers = {}
-        self.add_buffer('img', dim, dtype)
+        for name, (dim, dtype) in buffers.items():
+            self.add_buffer(name, dim, dtype)
+
+        if 'img' in buffers:
+            self.dim = buffers['img'][0]
+        else:
+            self.dim = None
+
         self.add_buffer('idepth', ())
 
     @ti.func
@@ -86,7 +97,7 @@ class FrameBuffer:
         if ti.static(self.n_taa):
             self.ntaa[None] = min(self.n_taa, self.ntaa[None] + 1)
             self.itaa[None] = (self.itaa[None] + 1) % self.n_taa
-        for I in ti.grouped(self.img):
+        for I in ti.grouped(ti.ndrange(*self.res)):
             for k in ti.static(self.buffers.keys()):
                 self[k][I] *= 0
 
@@ -95,7 +106,7 @@ class FrameBuffer:
         if ti.static(self.n_taa):
             self.ntaa[None] = 0
             self.itaa[None] = 0
-            for I in ti.grouped(self.img):
+            for I in ti.grouped(ti.ndrange(*self.res)):
                 r = ts.vec3(0.0)
                 for i in ti.static(range(self.n_taa)):
                     self.taa[i, I] *= 0
@@ -103,7 +114,7 @@ class FrameBuffer:
     @ti.func
     def update_buffer(self):
         if ti.static(self.n_taa):
-            for I in ti.grouped(self.img):
+            for I in ti.grouped(ti.ndrange(*self.res)):
                 self.img[I] = sum(self.taa[i, I] for i in range(self.n_taa)) / self.ntaa[None]
 
 
@@ -120,7 +131,7 @@ class DeferredShading:
     def render(self):
         self.src.render()
         for I in ti.grouped(self.img):
-            mid = self.src.img[I]
+            mid = self.src['mid'][I]
             pos = self.src['position'][I]
             texcoor = self.src['texcoord'][I]
             normal = self.src['normal'][I]
@@ -131,9 +142,46 @@ class DeferredShading:
                 color = ts.vec3(1.0, 0.0, 1.0)  # magenta for debugging missing material
             if ti.static(len(self.mtllib)):
                 for i, material in ti.static(enumerate(self.mtllib)):
-                    if i == mid:
-                        color = material.pixel_shader(self, pos, texcoor, normal, tangent, bitangent)
+                    if ti.static(material is not None):
+                        if i == mid:
+                            color = material.pixel_shader(self, pos, texcoor, normal, tangent, bitangent)
             self.img[I] = color
+
+
+@ti.data_oriented
+class DeferredVisualizeAttr:
+    def __init__(self, src, attr, dim=3):
+        self.res = src.res
+        self.dim = dim
+        self.img = create_field(dim, float, self.res)
+        self.attr = attr
+        self.src = src
+
+    @ti.func
+    def render(self):
+        self.src.render()
+        for I in ti.grouped(self.img):
+            if ti.static(self.attr == 'mid'):
+                mid = self.src['mid'][I]
+                color = ts.vec3(
+                    abs(mid == 1 or mid == 4 or mid == 6),
+                    abs(mid == 2 or mid == 4 or mid == 5),
+                    abs(mid == 3 or mid == 5 or mid == 6))
+                self.img[I] = color
+            elif ti.static(self.attr == 'normal'):
+                normal = self.src['normal'][I]
+                self.img[I] = normal * 0.5 + 0.5
+            elif ti.static(self.attr == 'tangent'):
+                tangent = self.src['tangent'][I]
+                self.img[I] = tangent * 0.5 + 0.5
+            elif ti.static(self.attr == 'position'):
+                position = self.src['position'][I]
+                self.img[I] = position * 0.5 + 0.5
+            elif ti.static(self.attr == 'texcoord'):
+                texcoord = self.src['texcoord'][I]
+                self.img[I] = ts.vec3(texcoord, 0.0)
+            else:
+                ti.static_assert(0, self.attr)
 
 
 @ti.data_oriented
