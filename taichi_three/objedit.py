@@ -295,11 +295,3 @@ def objshow(obj, visual='color', res=(512, 512), ortho=False, showball=False, li
         else:
             gui.set_image(camera.fb[visual].to_numpy())
         gui.show()
-
-
-if __name__ == '__main__':
-    import taichi_three as t3
-
-    obj = t3.readobj('assets/sphere.obj')
-    t3.objmknorm(obj)
-    t3.objshow(obj, 'normal')

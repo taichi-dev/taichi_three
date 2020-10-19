@@ -207,7 +207,7 @@ class Main:
         if args.bothface:
             t3.objbothface(obj)
 
-        model = (t3.ModelLow if args.lowp else t3.Model).from_obj(obj)
+        model = t3.Model(t3.Mesh.from_obj(obj))
         if args.texture is not None:
             model.add_texture('color', ti.imread(args.texture))
         if args.normtex is not None:

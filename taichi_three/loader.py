@@ -15,7 +15,7 @@ def _tri_append(faces, indices):
         assert False, len(indices)
 
 
-def readobj(path, orient='xyZ', scale=None):
+def readobj(path, orient='-xyz', scale=None):
     if callable(getattr(path, 'read', 'none')):
         ret = read_OBJ(path)
     elif path.endswith('.obj'):

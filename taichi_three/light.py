@@ -2,6 +2,7 @@ import taichi as ti
 import taichi_glsl as ts
 from .common import *
 from .camera import *
+from .transform import *
 import math
 '''
 The base light class represents an ambient light.
@@ -45,12 +46,15 @@ class Light:
             color = [color for i in range(3)]
  
         @ti.materialize_callback
+        @ti.kernel
         def init_light():
             self.dir[None] = dir
             self.color[None] = color
+            self.L2W[None] = transform(makeortho(self.dir[None]), self.dir[None])
 
         self.dir = ti.Vector.field(3, float, ())
         self.color = ti.Vector.field(3, float, ())
+        self.L2W = ti.Matrix.field(4, 4, float, ())
         # store the current light direction in the view space
         # so that we don't have to compute it for each vertex
         self.viewdir = ti.Vector.field(3, float, ())
@@ -69,7 +73,7 @@ class Light:
 
     @ti.func
     def set_view(self, camera):
-        self.viewdir[None] = (camera.L2W[None].inverse() @ ts.vec4(self.dir[None], 0)).xyz
+        self.viewdir[None] = v4trans(camera.L2W[None].inverse(), self.dir[None], 0)
 
     def make_shadow_camera(self, res=(512, 512), dis=10, fov=60, **kwargs):
         shadow = Camera(res=res)

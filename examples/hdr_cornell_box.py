@@ -5,7 +5,7 @@ import numpy as np
 ti.init(ti.cpu)
 
 scene = t3.Scene()
-cornell = t3.readobj('assets/cornell.obj', orient='-xyz')
+cornell = t3.readobj('assets/cornell.obj')
 cube = t3.readobj('assets/plane.obj')
 model = t3.Model(t3.Mesh.from_obj(cornell))
 scene.add_model(model)
