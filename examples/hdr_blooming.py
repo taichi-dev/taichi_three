@@ -8,6 +8,7 @@ scene = t3.Scene()
 obj = t3.Geometry.cube()
 model = t3.Model(t3.Mesh.from_obj(obj))
 model.material = t3.Material(t3.BlinnPhong(
+    # https://learnopengl.com/img/textures/container2.png
     color=t3.Texture('docs/_media/container2.png'),
     specular=t3.Texture('docs/_media/container2_specular.png'),
 ))

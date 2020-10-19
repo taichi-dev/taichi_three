@@ -96,9 +96,13 @@ New in latest master
 API breaking changes:
 
 Notable changes:
+* Support SSAO by `t3.SSAO` node.
 * Support deferred shading by using `t3.DeferredMaterial` and `t3.DeferredShading` nodes.
-* Set up multi-material ID system. use `t3.objunpackmtls` to separate OBJ by their material.
+* Set up multi-material ID system, use `t3.objunpackmtls` to separate OBJ by their material.
 * Add a variety of nodes, including `t3.GaussianBlur`, `t3.ImgBinaryOp`, `t3.SuperSampling`...
+
+Minor changes:
+* Make camera buffer update less ad-hoc.
 
 TODO list
 ---------
@@ -107,7 +111,6 @@ Minor fixes:
 * Fix black-pixels artifect in `ms_cloth.py`.
 * Fix color artifects on edges due to interpolation.
 * Fix shadow artifects on 90-deg faces.
-* Make camera buffer update less ad-hoc.
 * Adapt ambient occulsion to node system.
 * Fix broken shadow mapping since v0.0.7.
 * Support scaling in ORTHO mode.
@@ -115,12 +118,12 @@ Minor fixes:
 Major steps:
 * Standardize affine system - L2W, W2C, C2D.
 * Support shadow mapping for `t3.PointLight`.
+* `t3.Light` should be a subclass of `t3.Model`?
 * Support `t3.CutoffLight` for light cones.
 
 Ambitions:
 * Standardize path tracing scheme, e.g. cornell box.
 * Further push forward node-alike system in all other fields.
 * Support image-based lighting and environment maps (skybox).
-* Support deferred shading and SSAO.
 * Support screen-space reflection.
 * Differentiable rendering (#18).

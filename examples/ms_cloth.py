@@ -89,7 +89,6 @@ with ti.GUI('Mass Spring', camera.res) as gui:
 
         camera.from_mouse(gui)
 
-        scene.render_shadows()
         scene.render()
         gui.set_image(camera.img)
         gui.show()
