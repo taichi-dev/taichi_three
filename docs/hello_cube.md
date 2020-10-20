@@ -86,10 +86,11 @@ while gui.running:
 ```
 
 Now use **LMB to orbit** around the scene, **MMB to move** the center of view, **RMB to scale** the scene.
+
 Feel like moving in 3D, right? Exactly what we want!
 
 
-![2_1](2_1.gif)
+![1_0](1_0.gif)
 
 Nice job!
 

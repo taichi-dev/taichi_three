@@ -29,7 +29,7 @@ class Geometry:
         return obj
 
     @classmethod
-    def cylinder(cls, semiheight=1, N=32):
+    def cylinder(cls, semiheight=1, radius=1, N=32):
         from .loader import _tri_append
         vertices = [(0, 0, -semiheight), (0, 0, +semiheight)]
         texcoords = [(0, 0)]
@@ -38,8 +38,9 @@ class Geometry:
         for i in range(N):
             angle = (i / N) * np.pi * 2
             pos = math.cos(angle), math.sin(angle)
-            vertices.append((*pos, -semiheight))
-            vertices.append((*pos, +semiheight))
+            rpos = [p * radius for p in pos]
+            vertices.append((*rpos, -semiheight))
+            vertices.append((*rpos, +semiheight))
             normals.append((*pos, 0))
             texcoords.append(pos)
         for i in range(N):
