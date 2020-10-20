@@ -58,6 +58,10 @@ class RTCamera(Camera):
         self.rc = ti.Vector.field(3, float, self.N)
         self.rI = ti.Vector.field(2, int, self.N)
 
+    @ti.func
+    def render(self):
+        pass
+
     def steprays(self):
         nrays = self.region[0] * self.region[1]
         self._steprays(nrays)
@@ -72,7 +76,7 @@ class RTCamera(Camera):
                 for model in ti.static(self.scene.models):
                     ihit, iorig, idir, iclr = model.intersect(self.ro[i], self.rd[i])
                     if ihit < hit:
-                        hit, orig, dir, clr = ihit, iorig + idir * 1e-4, idir, iclr
+                        hit, orig, dir, clr = ihit, iorig + idir * 1e-6, idir, iclr
                 self.ro[i], self.rd[i] = orig, dir
                 self.rc[i] *= clr
 

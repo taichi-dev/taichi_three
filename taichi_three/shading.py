@@ -275,12 +275,13 @@ class IdealRT(Shading):
     def radiance(self):
         outdir = ts.vec3(0.0)
         clr = ts.vec3(0.0)
-        if ti.random() < self.emission:
+        if randomLessThan(self.emission):
             clr = ts.vec3(self.emission_color)
-        elif ti.random() < self.specular:
+            outdir = ts.vec3(1e-4)
+        elif randomLessThan(self.specular):
             clr = ts.vec3(self.specular_color)
             outdir = ts.reflect(self.indir, self.normal)
-        elif ti.random() < self.diffuse:
+        elif randomLessThan(self.diffuse):
             clr = ts.vec3(self.diffuse_color)
             outdir = ts.randUnit3D()
             if outdir.dot(self.normal) < 0:
@@ -289,6 +290,17 @@ class IdealRT(Shading):
             #outdir = ts.vec3(ti.sqrt(1 - s**2) * ts.randUnit2D(), s)
             #outdir = ti.Matrix.cols([self.tangent, self.bitangent, self.normal]) @ outdir
         return self.pos, outdir, clr
+
+    @ti.func
+    def brdf(self, normal, lightdir, viewdir):
+        NoH = max(0, ts.dot(normal, ts.normalize(lightdir + viewdir)))
+        ndf = 5 / 2 * pow(NoH, 12)
+        strength = self.diffuse_color + ndf * self.specular_color
+        return strength
+
+    @ti.func
+    def get_emission(self):
+        return self.emission_color
 
 
 class PlaceHolder(Node):

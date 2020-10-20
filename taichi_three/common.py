@@ -51,6 +51,17 @@ def unpack_tuple(tup, *args):
 
 
 
+@ti.func
+def randomLessThan(throttle: ti.template()):
+    if ti.static(isinstance(throttle, (int, float))):
+        if ti.static(throttle == 1):
+            return True
+        if ti.static(throttle == 0):
+            return False
+    return ti.random() < throttle
+
+
+
 @ti.data_oriented
 class DataOriented(object):
     pass

@@ -55,6 +55,7 @@ def read_OBJ(path):
     vn = []
     faces = []
     usemtls = []
+    mtllib = None
 
     if callable(getattr(path, 'read', 'none')):
         lines = path.readlines()
@@ -88,6 +89,10 @@ def read_OBJ(path):
         except ValueError:
             continue
 
+        if type == b'mtllib':
+            mtllib = fields[0]
+            continue
+
         if type == b'usemtl':
             usemtls.append([len(faces), fields[0]])
             continue
@@ -110,6 +115,7 @@ def read_OBJ(path):
     ret['vn'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vn) == 0 else np.array(vn, dtype=np.float32)
     ret['f'] = np.zeros((1, 3, 3), dtype=np.int32) if len(faces) == 0 else np.array(faces, dtype=np.int32)
     ret['usemtl'] = usemtls
+    ret['mtllib'] = mtllib
     return ret
 
 

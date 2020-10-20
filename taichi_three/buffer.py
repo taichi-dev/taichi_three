@@ -353,3 +353,27 @@ class SuperSampling2x2:
 @ti.func
 def aces_tonemap(color):
     return color * (2.51 * color + 0.03) / (color * (2.43 * color + 0.59) + 0.14)
+
+
+@ti.data_oriented
+class AccDenoise:
+    def __init__(self, src):
+        self.res = src.res
+        self.dim = src.dim
+        self.img = create_field(self.dim, float, self.res)
+        self.count = create_field((), int, ())
+        self.src = src
+
+    @ti.kernel
+    def reset(self):
+        self.count[None] = 0
+        for i in ti.grouped(self.src.img):
+            self.img[i] *= 0
+
+    @ti.func
+    def render(self):
+        self.src.render()
+        self.count[None] += 1
+        alpha = 1 / self.count[None]
+        for i in ti.grouped(self.src.img):
+            self.img[i] = self.img[i] * (1 - alpha) + self.src.img[i] * alpha

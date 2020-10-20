@@ -117,11 +117,17 @@ def objunpackmtls(obj):
     ends.append(len(faces))
     ends.pop(0)
     for end, (beg, name) in zip(ends, obj['usemtl']):
+        if name in parts:
+            parts[name] = np.concatenate([parts[name], faces[beg:end]], axis=0)
+        else:
+            parts[name] = faces[beg:end]
+    for name in parts.keys():
         cur = {}
-        cur['f'] = faces[beg:end]
+        cur['f'] = parts[name]
         cur['vp'] = obj['vp']
         cur['vn'] = obj['vn']
         cur['vt'] = obj['vt']
+        # TODO: vertex reachability elimation
         parts[name] = cur
     return parts
 
