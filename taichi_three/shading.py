@@ -295,7 +295,7 @@ class IdealRT(Shading):
     def brdf(self, normal, lightdir, viewdir):
         NoH = max(0, ts.dot(normal, ts.normalize(lightdir + viewdir)))
         ndf = 5 / 2 * pow(NoH, 12)
-        strength = self.diffuse_color + ndf * self.specular_color
+        strength = self.diffuse_color * self.diffuse + ndf * self.specular_color * self.specular
         return strength
 
     @ti.func

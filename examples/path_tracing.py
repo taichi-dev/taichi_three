@@ -2,7 +2,7 @@ import taichi as ti
 import taichi_three as t3
 import numpy as np
 
-res = 256, 256
+res = 512, 512
 ti.init(ti.cpu)
 
 scene = t3.Scene()
@@ -13,6 +13,7 @@ model1.material = t3.Material(t3.IdealRT(
     specular=t3.Constant(0.0),
     diffuse=t3.Constant(1.0),
     emission=t3.Constant(0.0),
+    diffuse_color=t3.Texture('assets/smallptwall.png'),
 ))
 scene.add_model(model1)
 model2 = t3.Model(t3.Mesh.from_obj(cornell[b'Material.001']))
@@ -27,7 +28,7 @@ light.material = t3.Material(t3.IdealRT(
     specular=t3.Constant(0.0),
     diffuse=t3.Constant(0.0),
     emission=t3.Constant(1.0),
-    emission_color=t3.Constant(10.0),
+    emission_color=t3.Constant(16.0),
 ))
 scene.add_model(light)
 camera = t3.RTCamera(res=res)
@@ -37,9 +38,9 @@ camfb = t3.FrameBuffer(camera)
 if isinstance(camera, t3.RTCamera):
     camfb.clear_buffer = lambda: None
 else:
-    scene.add_light(t3.PointLight(pos=(0, 3.9, 0), color=10.0))
+    scene.add_light(t3.PointLight(pos=(0, 3.9, 0), color=6.0))
 accum = t3.AccDenoise(camfb)
-buffer = t3.ImgUnaryOp(accum, lambda x: 1 - ti.exp(-1.6 * x))
+buffer = t3.ImgUnaryOp(accum, lambda x: 1 - ti.exp(-x))
 scene.add_buffer(buffer)
 
 light.L2W[None] = t3.translate(0, 3.9, 0) @ t3.scale(0.25)
