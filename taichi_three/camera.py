@@ -20,7 +20,8 @@ class Camera:
 
         @ti.materialize_callback
         def init_camera_ctl():
-            self.ctl.apply(self)
+            if self.ctl is not None:
+                self.ctl.apply(self)
 
         self.intrinsic = ti.Matrix.field(3, 3, float, ())
         minres = min(self.res)
@@ -116,25 +117,6 @@ class Camera:
             raise NotImplementedError("Curvilinear projection matrix not implemented!")
 
         return ts.vec2(pos[0], pos[1])
-
-
-@ti.func
-def v4trans(mat, vec, wei):
-    ti.static_assert(vec.n == 3, vec.n)
-
-    if ti.static(vec.m == 1):
-        return (mat @ ts.vec4(vec, wei)).xyz
-
-    tmp = ti.Matrix.zero(float, 4, vec.m)
-    for i, j in ti.static(ti.ndrange(vec.n, vec.m)):
-        tmp[i, j] = vec[i, j]
-    for i in ti.static(range(vec.m)):
-        tmp[3, i] = wei
-    tmp = mat @ tmp
-    ret = ti.Matrix.zero(float, vec.n, vec.m)
-    for i, j in ti.static(ti.ndrange(vec.n, vec.m)):
-        ret[i, j] = tmp[i, j]
-    return ret
 
 
 class CameraCtl:

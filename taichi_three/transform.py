@@ -82,3 +82,22 @@ def makeortho(fwd, up=None):
     right = up.cross(fwd).normalized() # +X
     up = right.cross(fwd)              # +Y
     return -ti.Matrix([right.entries, up.entries, fwd.entries]).transpose()
+
+
+@ti.func
+def v4trans(mat, vec, wei):
+    ti.static_assert(vec.n == 3, vec.n)
+
+    if ti.static(vec.m == 1):
+        return (mat @ ts.vec4(vec, wei)).xyz
+
+    tmp = ti.Matrix.zero(float, 4, vec.m)
+    for i, j in ti.static(ti.ndrange(vec.n, vec.m)):
+        tmp[i, j] = vec[i, j]
+    for i in ti.static(range(vec.m)):
+        tmp[3, i] = wei
+    tmp = mat @ tmp
+    ret = ti.Matrix.zero(float, vec.n, vec.m)
+    for i, j in ti.static(ti.ndrange(vec.n, vec.m)):
+        ret[i, j] = tmp[i, j]
+    return ret

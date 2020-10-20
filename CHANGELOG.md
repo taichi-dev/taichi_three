@@ -100,9 +100,11 @@ Notable changes:
 * Support deferred shading by using `t3.DeferredMaterial` and `t3.DeferredShading` nodes.
 * Set up multi-material ID system, use `t3.objunpackmtls` to separate OBJ by their material.
 * Add a variety of nodes, including `t3.GaussianBlur`, `t3.ImgBinaryOp`, `t3.SuperSampling`...
+* Add `t3.Skybox` as model.
 
-Minor changes:
+Minor fixes:
 * Make camera buffer update less ad-hoc.
+* Fix `t3.readobj` default orientation to be `-xyz`.
 
 TODO list
 ---------

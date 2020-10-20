@@ -1,7 +1,8 @@
 import taichi as ti
 import taichi_glsl as ts
-from .light import AmbientLight
 from .transform import *
+from .light import Light, AmbientLight
+from .skybox import Skybox
 from .common import *
 import math
 
@@ -67,7 +68,7 @@ class MaterialInput:
 
     def get(self):
         assert hasattr(Material, 'inputs')
-        return Material.inputs[self.name]
+        return Material.inputs.get(self.name)
 
 
 @ti.data_oriented
@@ -131,10 +132,7 @@ class Shading(Node):
         wpos = (self.model.scene.cameras[-1].L2W @ ts.vec4(pos, 1)).xyz  # TODO: get curr camera?
         if ti.static(self.model.scene.lights):
             for light in ti.static(self.model.scene.lights):
-                strength = light.shadow_occlusion(wpos)
-                if strength >= 1e-3:
-                    subclr = self.render_func(pos, normal, viewdir, light)
-                    res += strength * subclr
+                res += self.render_func(pos, normal, viewdir, light)
         res += self.get_emission()
         return res
 
@@ -142,6 +140,8 @@ class Shading(Node):
     def render_func(self, pos, normal, viewdir, light):  # TODO: move render_func to Light.render_func?
         if ti.static(isinstance(light, AmbientLight)):
             return light.get_color(pos) * self.get_ambient()
+        if ti.static(not isinstance(light, Light)):
+            raise NotImplementedError
         lightdir = light.get_dir(pos)
         NoL = ts.dot(normal, lightdir)
         l_out = ts.vec3(0.0)
@@ -260,6 +260,15 @@ class IdealRT(Shading):
             diffuse_color = Constant(1.0),
             specular_color = Constant(1.0),
             )
+
+    @ti.func
+    def render_func(self, pos, normal, viewdir, light):  # TODO: move render_func to Light.render_func?
+        if ti.static(isinstance(light, Skybox)):
+            dir = ts.reflect(viewdir, normal)
+            dir = v4trans(self.model.L2W[None] @ self.model.L2C[None].inverse(), dir, 0)
+            return light.sample(dir) * self.specular_color * self.specular
+        else:
+            return Shading.render_func(self, pos, normal, viewdir, light)
 
     @Node.method
     @ti.func
