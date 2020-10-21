@@ -49,6 +49,14 @@ class IndicedFace:
 
 
 @ti.data_oriented
+class TransformedFace:
+    def __init__(self, mat, face):
+        self.pos = [v4trans(mat, pos, 1) for pos in face.pos]
+        self.nrm = [v4trans(mat, nrm, 0) for nrm in face.nrm]
+        self.tex = [tex for tex in face.tex]
+
+
+@ti.data_oriented
 class Mesh:
     def __init__(self, faces, pos, tex, nrm):
         self.faces = faces
@@ -152,7 +160,9 @@ class Model(ModelBase):
         for i in ti.grouped(ti.ndrange(*self.mesh.shape)):
             for j in ti.static(ti.grouped(ti.ndrange(*self.mesh.static_shape))):
                 face = self.mesh.get_face(i, j)
-                render_triangle(self, camera, face)
+                # L2C = W2C @ L2W, Local to Camera, i.e. ModelView in OpenGL
+                cs_face = TransformedFace(self.L2C[None], face)
+                render_triangle(self, camera, cs_face)
 
     @ti.func
     def intersect(self, orig, dir):

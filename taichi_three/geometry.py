@@ -91,17 +91,9 @@ TAA_SHAKES = [(0, 0),
 
 @ti.func
 def render_triangle(model, camera, face):
-    L2C = model.L2C[None]  # Local to Camera, i.e. ModelView in OpenGL
-
     posa, posb, posc = face.pos   # Position
     texa, texb, texc = face.tex   # TexCoord
     nrma, nrmb, nrmc = face.nrm   # Normal
-    posa = v4trans(L2C, posa, 1)
-    posb = v4trans(L2C, posb, 1)
-    posc = v4trans(L2C, posc, 1)
-    nrma = v4trans(L2C, nrma, 0)
-    nrmb = v4trans(L2C, nrmb, 0)
-    nrmc = v4trans(L2C, nrmc, 0)
 
     pos_center = (posa + posb + posc) / 3
     if ti.static(camera.type == camera.ORTHO):
@@ -168,7 +160,7 @@ def render_triangle(model, camera, face):
 
 
 @ti.func
-def render_particle(model, camera, index):  # FIXME: broken after L2C infra
+def render_particle(model, camera, index):
     scene = model.scene
     a = (model.L2C[None] @ ts.vec4(model.pos[index], 1)).xyz
     r = model.radius[index]
