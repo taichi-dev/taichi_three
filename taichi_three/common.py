@@ -67,6 +67,11 @@ class DataOriented(object):
     pass
 
 
+@ti.data_oriented
+class TaichiClass(object):
+    is_taichi_class = True
+
+
 @ti.func
 def list_subscript(a, i):
     ret = sum(a) * 0

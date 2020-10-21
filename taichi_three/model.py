@@ -179,6 +179,40 @@ class Model(ModelBase):
 
 
 @ti.data_oriented
+class ModelGroup(ModelBase):
+    def __init__(self, models=None):
+        super().__init__()
+        self.models = models or []
+
+    @ti.func
+    def set_view(self, camera):
+        ModelBase.set_view(self, camera)
+        fake_camera = DataOriented()
+        L2FC = self.L2C[None].inverse()
+        fake_camera.L2W = ti.static(TaichiClass())
+        fake_camera.L2W.subscript = ti.static(lambda *x: L2FC)
+        if ti.static(len(self.models)):
+            for model in ti.static(self.models):
+                model.set_view(fake_camera)
+
+    @property
+    def scene(self):
+        return self._scene
+
+    @scene.setter
+    def scene(self, scene):
+        self._scene = scene
+        for model in self.models:
+            model.scene = scene
+
+    @ti.func
+    def render(self, camera):
+        if ti.static(len(self.models)):
+            for model in ti.static(self.models):
+                model.render(camera)
+
+
+@ti.data_oriented
 class MeshGrid:
     @ti.data_oriented
     class MeshGridFace:
