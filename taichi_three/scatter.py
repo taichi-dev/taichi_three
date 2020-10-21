@@ -21,7 +21,10 @@ class ScatterModel(ModelBase):
 
             @ti.materialize_callback
             def initialize_radius():
-                self.radius.fill(1.0)
+                self.radius.fill(0.1)
+
+        from .shading import Material, CookTorrance
+        self.material = Material(CookTorrance())
 
     @ti.func
     def render(self, camera):

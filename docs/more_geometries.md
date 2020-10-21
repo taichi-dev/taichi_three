@@ -17,7 +17,7 @@ scene.add_model(model)
 
 ## Hello cylinder
 
-To create a cylinder geometry, just:
+To create a cylinder, just:
 
 ```py
 obj = t3.Geometry.cylinder()

@@ -142,6 +142,7 @@ class Model(ModelBase):
     def __init__(self, mesh):
         super().__init__()
         self.mesh = mesh
+
         from .shading import Material, CookTorrance
         self.material = Material(CookTorrance())
 
