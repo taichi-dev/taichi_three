@@ -49,6 +49,8 @@ class Camera:
 
     @ti.func
     def render(self):
+        self.scene.camera = ti.static(self)
+
         # sets up light directions
         if ti.static(len(self.scene.lights)):
             for light in ti.static(self.scene.lights):
@@ -63,6 +65,8 @@ class Camera:
                 model.render(self)
         else:
             ti.static_print('Warning: no models')
+
+        self.scene.camera = ti.static(None)
 
     def set_intrinsic(self, fx=None, fy=None, cx=None, cy=None):
         # see http://ais.informatik.uni-freiburg.de/teaching/ws09/robotics2/pdfs/rob2-08-camera-calibration.pdf

@@ -265,7 +265,7 @@ class IdealRT(Shading):
     def render_func(self, pos, normal, viewdir, light):  # TODO: move render_func to Light.render_func?
         if ti.static(isinstance(light, Skybox)):
             dir = ts.reflect(viewdir, normal)
-            dir = v4trans(self.model.L2W[None] @ self.model.L2C[None].inverse(), dir, 0)
+            dir = v4trans(self.model.scene.camera.L2W[None], dir, 0)
             return light.sample(dir) * self.specular_color * self.specular
         else:
             return Shading.render_func(self, pos, normal, viewdir, light)
@@ -300,7 +300,7 @@ class IdealRT(Shading):
 
     @ti.func
     def get_emission(self):
-        return self.emission_color
+        return self.emission_color * self.emission
 
 
 class PlaceHolder(Node):
