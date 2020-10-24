@@ -318,23 +318,21 @@ class MCISO:
             self.pq.from_numpy(pq)
             self.ed.from_numpy(ed)
 
-        self.m = ti.field(float)  # field to sample
-        self.g = ti.Vector.field(self.dim, float)  # normalized gradient
+        self.m = ti.field(float)
+        self.g = ti.Vector.field(self.dim, float)
         indices = [ti.ij, ti.ijk][dim - 2]
+        ti.root.dense(indices, self.N).place(self.g)
         if self.use_sparse:
             ti.root.pointer(indices, self.N // self.blk_size).dense(
                 indices, self.blk_size).place(self.m)
-            ti.root.dense(indices, self.N).place(self.g)
         else:
             ti.root.dense(indices, self.N).place(self.m)
-            ti.root.dense(indices, self.N).place(self.g)
 
-        self.vI = ti.Vector.field(self.dim, int, self.N_res**self.dim)  # vertex buffer: I
-        self.vet = ti.Vector.field(self.dim, int, self.N_res**self.dim)  # vertex buffer: et
-        self.v_n = ti.field(int, ())  # length of vertex buffer
+        self.r = ti.Vector.field(self.dim, float, (self.N_res**self.dim, self.dim))
+        self.r_n = ti.field(int, ())
 
-        self.r = ti.Vector.field(self.dim, float, (self.N_res**self.dim, self.dim))  # result buffer
-        self.r_n = ti.field(int, ())  # length of result buffer
+        self.Js = ti.Vector.field(self.dim, float, (self.N_res**self.dim, self.dim))
+        self.Js_n = ti.field(int, ())
 
     @ti.kernel
     def compute_grad(self):
@@ -366,24 +364,10 @@ class MCISO:
             if self.m[i, j + 1, k + 1] > 1: id |= 128
         return id
 
-    @ti.func
-    def get_interp(self, I, pq):
-            p1, p2 = 0.0, 0.0
-            if ti.static(self.dim == 2):
-                i, j = I
-                p1 = self.m[i + pq[0] % 2, j + pq[0] // 2]
-                p2 = self.m[i + pq[1] % 2, j + pq[1] // 2]
-            else:
-                i, j, k = I
-                p1 = self.m[i + pq[0] % 2, j + (pq[0] // 2) % 2, k + pq[0] // 4]
-                p2 = self.m[i + pq[1] % 2, j + (pq[1] // 2) % 2, k + pq[1] // 4]
-
-            return (1 - p1) / (p2 - p1)
-
     @ti.kernel
     def march(self):
         self.r_n[None] = 0
-        self.v_n[None] = 0
+        print('=========')
 
         for I in ti.grouped(ti.ndrange(*[self.N - 1] * self.dim)):
             id = self.get_cubeid(I)
@@ -392,28 +376,37 @@ class MCISO:
                 if et[0] == -1:
                     break
 
-                # save I and et
-                v_n = ti.atomic_add(self.v_n[None], 1)
-                self.vet[v_n] = et
-                self.vI[v_n] = I
+                r_n = ti.atomic_add(self.r_n[None], 1)
+                for l in ti.static(range(self.dim)):
+                    e = et[l]
+                    R = 1.0 * I
+                    ed = self.ed[e]
+                    pq = self.pq[e]
 
-        for v in range(self.v_n[None]):
-            I = self.vI[v]
-            et = self.vet[v]
-            r_n = ti.atomic_add(self.r_n[None], 1)
-            for l in ti.static(range(self.dim)):
-                e = et[l]
-                R = float(I)
-                ed = self.ed[e]
-                pq = self.pq[e]
-                p = self.get_interp(I, pq)
-                for i in ti.static(range(self.dim)):
-                    if ed[i] == 1:
-                        R[i] += p
-                    elif ed[i] == 2:
-                        R[i] += 1.0
+                    p1, p2 = 0.0, 0.0
+                    if ti.static(self.dim == 2):
+                        i, j = I
+                        p1 = self.m[i + pq[0] % 2, j + pq[0] // 2]
+                        p2 = self.m[i + pq[1] % 2, j + pq[1] // 2]
+                    else:
+                        i, j, k = I
+                        p1 = self.m[i + pq[0] % 2, j + (pq[0] // 2) % 2, k + pq[0] // 4]
+                        p2 = self.m[i + pq[1] % 2, j + (pq[1] // 2) % 2, k + pq[1] // 4]
+                    p = (1 - p1) / (p2 - p1)
 
-                self.r[r_n, l] = R
+                    for i in ti.static(range(self.dim)):
+                        if ed[i] == 1:
+                            R[i] += p
+                        elif ed[i] == 2:
+                            R[i] += 1.0
+
+                    J = ti.Vector([I.x, I.y, 0])
+                    if e == 1 or e == 2: J.z = 1
+                    if e == 2: J.x += 1
+                    if e == 3: J.y += 1
+                    print(J, R)
+                    self.r[r_n, l] = R
+                    self.Js[ti.atomic_add(self.Js_n[None], 1)] = J
 
     def clear(self):
         if self.use_sparse:
@@ -437,7 +430,7 @@ class MCISO_Example(MCISO):
             if ti.static(self.dim == 3):
                 p.z -= 0.5
             b = self.gauss(p.norm() / 0.25)
-            r = max(a + b - 0.08, 0)
+            r = a#max(a + b - 0.08, 0)
             if r <= 0:
                 continue
             self.m[o] = r * 3
@@ -452,7 +445,9 @@ class MCISO_Example(MCISO):
             if self.dim == 2:
                 #gui.set_image(ti.imresize(self.m, *gui.res))
                 self.compute_grad(); gui.set_image(ti.imresize(self.g, *gui.res) * 0.5 + 0.5)
+                #gui.set_image(ti.imresize(self.vb, *gui.res).astype(np.float32) / 4)
                 gui.lines(ret[:, 0], ret[:, 1], color=0xff66cc, radius=1.5)
+                #gui.circles(ver, color=0xffff33, radius=4)
             else:
                 gui.triangles(ret[:, 0, 0:2],
                               ret[:, 1, 0:2],
