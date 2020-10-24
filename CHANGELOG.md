@@ -121,7 +121,8 @@ Minor fixes:
 Major steps:
 * Standardize affine system - L2W, W2C, C2D.
 * Support shadow mapping for `t3.PointLight`.
-* `t3.Light` should be a subclass of `t3.Model`?
+* `t3.Light` should be a subclass of `t3.ModelBase`?
+* Forward rendering should be per-material instead of per-model.
 * Support `t3.CutoffLight` for light cones.
 
 Ambitions:
