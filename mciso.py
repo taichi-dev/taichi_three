@@ -281,61 +281,91 @@ class MCISO:
             [0, 3, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
             [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
         ], np.int32)[:, :15].reshape(256, 5, 3)
-    ed2 = np.array([
-        [1, 0], [0, 1], [2, 1], [1, 2],
-    ], np.int32)
-    pq2 = np.array([
-        [0, 1], [0, 2], [1, 3], [2, 3],
-    ], np.int32)
-    ed3 = np.array([
-        [1, 0, 0], [2, 1, 0], [1, 2, 0], [0, 1, 0],
-        [1, 0, 2], [2, 1, 2], [1, 2, 2], [0, 1, 2],
-        [0, 0, 1], [2, 0, 1], [2, 2, 1], [0, 2, 1],
-        ], np.int32)
-    pq3 = np.array([
-        [0, 1], [1, 3], [2, 3], [0, 2],
-        [4, 5], [5, 7], [6, 7], [4, 6],
-        [0, 4], [1, 5], [3, 7], [2, 6],
-    ], np.int32)
 
-    def __init__(self, N=32, N_res=8, dim=3, blk_size=None):
-
+    def __init__(self, N=128, N_res=None, dim=3, use_sparse=True):
         self.N = N
         self.dim = dim
-        self.N_res = N_res
-        self.use_sparse = blk_size is not None
-        self.blk_size = blk_size
+        self.N_res = N_res or N**self.dim
+        self.use_sparse = use_sparse
 
         et = [self.et2, self.et3][dim - 2]
         self.et = ti.Vector.field(dim, int, et.shape[:2])
-        pq = [self.pq2, self.pq3][dim - 2]
-        self.pq = ti.Vector.field(dim, int, pq.shape[0])
-        ed = [self.ed2, self.ed3][dim - 2]
-        self.ed = ti.Vector.field(dim, int, ed.shape[0])
         @ti.materialize_callback
         def init_tables():
             self.et.from_numpy(et)
-            self.pq.from_numpy(pq)
-            self.ed.from_numpy(ed)
 
         self.m = ti.field(float)
         self.g = ti.Vector.field(self.dim, float)
         self.Jtab = ti.field(int)
         indices = [ti.ij, ti.ijk][dim - 2]
-        indices2 = [ti.ijk, ti.ijkl][dim - 2]
         ti.root.dense(indices, self.N).place(self.g)
-        ti.root.dense(indices2, [self.N] * self.dim + [2]).place(self.Jtab)
         if self.use_sparse:
-            ti.root.pointer(indices, self.N // self.blk_size).dense(
-                indices, self.blk_size).place(self.m)
+            ti.root.pointer(indices, self.N // 16).dense(indices, 16).place(self.m)
+            ti.root.dense(indices, 1).dense(ti.l, self.dim).pointer(indices, self.N // 8).bitmasked(indices, 8).place(self.Jtab)
         else:
+            ti.root.dense(indices, 1).dense(ti.l, self.dim).dense(indices, self.N).place(self.Jtab)
             ti.root.dense(indices, self.N).place(self.m)
 
-        self.Js = ti.Vector.field(self.dim + 1, int, (self.N_res**self.dim, self.dim))
-        self.Jts = ti.Vector.field(self.dim, int, self.N_res**self.dim)
+        self.Js = ti.Vector.field(self.dim + 1, int, (self.N_res, self.dim))
+        self.Jts = ti.Vector.field(self.dim, int, self.N_res)
+        self.vs = ti.Vector.field(self.dim, float, self.N_res)
         self.Js_n = ti.field(int, ())
         self.vs_n = ti.field(int, ())
-        self.vs = ti.Vector.field(self.dim, float, self.N_res**self.dim)
+
+    @ti.kernel
+    def march(self):
+        self.Js_n[None] = 0
+        self.vs_n[None] = 0
+
+        for I in ti.grouped(self.m):
+            id = self.get_cubeid(I)
+            for m in range(self.et.shape[1]):
+                et = self.et[id, m]
+                if et[0] == -1:
+                    break
+
+                Js_n = ti.atomic_add(self.Js_n[None], 1)
+                for l in ti.static(range(self.dim)):
+                    e = et[l]
+                    J = ti.Vector(I.entries + [0])
+                    if ti.static(self.dim == 2):
+                        if e == 1 or e == 2: J.z = 1
+                        if e == 2: J.x += 1
+                        if e == 3: J.y += 1
+                    else:
+                        if e == 1 or e == 3 or e == 5 or e == 7: J.w = 1
+                        elif e == 8 or e == 9 or e == 10 or e == 11: J.w = 2
+                        if e == 1 or e == 5 or e == 9 or e == 10: J.x += 1
+                        if e == 2 or e == 6 or e == 10 or e == 11: J.y += 1
+                        if e == 4 or e == 5 or e == 6 or e == 7: J.z += 1
+                    self.Js[Js_n, l] = J
+                    self.Jtab[J] = 1
+
+        for J in ti.grouped(self.Jtab):
+            if not ti.static(self.use_sparse):
+                if self.Jtab[J] == 0:
+                    continue
+            vs_n = ti.atomic_add(self.vs_n[None], 1)
+            I = ti.Vector(ti.static(J.entries[:-1]))
+            vs = I * 1.0
+            p1 = self.m[I]
+            for t in ti.static(range(self.dim)):
+                if J.entries[-1] == t:
+                    p2 = self.m[I + ti.Vector.unit(self.dim, t, int)]
+                    vs[t] += (1 - p1) / (p2 - p1)
+            self.vs[vs_n] = vs
+            self.Jtab[J] = vs_n
+
+        for i in range(self.Js_n[None]):
+            for l in ti.static(range(self.dim)):
+                self.Jts[i][l] = self.Jtab[self.Js[i, l]]
+
+    def clear(self):
+        if self.use_sparse:
+            ti.root.deactivate_all()
+        else:
+            self.m.fill(0)
+            self.Jtab.fill(0)
 
     @ti.kernel
     def compute_grad(self):
@@ -366,58 +396,6 @@ class MCISO:
             if self.m[i + 1, j + 1, k + 1] > 1: id |= 64
             if self.m[i, j + 1, k + 1] > 1: id |= 128
         return id
-
-    @ti.kernel
-    def march(self):
-        self.Js_n[None] = 0
-        self.vs_n[None] = 0
-
-        for I in ti.grouped(self.m):
-            if any(I == self.N - 1):
-                continue
-
-            id = self.get_cubeid(I)
-            for m in range(self.et.shape[1]):
-                et = self.et[id, m]
-                if et[0] == -1:
-                    break
-
-                Js_n = ti.atomic_add(self.Js_n[None], 1)
-                for l in ti.static(range(self.dim)):
-                    e = et[l]
-
-                    J = ti.Vector([I.x, I.y, 0])
-                    if e == 1 or e == 2: J.z = 1
-                    if e == 2: J.x += 1
-                    if e == 3: J.y += 1
-                    self.Js[Js_n, l] = J
-                    self.Jtab[J] = 1
-
-        for J in ti.grouped(self.Jtab):
-            if self.Jtab[J] == 0:
-                continue
-            vs_n = ti.atomic_add(self.vs_n[None], 1)
-            self.Jtab[J] = vs_n
-            i, j, z = J
-            vs = ti.Vector([i, j]) * 1.0
-            if z != 0:
-                p = (1 - self.m[i, j]) / (self.m[i, j + 1] - self.m[i, j])
-                vs.y += p
-            else:
-                p = (1 - self.m[i, j]) / (self.m[i + 1, j] - self.m[i, j])
-                vs.x += p
-            self.vs[vs_n] = vs
-
-        for i in range(self.Js_n[None]):
-            for l in ti.static(range(self.dim)):
-                self.Jts[i][l] = self.Jtab[self.Js[i, l]]
-
-    def clear(self):
-        if self.use_sparse:
-            ti.root.deactivate_all()
-        else:
-            self.m.fill(0)
-            self.Jtab.fill(0)
 
 
 class MCISO_Example(MCISO):
@@ -451,14 +429,14 @@ class MCISO_Example(MCISO):
             ret = vs[Jts]
             if self.dim == 2:
                 #gui.set_image(ti.imresize(self.m, *gui.res))
-                self.compute_grad(); gui.set_image(ti.imresize(self.g, *gui.res) * 0.5 + 0.5)
-                gui.lines(ret[:, 0], ret[:, 1], color=0xff66cc, radius=1.5)
-                gui.circles(vs, color=0xffff33, radius=2)
+                self.compute_grad(); gui.set_image(ti.imresize(self.g, *gui.res) + 0.5)
+                gui.lines(ret[:, 0], ret[:, 1], color=0xff66cc, radius=1.25)
+                #gui.circles(vs, color=0xffff33, radius=1.5)
             else:
-                gui.triangles(ret[:, 0, 0:2],
-                              ret[:, 1, 0:2],
-                              ret[:, 2, 0:2],
-                              color=0xffcc66)
+                #gui.triangles(ret[:, 0, 0:2],
+                              #ret[:, 1, 0:2],
+                              #ret[:, 2, 0:2],
+                              #color=0xffcc66)
                 gui.lines(ret[:, 0, 0:2],
                           ret[:, 1, 0:2],
                           color=0xff66cc,
@@ -471,15 +449,11 @@ class MCISO_Example(MCISO):
                           ret[:, 0, 0:2],
                           color=0xff66cc,
                           radius=0.5)
-                gui.text(f'Press space to save mesh to PLY ({len(ret)} faces)', (0, 1))
+                gui.text(f'Press space to save mesh to PLY ({len(vs)} verts, {len(Jts)} faces)', (0, 1))
                 if gui.is_pressed(gui.SPACE):
-                    num = ret.shape[0]
-                    writer = ti.PLYWriter(num_vertices=num * 3, num_faces=num)
-                    vertices = ret.reshape(num * 3, 3) * 2 - 1
-                    writer.add_vertex_pos(vertices[:, 0], vertices[:, 1],
-                                          vertices[:, 2])
-                    indices = np.arange(0, num * 3)
-                    writer.add_faces(indices)
+                    writer = ti.PLYWriter(num_vertices=len(vs), num_faces=len(Jts))
+                    writer.add_vertex_pos(vs[:, 0], vs[:, 1], vs[:, 2])
+                    writer.add_faces(Jts)
                     writer.export('mciso_output.ply')
                     print('Mesh saved to mciso_output.ply')
             gui.show()
@@ -487,5 +461,5 @@ class MCISO_Example(MCISO):
 
 if __name__ == '__main__':
     ti.init(arch=ti.cpu)
-    main = MCISO_Example(dim=2)
+    main = MCISO_Example()
     main.main()
