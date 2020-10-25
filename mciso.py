@@ -320,8 +320,11 @@ class MCISO:
 
         self.m = ti.field(float)
         self.g = ti.Vector.field(self.dim, float)
+        self.Jtab = ti.field(int)
         indices = [ti.ij, ti.ijk][dim - 2]
+        indices2 = [ti.ijk, ti.ijkl][dim - 2]
         ti.root.dense(indices, self.N).place(self.g)
+        ti.root.dense(indices2, [self.N] * self.dim + [1]).place(self.Jtab)
         if self.use_sparse:
             ti.root.pointer(indices, self.N // self.blk_size).dense(
                 indices, self.blk_size).place(self.m)
@@ -331,8 +334,9 @@ class MCISO:
         self.r = ti.Vector.field(self.dim, float, (self.N_res**self.dim, self.dim))
         self.r_n = ti.field(int, ())
 
-        self.Js = ti.Vector.field(self.dim, float, (self.N_res**self.dim, self.dim))
+        self.Js = ti.Vector.field(self.dim + 1, int, (self.N_res**self.dim, self.dim))
         self.Js_n = ti.field(int, ())
+        self.fs = ti.field(int, (self.N_res**self.dim, self.dim))
 
     @ti.kernel
     def compute_grad(self):
@@ -367,7 +371,7 @@ class MCISO:
     @ti.kernel
     def march(self):
         self.r_n[None] = 0
-        print('=========')
+        self.Js_n[None] = 0
 
         for I in ti.grouped(ti.ndrange(*[self.N - 1] * self.dim)):
             id = self.get_cubeid(I)
@@ -377,8 +381,10 @@ class MCISO:
                     break
 
                 r_n = ti.atomic_add(self.r_n[None], 1)
+                Js_n = ti.atomic_add(self.Js_n[None], 1)
                 for l in ti.static(range(self.dim)):
                     e = et[l]
+
                     R = 1.0 * I
                     ed = self.ed[e]
                     pq = self.pq[e]
@@ -400,13 +406,20 @@ class MCISO:
                         elif ed[i] == 2:
                             R[i] += 1.0
 
+                    self.r[r_n, l] = R
+
                     J = ti.Vector([I.x, I.y, 0])
                     if e == 1 or e == 2: J.z = 1
                     if e == 2: J.x += 1
                     if e == 3: J.y += 1
-                    print(J, R)
-                    self.r[r_n, l] = R
-                    self.Js[ti.atomic_add(self.Js_n[None], 1)] = J
+                    self.Js[Js_n, l] = J
+
+        for s in range(self.Js_n[None]):
+            for l in ti.static(range(self.dim)):
+                J = self.Js[s, l]
+                if self.Jtab[J] != 0:
+                    fi = self.Jtab[J]
+                    self.fs[s, l] = fi
 
     def clear(self):
         if self.use_sparse:
@@ -430,7 +443,7 @@ class MCISO_Example(MCISO):
             if ti.static(self.dim == 3):
                 p.z -= 0.5
             b = self.gauss(p.norm() / 0.25)
-            r = a#max(a + b - 0.08, 0)
+            r = max(a + b - 0.08, 0)
             if r <= 0:
                 continue
             self.m[o] = r * 3
