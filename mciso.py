@@ -324,7 +324,7 @@ class MCISO:
         indices = [ti.ij, ti.ijk][dim - 2]
         indices2 = [ti.ijk, ti.ijkl][dim - 2]
         ti.root.dense(indices, self.N).place(self.g)
-        ti.root.dense(indices2, [self.N] * self.dim + [1]).place(self.Jtab)
+        ti.root.dense(indices2, [self.N] * self.dim + [2]).place(self.Jtab)
         if self.use_sparse:
             ti.root.pointer(indices, self.N // self.blk_size).dense(
                 indices, self.blk_size).place(self.m)
@@ -335,8 +335,10 @@ class MCISO:
         self.r_n = ti.field(int, ())
 
         self.Js = ti.Vector.field(self.dim + 1, int, (self.N_res**self.dim, self.dim))
+        self.Jts = ti.Vector.field(self.dim, int, self.N_res**self.dim)
         self.Js_n = ti.field(int, ())
-        self.fs = ti.field(int, (self.N_res**self.dim, self.dim))
+        self.vs_n = ti.field(int, ())
+        self.vs = ti.Vector.field(self.dim, float, self.N_res**self.dim)
 
     @ti.kernel
     def compute_grad(self):
@@ -372,6 +374,7 @@ class MCISO:
     def march(self):
         self.r_n[None] = 0
         self.Js_n[None] = 0
+        self.vs_n[None] = 0
 
         for I in ti.grouped(ti.ndrange(*[self.N - 1] * self.dim)):
             id = self.get_cubeid(I)
@@ -413,19 +416,30 @@ class MCISO:
                     if e == 2: J.x += 1
                     if e == 3: J.y += 1
                     self.Js[Js_n, l] = J
+                    self.Jtab[J] = 1
 
-        for s in range(self.Js_n[None]):
+        for J in ti.grouped(self.Jtab):
+            if self.Jtab[J] == 0:
+                continue
+            vs_n = ti.atomic_add(self.vs_n[None], 1)
+            self.Jtab[J] = vs_n
+            vs = ti.Vector([J.x, J.y]) * 1.0
+            if J.z != 0:
+                vs.y += 0.5
+            else:
+                vs.x += 0.5
+            self.vs[vs_n] = vs
+
+        for i in range(self.Js_n[None]):
             for l in ti.static(range(self.dim)):
-                J = self.Js[s, l]
-                if self.Jtab[J] != 0:
-                    fi = self.Jtab[J]
-                    self.fs[s, l] = fi
+                self.Jts[i][l] = self.Jtab[self.Js[i, l]]
 
     def clear(self):
         if self.use_sparse:
             ti.root.deactivate_all()
         else:
             self.m.fill(0)
+            self.Jtab.fill(0)
 
 
 class MCISO_Example(MCISO):
@@ -454,7 +468,10 @@ class MCISO_Example(MCISO):
             self.clear()
             self.touch(*gui.get_cursor_pos())
             self.march()
-            ret = (self.r.to_numpy()[:self.r_n[None]] + 0.5) / self.N
+            #ret = (self.r.to_numpy()[:self.r_n[None]] + 0.5) / self.N
+            Jts = self.Jts.to_numpy()[:self.Js_n[None]]
+            vs = self.vs.to_numpy()[:self.vs_n[None]]
+            ret = (vs[Jts] + 0.5) / self.N
             if self.dim == 2:
                 #gui.set_image(ti.imresize(self.m, *gui.res))
                 self.compute_grad(); gui.set_image(ti.imresize(self.g, *gui.res) * 0.5 + 0.5)
