@@ -298,7 +298,7 @@ class MCISO:
         [0, 4], [1, 5], [3, 7], [2, 6],
     ], np.int32)
 
-    def __init__(self, N=64, N_res=16, dim=3, blk_size=None):
+    def __init__(self, N=32, N_res=8, dim=3, blk_size=None):
 
         self.N = N
         self.dim = dim
@@ -330,9 +330,6 @@ class MCISO:
                 indices, self.blk_size).place(self.m)
         else:
             ti.root.dense(indices, self.N).place(self.m)
-
-        self.r = ti.Vector.field(self.dim, float, (self.N_res**self.dim, self.dim))
-        self.r_n = ti.field(int, ())
 
         self.Js = ti.Vector.field(self.dim + 1, int, (self.N_res**self.dim, self.dim))
         self.Jts = ti.Vector.field(self.dim, int, self.N_res**self.dim)
@@ -372,44 +369,22 @@ class MCISO:
 
     @ti.kernel
     def march(self):
-        self.r_n[None] = 0
         self.Js_n[None] = 0
         self.vs_n[None] = 0
 
-        for I in ti.grouped(ti.ndrange(*[self.N - 1] * self.dim)):
+        for I in ti.grouped(self.m):
+            if any(I == self.N - 1):
+                continue
+
             id = self.get_cubeid(I)
             for m in range(self.et.shape[1]):
                 et = self.et[id, m]
                 if et[0] == -1:
                     break
 
-                r_n = ti.atomic_add(self.r_n[None], 1)
                 Js_n = ti.atomic_add(self.Js_n[None], 1)
                 for l in ti.static(range(self.dim)):
                     e = et[l]
-
-                    R = 1.0 * I
-                    ed = self.ed[e]
-                    pq = self.pq[e]
-
-                    p1, p2 = 0.0, 0.0
-                    if ti.static(self.dim == 2):
-                        i, j = I
-                        p1 = self.m[i + pq[0] % 2, j + pq[0] // 2]
-                        p2 = self.m[i + pq[1] % 2, j + pq[1] // 2]
-                    else:
-                        i, j, k = I
-                        p1 = self.m[i + pq[0] % 2, j + (pq[0] // 2) % 2, k + pq[0] // 4]
-                        p2 = self.m[i + pq[1] % 2, j + (pq[1] // 2) % 2, k + pq[1] // 4]
-                    p = (1 - p1) / (p2 - p1)
-
-                    for i in ti.static(range(self.dim)):
-                        if ed[i] == 1:
-                            R[i] += p
-                        elif ed[i] == 2:
-                            R[i] += 1.0
-
-                    self.r[r_n, l] = R
 
                     J = ti.Vector([I.x, I.y, 0])
                     if e == 1 or e == 2: J.z = 1
@@ -423,11 +398,14 @@ class MCISO:
                 continue
             vs_n = ti.atomic_add(self.vs_n[None], 1)
             self.Jtab[J] = vs_n
-            vs = ti.Vector([J.x, J.y]) * 1.0
-            if J.z != 0:
-                vs.y += 0.5
+            i, j, z = J
+            vs = ti.Vector([i, j]) * 1.0
+            if z != 0:
+                p = (1 - self.m[i, j]) / (self.m[i, j + 1] - self.m[i, j])
+                vs.y += p
             else:
-                vs.x += 0.5
+                p = (1 - self.m[i, j]) / (self.m[i + 1, j] - self.m[i, j])
+                vs.x += p
             self.vs[vs_n] = vs
 
         for i in range(self.Js_n[None]):
@@ -468,16 +446,14 @@ class MCISO_Example(MCISO):
             self.clear()
             self.touch(*gui.get_cursor_pos())
             self.march()
-            #ret = (self.r.to_numpy()[:self.r_n[None]] + 0.5) / self.N
             Jts = self.Jts.to_numpy()[:self.Js_n[None]]
-            vs = self.vs.to_numpy()[:self.vs_n[None]]
-            ret = (vs[Jts] + 0.5) / self.N
+            vs = (self.vs.to_numpy()[:self.vs_n[None]] + 0.5) / self.N
+            ret = vs[Jts]
             if self.dim == 2:
                 #gui.set_image(ti.imresize(self.m, *gui.res))
                 self.compute_grad(); gui.set_image(ti.imresize(self.g, *gui.res) * 0.5 + 0.5)
-                #gui.set_image(ti.imresize(self.vb, *gui.res).astype(np.float32) / 4)
                 gui.lines(ret[:, 0], ret[:, 1], color=0xff66cc, radius=1.5)
-                #gui.circles(ver, color=0xffff33, radius=4)
+                gui.circles(vs, color=0xffff33, radius=2)
             else:
                 gui.triangles(ret[:, 0, 0:2],
                               ret[:, 1, 0:2],
@@ -511,5 +487,5 @@ class MCISO_Example(MCISO):
 
 if __name__ == '__main__':
     ti.init(arch=ti.cpu)
-    main = MCISO_Example(N=8, dim=2)
+    main = MCISO_Example(dim=2)
     main.main()
