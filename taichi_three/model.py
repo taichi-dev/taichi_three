@@ -102,6 +102,32 @@ class Mesh:
 
 
 @ti.data_oriented
+class DynamicMesh:
+    def __init__(self, n_faces, n_pos, n_tex=1, n_nrm=1):
+        self.faces = create_field((3, 3), int, n_faces)
+        self.pos = create_field(3, float, n_pos)
+        self.tex = create_field(2, float, n_tex)
+        self.nrm = create_field(3, float, n_nrm)
+        self.n_faces = ti.field(int, ())
+
+    @property
+    @ti.func
+    def shape(self):
+        return [self.n_faces[None]]
+
+    @property
+    def static_shape(self):
+        return []
+
+    def before_rendering(self):
+        pass
+
+    @ti.func
+    def get_face(self, i, j: ti.template()):
+        return IndicedFace(self.faces[i], self.pos, self.tex, self.nrm)
+
+
+@ti.data_oriented
 class MeshMakeNormal:
     @ti.data_oriented
     class MakeNormalFace:

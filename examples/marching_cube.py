@@ -352,7 +352,8 @@ class MCISO:
             for t in ti.static(range(self.dim)):
                 if J.entries[-1] == t:
                     p2 = self.m[I + ti.Vector.unit(self.dim, t, int)]
-                    vs[t] += (1 - p1) / (p2 - p1)
+                    p = (1 - p1) / (p2 - p1)
+                    vs[t] += max(0, min(1, p))
             self.vs[vs_n] = vs
             self.Jtab[J] = vs_n
 
@@ -396,6 +397,11 @@ class MCISO:
             if self.m[i + 1, j + 1, k + 1] > 1: id |= 64
             if self.m[i, j + 1, k + 1] > 1: id |= 128
         return id
+
+    def get_mesh(self):
+        Jts = self.Jts.to_numpy()[:self.Js_n[None]]
+        vs = (self.vs.to_numpy()[:self.vs_n[None]] + 0.5) / self.N
+        return vs, Jts
 
 
 class MCISO_Example(MCISO):
@@ -459,7 +465,82 @@ class MCISO_Example(MCISO):
             gui.show()
 
 
+@ti.data_oriented
+class Voxelizer:
+    def __init__(self, N, pmin=0, pmax=1):
+        self.N = N
+        self.pmin = ti.Vector([pmin for i in range(3)])
+        self.pmax = ti.Vector([pmax for i in range(3)])
+
+    @ti.kernel
+    def voxelize(self, out: ti.template(), pos: ti.template(), w0: ti.template()):
+        for i in pos:
+            p = (pos[i] - self.pmin) / (self.pmax - self.pmin)
+            Xp = p * self.N
+            base = int(Xp - 0.5)
+            fx = Xp - base
+            w = [0.5 * (1.5 - fx)**2, 0.75 - (fx - 1)**2, 0.5 * (fx - 0.5)**2]
+            for offset in ti.static(ti.grouped(ti.ndrange(3, 3, 3))):
+                dpos = (offset - fx) / self.N
+                weight = float(w0)
+                for t in ti.static(range(3)):
+                    weight *= w[offset[t]][t]
+                out[base + offset] += weight
+
+
 if __name__ == '__main__':
+    import taichi_three as t3
+
     ti.init(arch=ti.cpu)
-    main = MCISO_Example()
-    main.main()
+
+    N = 64
+    M = 1024
+    throttle = 8
+
+    mciso = MCISO(N)
+    voxel = Voxelizer(N)
+
+    scene = t3.Scene()
+    mesh = t3.DynamicMesh(mciso.N_res, mciso.N_res)
+    scene.add_model(t3.Model(t3.MeshMakeNormal(mesh)))
+    camera = t3.Camera()
+    scene.add_camera(camera)
+    scene.add_light(t3.Light([0.4, -1.5, -1.8], 0.8))
+    scene.add_light(t3.AmbientLight(0.22))
+
+    pos = ti.Vector.field(3, float, M)
+
+    @ti.kernel
+    def update_mesh():
+        mesh.n_faces[None] = mciso.Js_n[None]
+        for i in range(mciso.Js_n[None]):
+            for t in ti.static(range(3)):
+                mesh.faces[i][t, 0] = mciso.Jts[i][t]
+        for i in range(mciso.Js_n[None]):
+            mesh.pos[i] = (mciso.vs[i] + 0.5) / mciso.N * 2 - 1
+
+    @ti.kernel
+    def init_pos():
+        for i in pos:
+            pos[i] = ti.Vector([ti.random() for t in range(3)]) * 0.2 + 0.4
+
+    init_pos()
+    gui = ti.GUI('Marching cube', camera.res)
+    while gui.running:
+        gui.get_event(None)
+        camera.from_mouse(gui)
+        if gui.is_pressed(gui.SPACE):
+            vs, fs = mciso.get_mesh()
+            writer = ti.PLYWriter(num_vertices=len(vs), num_faces=len(fs))
+            writer.add_vertex_pos(vs[:, 0], vs[:, 1], vs[:, 2])
+            writer.add_faces(fs)
+            writer.export('mciso_output.ply')
+
+        mciso.clear()
+        voxel.voxelize(mciso.m, pos, throttle)
+        mciso.march()
+
+        update_mesh()
+        scene.render()
+        gui.set_image(camera.img)
+        gui.show()
