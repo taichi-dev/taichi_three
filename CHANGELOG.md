@@ -1,6 +1,24 @@
 Changelog
 =========
 
+New in 0.0.9
+------------
+
+Notable changes:
+* Support (experimental) SSAO by `t3.SSAO` node.
+* Support deferred shading by using `t3.DeferredMaterial` and `t3.DeferredShading` nodes.
+* Set up multi-material ID system, use `t3.objunpackmtls` to separate OBJ by their material.
+* Add a variety of nodes, including `t3.GaussianBlur`, `t3.ImgBinaryOp`, `t3.SuperSampling2x2`...
+* Support `t3.DynamicMesh` for mesh with dynamic number of face.
+* Add `taichi_three.mciso` module, with `MCISO` and `Voxelizer`.
+* Support `t3.Skybox` as model and background sampler.
+* Support `t3.ModelGroup` for grouped transformations.
+* Add `t3.WireframeModel` and `t3.PolyToEdge`.
+
+Minor fixes:
+* Make camera buffer update less ad-hoc.
+* Fix `t3.readobj` default orientation to be `-xyz`.
+
 New in 0.0.8
 ------------
 
@@ -92,21 +110,6 @@ Other updates:
 
 New in latest master
 --------------------
-
-Notable changes:
-* Support (experimental) SSAO by `t3.SSAO` node.
-* Support deferred shading by using `t3.DeferredMaterial` and `t3.DeferredShading` nodes.
-* Set up multi-material ID system, use `t3.objunpackmtls` to separate OBJ by their material.
-* Add a variety of nodes, including `t3.GaussianBlur`, `t3.ImgBinaryOp`, `t3.SuperSampling2x2`...
-* Support `t3.DynamicMesh` for mesh with dynamic number of face.
-* Add `taichi_three.mciso` module, with `MCISO` and `Voxelizer`.
-* Support `t3.Skybox` as model and background sampler.
-* Support `t3.ModelGroup` for grouped transformations.
-* Add `t3.WireframeModel` and `t3.PolyToEdge`.
-
-Minor fixes:
-* Make camera buffer update less ad-hoc.
-* Fix `t3.readobj` default orientation to be `-xyz`.
 
 TODO list
 ---------
