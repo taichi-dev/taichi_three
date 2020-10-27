@@ -27,6 +27,7 @@ from .loader import *
 from .light import *
 from .raycast import *
 from .skybox import *
+from .mciso import *
 from .objedit import *
 
 print(f'[Tai3D] Camera control hints: LMB to orbit, MMB to move, RMB to scale')

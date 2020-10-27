@@ -93,13 +93,12 @@ Other updates:
 New in latest master
 --------------------
 
-API breaking changes:
-
 Notable changes:
-* Support SSAO by `t3.SSAO` node.
+* Support (experimental) SSAO by `t3.SSAO` node.
 * Support deferred shading by using `t3.DeferredMaterial` and `t3.DeferredShading` nodes.
 * Set up multi-material ID system, use `t3.objunpackmtls` to separate OBJ by their material.
-* Add a variety of nodes, including `t3.GaussianBlur`, `t3.ImgBinaryOp`, `t3.SuperSampling`...
+* Add a variety of nodes, including `t3.GaussianBlur`, `t3.ImgBinaryOp`, `t3.SuperSampling2x2`...
+* Support `t3.DynamicMesh` for mesh with dynamic number of face.
 * Support `t3.Skybox` as model and background sampler.
 * Support `t3.ModelGroup` for grouped transformations.
 

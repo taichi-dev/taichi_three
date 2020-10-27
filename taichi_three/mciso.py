@@ -282,11 +282,12 @@ class MCISO:
             [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
         ], np.int32)[:, :15].reshape(256, 5, 3)
 
-    def __init__(self, N=128, N_res=None, dim=3, use_sparse=True):
+    def __init__(self, N=128, N_res=None, dim=3, use_sparse=True, has_normal=True):
         self.N = N
         self.dim = dim
         self.N_res = N_res or N**self.dim
         self.use_sparse = use_sparse
+        self.has_normal = has_normal
 
         et = [self.et2, self.et3][dim - 2]
         self.et = ti.Vector.field(dim, int, et.shape[:2])
@@ -309,6 +310,8 @@ class MCISO:
         self.Js = ti.Vector.field(self.dim + 1, int, (self.N_res, self.dim))
         self.Jts = ti.Vector.field(self.dim, int, self.N_res)
         self.vs = ti.Vector.field(self.dim, float, self.N_res)
+        if self.has_normal:
+            self.ns = ti.Vector.field(self.dim, float, self.N_res)
         self.Js_n = ti.field(int, ())
         self.vs_n = ti.field(int, ())
 
@@ -316,6 +319,14 @@ class MCISO:
     def march(self):
         self.Js_n[None] = 0
         self.vs_n[None] = 0
+
+        if ti.static(self.has_normal):
+            for I in ti.grouped(self.g):
+                r = ti.Vector.zero(float, self.dim)
+                for i in ti.static(range(self.dim)):
+                    d = ti.Vector.unit(self.dim, i, int)
+                    r[i] = self.m[I + d] - self.m[I - d]
+                self.g[I] = -r.normalized(1e-4)
 
         for I in ti.grouped(self.m):
             id = self.get_cubeid(I)
@@ -348,13 +359,20 @@ class MCISO:
             vs_n = ti.atomic_add(self.vs_n[None], 1)
             I = ti.Vector(ti.static(J.entries[:-1]))
             vs = I * 1.0
+            ns = self.g[I]
             p1 = self.m[I]
             for t in ti.static(range(self.dim)):
                 if J.entries[-1] == t:
-                    p2 = self.m[I + ti.Vector.unit(self.dim, t, int)]
+                    K = I + ti.Vector.unit(self.dim, t, int)
+                    p2 = self.m[K]
+                    n2 = self.g[K]
                     p = (1 - p1) / (p2 - p1)
-                    vs[t] += max(0, min(1, p))
+                    p = max(0, min(1, p))
+                    vs[t] += p
+                    ns += p * n2
             self.vs[vs_n] = vs
+            if ti.static(self.has_normal):
+                self.ns[vs_n] = ns.normalized(1e-4)
             self.Jtab[J] = vs_n
 
         for i in range(self.Js_n[None]):
@@ -367,15 +385,6 @@ class MCISO:
         else:
             self.m.fill(0)
             self.Jtab.fill(0)
-
-    @ti.kernel
-    def compute_grad(self):
-        for I in ti.grouped(self.g):
-            r = ti.Vector.zero(float, self.dim)
-            for i in ti.static(range(self.dim)):
-                d = ti.Vector.unit(self.dim, i, int)
-                r[i] = self.m[I + d] - self.m[I - d]
-            self.g[I] = r#.normalized(1e-4)
 
     @ti.func
     def get_cubeid(self, I):
@@ -435,7 +444,7 @@ class MCISO_Example(MCISO):
             ret = vs[Jts]
             if self.dim == 2:
                 #gui.set_image(ti.imresize(self.m, *gui.res))
-                self.compute_grad(); gui.set_image(ti.imresize(self.g, *gui.res) + 0.5)
+                gui.set_image(ti.imresize(self.g, *gui.res) + 0.5)
                 gui.lines(ret[:, 0], ret[:, 1], color=0xff66cc, radius=1.25)
                 #gui.circles(vs, color=0xffff33, radius=1.5)
             else:
@@ -467,13 +476,32 @@ class MCISO_Example(MCISO):
 
 @ti.data_oriented
 class Voxelizer:
-    def __init__(self, N, pmin=0, pmax=1):
+    def __init__(self, N, pmin=0, pmax=1, radius=2, throttle=18):
         self.N = N
         self.pmin = ti.Vector([pmin for i in range(3)])
         self.pmax = ti.Vector([pmax for i in range(3)])
 
+        self.throttle = throttle
+        self.radius = radius
+        if self.radius:
+            self.tmp1 = ti.field(float, (N, N, N))
+            self.tmp2 = ti.field(float, (N, N, N))
+            self.gwei = ti.field(float, self.radius + 1)
+
+            @ti.materialize_callback
+            @ti.kernel
+            def init_gwei():
+                sum = -1.0
+                for i in self.gwei:
+                    x = i / self.radius
+                    y = ti.exp(-x**2)
+                    self.gwei[i] = y
+                    sum += y * 2
+                for i in self.gwei:
+                    self.gwei[i] /= sum
+
     @ti.kernel
-    def voxelize(self, out: ti.template(), pos: ti.template(), w0: ti.template()):
+    def voxelize(self, out: ti.template(), pos: ti.template()):
         for i in pos:
             p = (pos[i] - self.pmin) / (self.pmax - self.pmin)
             Xp = p * self.N
@@ -482,65 +510,19 @@ class Voxelizer:
             w = [0.5 * (1.5 - fx)**2, 0.75 - (fx - 1)**2, 0.5 * (fx - 0.5)**2]
             for offset in ti.static(ti.grouped(ti.ndrange(3, 3, 3))):
                 dpos = (offset - fx) / self.N
-                weight = float(w0)
+                weight = float(self.throttle)
                 for t in ti.static(range(3)):
                     weight *= w[offset[t]][t]
                 out[base + offset] += weight
-
-
-if __name__ == '__main__':
-    import taichi_three as t3
-
-    ti.init(arch=ti.cpu)
-
-    N = 64
-    M = 1024
-    throttle = 8
-
-    mciso = MCISO(N)
-    voxel = Voxelizer(N)
-
-    scene = t3.Scene()
-    mesh = t3.DynamicMesh(mciso.N_res, mciso.N_res)
-    scene.add_model(t3.Model(t3.MeshMakeNormal(mesh)))
-    camera = t3.Camera()
-    scene.add_camera(camera)
-    scene.add_light(t3.Light([0.4, -1.5, -1.8], 0.8))
-    scene.add_light(t3.AmbientLight(0.22))
-
-    pos = ti.Vector.field(3, float, M)
-
-    @ti.kernel
-    def update_mesh():
-        mesh.n_faces[None] = mciso.Js_n[None]
-        for i in range(mciso.Js_n[None]):
-            for t in ti.static(range(3)):
-                mesh.faces[i][t, 0] = mciso.Jts[i][t]
-        for i in range(mciso.Js_n[None]):
-            mesh.pos[i] = (mciso.vs[i] + 0.5) / mciso.N * 2 - 1
-
-    @ti.kernel
-    def init_pos():
-        for i in pos:
-            pos[i] = ti.Vector([ti.random() for t in range(3)]) * 0.2 + 0.4
-
-    init_pos()
-    gui = ti.GUI('Marching cube', camera.res)
-    while gui.running:
-        gui.get_event(None)
-        camera.from_mouse(gui)
-        if gui.is_pressed(gui.SPACE):
-            vs, fs = mciso.get_mesh()
-            writer = ti.PLYWriter(num_vertices=len(vs), num_faces=len(fs))
-            writer.add_vertex_pos(vs[:, 0], vs[:, 1], vs[:, 2])
-            writer.add_faces(fs)
-            writer.export('mciso_output.ply')
-
-        mciso.clear()
-        voxel.voxelize(mciso.m, pos, throttle)
-        mciso.march()
-
-        update_mesh()
-        scene.render()
-        gui.set_image(camera.img)
-        gui.show()
+        if ti.static(self.radius):
+            tmp = ti.static([out, self.tmp1, self.tmp2, out])
+            for di in ti.static(range(3)):
+                dir = ti.static(ti.Vector.unit(3, di, int))
+                for I in ti.grouped(self.tmp1):
+                    r = tmp[di][I] * self.gwei[0]
+                    for i in range(1, self.radius + 1):
+                        r += (tmp[di][I + dir * i] + tmp[di][I - dir * i]) * self.gwei[i]
+                    if ti.static(di == 3):
+                        if r <= 0.1:
+                            continue
+                    tmp[di + 1][I] = r
