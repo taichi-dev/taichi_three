@@ -1,5 +1,6 @@
 import taichi as ti
 import taichi_three as t3
+from taichi_three.mciso import MCISO, Voxelizer
 import numpy as np
 
 ti.init(arch=ti.cuda)
@@ -87,8 +88,8 @@ def init():
         J[i] = 1
 
 
-mciso = t3.MCISO(n_grid * 2)
-voxel = t3.Voxelizer(mciso.N)
+mciso = MCISO(n_grid * 2)
+voxel = Voxelizer(mciso.N)
 
 scene = t3.Scene()
 mesh = t3.DynamicMesh(n_faces=mciso.N_res, n_pos=mciso.N_res, n_nrm=mciso.N_res)
