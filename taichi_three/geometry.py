@@ -160,6 +160,35 @@ def render_triangle(model, camera, face):
 
 
 @ti.func
+def render_line(model, camera, face, w0=0, w1=1):
+    posa, posb = face.pos   # Position
+    texa, texb = face.tex   # TexCoord
+    nrma, nrmb = face.nrm   # Normal
+
+    clra = [posa, texa, nrma]
+    clrb = [posb, texb, nrmb]
+
+    A = camera.uncook(posa)
+    B = camera.uncook(posb)
+
+    M = int(ti.floor(min(A, B) - 1))
+    N = int(ti.ceil(max(A, B) + 1))
+    M = ts.clamp(M, 0, ti.Vector(camera.fb.res))
+    N = ts.clamp(N, 0, ti.Vector(camera.fb.res))
+
+    B_A = (B - A).normalized()
+
+    for X in ti.grouped(ti.ndrange((M.x, N.x), (M.y, N.y))):
+        udf = abs((X - A).cross(B_A))
+        if udf >= w1:
+            continue
+
+        strength = ts.smoothstep(udf, w1, w0)
+        color = ts.vec3(strength)
+        camera.img[X] += color
+
+
+@ti.func
 def render_particle(model, camera, index):
     scene = model.scene
     a = (model.L2C[None] @ ts.vec4(model.pos[index], 1)).xyz

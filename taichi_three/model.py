@@ -205,6 +205,27 @@ class Model(ModelBase):
 
 
 @ti.data_oriented
+class WireframeModel(ModelBase):
+    def __init__(self, mesh):
+        super().__init__()
+        self.mesh = mesh
+
+        from .shading import Material, CookTorrance
+        self.material = Material(CookTorrance())
+
+    @ti.func
+    def render(self, camera):
+        self.mesh.before_rendering()
+        for i in ti.grouped(ti.ndrange(*self.mesh.shape)):
+            for j in ti.static(ti.grouped(ti.ndrange(*self.mesh.static_shape))):
+                face = self.mesh.get_face(i, j)
+                # L2C = W2C @ L2W, Local to Camera, i.e. ModelView in OpenGL
+                cs_face = TransformedFace(self.L2C[None], face)
+                render_line(self, camera, cs_face)
+
+
+
+@ti.data_oriented
 class ModelGroup(ModelBase):
     def __init__(self, models=None):
         super().__init__()
@@ -333,4 +354,34 @@ class QuadToTri:
                 tex = [face.tex[i] for i in [0, 2, 3]],
                 nrm = [face.nrm[i] for i in [0, 2, 3]],
             )
+        return ret
+
+
+@ti.data_oriented
+class PolyToEdge:
+    def __init__(self, mesh, N=3):
+        self.mesh = mesh
+        self.N = N
+
+    @property
+    def shape(self):
+        return self.mesh.shape
+
+    @property
+    def static_shape(self):
+        return [self.N, *self.mesh.static_shape]
+
+    def before_rendering(self):
+        self.mesh.before_rendering()
+
+    @ti.func
+    def get_face(self, i, j: ti.template()):
+        face = self.mesh.get_face(i, ts.vec(*[j[_] for _ in range(1, j.n)]))
+        ret = DataOriented()
+        r = ti.static([j.x, (j.x + 1) % self.N])
+        ret.__dict__.update(
+            pos = [face.pos[i] for i in r],
+            tex = [face.tex[i] for i in r],
+            nrm = [face.nrm[i] for i in r],
+        )
         return ret
