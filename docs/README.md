@@ -14,11 +14,32 @@ Taichi THREE is a node-based soft renderer based on the [Taichi Programming Lang
 High-level features are:
 
 - Both CPU / GPU available
+- Multiple rendering target
 - Physically-based rendering
-- Node-based materials
-- Loading textures
-- Deferred shading
-- A built-in OBJ loader
+- Node-based material system
+- Node-based mesh deformation
+- Node-based screen space operations
+- Loading textures for material parameters
+- Experimental path tracing support
+- A built-in OBJ and loader
+
+Based on the node system, low-level features are:
+
+- Point lights.
+- Deformable meshes.
+- Blinn-Phong materials.
+- Cook-Torrance materials.
+- Multiple material IDs.
+- Wireframe mesh display.
+- Environment maps (skybox).
+- Local space normal maps.
+- Gaussian blur.
+- Deferred shading.
+- Blooming effect.
+- Tone mapping.
+- Temporal anti-aliasing (TAA).
+- Super samping anti-aliasing (SSAA).
+- Screen space ambient occlusion (SSAO).
 
 
 # Installation

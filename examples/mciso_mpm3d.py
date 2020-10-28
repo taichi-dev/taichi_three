@@ -7,12 +7,14 @@ ti.init(arch=ti.cuda)
 
 #dim, n_grid, steps, dt = 2, 128, 20, 2e-4
 #dim, n_grid, steps, dt = 2, 256, 32, 1e-4
-dim, n_grid, steps, dt = 3, 32, 25, 4e-4
-#dim, n_grid, steps, dt = 3, 64, 25, 2e-4
+#dim, n_grid, steps, dt = 3, 32, 25, 4e-4
+dim, n_grid, steps, dt = 3, 64, 25, 2e-4
 #dim, n_grid, steps, dt = 3, 128, 25, 8e-5
 
 n_particles = n_grid**dim // 2**(dim - 1)
 dx = 1 / n_grid
+
+print(f'n_particles={n_particles}')
 
 p_rho = 1
 p_vol = (dx * 0.5)**2
@@ -94,13 +96,9 @@ voxel = Voxelizer(mciso.N)
 scene = t3.Scene()
 mesh = t3.DynamicMesh(n_faces=mciso.N_res, n_pos=mciso.N_res, n_nrm=mciso.N_res)
 model = t3.Model(mesh)
-#model.material = t3.Material(t3.IdealRT(specular=t3.Constant(1.0)))
 scene.add_model(model)
 camera = t3.Camera()
 scene.add_camera(camera)
-#skybox = t3.Skybox('assets/skybox.jpg')
-#scene.add_model(skybox)
-#scene.add_light(skybox)
 scene.add_light(t3.Light([0.4, -1.5, -1.8], 0.8))
 scene.add_light(t3.AmbientLight(0.22))
 

@@ -11,11 +11,11 @@ class Camera:
     TAN_FOV = 'Tangent Perspective' # rectilinear perspective
     COS_FOV = 'Cosine Perspective' # curvilinear perspective, see en.wikipedia.org/wiki/Curvilinear_perspective
 
-    def __init__(self, res=None):
+    def __init__(self, res=None, fov=None):
         self.res = res or (512, 512)
         self.L2W = ti.Matrix.field(4, 4, float, ())
         self.type = self.TAN_FOV
-        self.fov = math.radians(30)
+        self.fov = fov or math.radians(30)
         self.ctl = CameraCtl()
 
         @ti.materialize_callback

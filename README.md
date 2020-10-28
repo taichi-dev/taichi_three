@@ -30,6 +30,8 @@ Based on the node system, low-level features are:
 - Blinn-Phong materials.
 - Cook-Torrance materials.
 - Multiple material IDs.
+- Wireframe mesh display.
+- Environment maps (skybox).
 - Local space normal maps.
 - Gaussian blur.
 - Deferred shading.
