@@ -26,7 +26,7 @@ class AmbientLight:
     def get_color(self, pos):
         return self.color[None]
 
-    def shadow_occlusion(self, wpos):
+    def shadow_occlusion(self, wpos, normal):
         return 1
 
 
@@ -91,37 +91,43 @@ class Light:
         self.shadow.L2W[None] = transform(makeortho(self.dir[None]), self.dir[None] * self.shadow.distance) @ scale(-1, 1, 1)
 
     @ti.func
-    def _sub_SO(self, cur_idepth, lscoor):
-        lst_idepth = ts.sample(self.shadow.fb['idepth'], lscoor)
-        return 1 if lst_idepth < cur_idepth + self.shadow.fb.idepth_fixp(1e-1) else 0
+    def _sub_SO(self, cur_z, lscoor):
+        lst_z = 1 / (1e-6 + ts.sample(self.shadow.fb['idepth'], lscoor))
+        return 1 if lst_z > cur_z - 1e-3 else 0
 
     @ti.func
-    def _sub_SDlerp(self, cur_idepth, lscoor, D):
+    def _sub_SDlerp(self, cur_z, lscoor, D):
         x = ts.fract(lscoor)
         y = 1 - x
         B = int(lscoor)
-        xx = self._sub_SO(cur_idepth, B + D + ts.D.xx)
-        xy = self._sub_SO(cur_idepth, B + D + ts.D.xy)
-        yy = self._sub_SO(cur_idepth, B + D + ts.D.yy)
-        yx = self._sub_SO(cur_idepth, B + D + ts.D.yx)
-        return xx * x.x * x.y + xy * x.x * y.y + yy * y.x * y.y + yx * y.x * x.y
+        xx = self._sub_SO(cur_z, B + D + ts.D.xx)
+        xy = self._sub_SO(cur_z, B + D + ts.D.xy)
+        yy = self._sub_SO(cur_z, B + D + ts.D.yy)
+        yx = self._sub_SO(cur_z, B + D + ts.D.yx)
+        return max(xx, xy, yy, yx)
+        #return xx * x.x * x.y + xy * x.x * y.y + yy * y.x * y.y + yx * y.x * x.y
 
     @ti.func
-    def shadow_occlusion(self, wpos):
+    def shadow_occlusion(self, wpos, normal):
         if ti.static(self.shadow is None):
             return 1
 
         lspos = v4trans(self.shadow.L2W[None].inverse(), wpos, 1)
         lscoor = self.shadow.uncook(lspos)
 
-        cur_idepth = self.shadow.fb.idepth_fixp(1 / lspos.z)
+        cur_z = lspos.z  # TODO: bend with normal
 
-        l = self._sub_SDlerp(cur_idepth, lscoor, ts.D.X_)
-        r = self._sub_SDlerp(cur_idepth, lscoor, ts.D.x_)
-        t = self._sub_SDlerp(cur_idepth, lscoor, ts.D._x)
-        b = self._sub_SDlerp(cur_idepth, lscoor, ts.D._X)
-        c = self._sub_SDlerp(cur_idepth, lscoor, ts.D.__)
-        return (l + r + t + b + c * 4) / 8
+        return self._sub_SDlerp(cur_z, lscoor, ts.vec2(0))
+
+        '''
+        res = 0.0
+        for d1, d2 in ti.ndrange(2, 2):
+            d = d1 * 2 - 1
+            D = ts.vec2(d, 0) if d2 == 0 else ts.vec2(0, d)
+            res += self._sub_SDlerp(cur_z, lscoor, D)
+        res += 4 * self._sub_SDlerp(cur_z, lscoor, ts.vec2(0))
+        return res / 8
+        '''
 
 
 

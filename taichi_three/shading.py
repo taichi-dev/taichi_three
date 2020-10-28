@@ -134,9 +134,10 @@ class Shading(Node):
             for light in ti.static(self.model.scene.lights):
                 occlusion = 1.0
                 if ti.static(hasattr(light, 'shadow_occlusion')):
-                    occlusion = light.shadow_occlusion(wpos)
-                color = self.render_func(pos, normal, viewdir, light)
-                res += occlusion * color
+                    occlusion = light.shadow_occlusion(wpos, normal)  # normal -> true normal?
+                if occlusion >= 1e-3:
+                    color = self.render_func(pos, normal, viewdir, light)
+                    res += occlusion * color
         res += self.get_emission()
         return res
 

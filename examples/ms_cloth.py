@@ -58,8 +58,6 @@ scene = t3.Scene()
 camera = t3.Camera()
 camera.ctl = t3.CameraCtl(pos=[0, 0.8, -1.1], target=[0, 0.25, 0])
 scene.add_camera(camera)
-light = t3.Light(dir=[0.4, -1.5, 1.8])
-scene.add_light(light)
 
 mesh = t3.MeshGrid((N, N))
 model = t3.Model(t3.QuadToTri(mesh))
@@ -68,6 +66,10 @@ scene.add_model(model)
 
 sphere = t3.Model(t3.Mesh.from_obj('assets/sphere.obj'))
 scene.add_model(sphere)
+
+light = t3.Light(dir=[0.4, -1.5, 1.8])
+scene.add_light(light)
+scene.add_camera(light.make_shadow_camera())
 
 
 @ti.kernel

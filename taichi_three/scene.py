@@ -12,6 +12,12 @@ class Scene:
         self.buffers = []
         self.models = []
 
+        #self.W2C = ti.Matrix.field(4, 4, float, ())
+        #@ti.materialize_callback
+        #@ti.kernel
+        #def init_W2C():
+            #self.W2C[None] = ti.Matrix.identity(float, 4)
+
     def set_light_dir(self, ldir):
         # changes light direction input to the direction
         # from the light towards the object
@@ -34,11 +40,11 @@ class Scene:
 
     def add_camera_d(self, camera):
         camera.scene = self
-        self.cameras.append(camera)
+        self.cameras.insert(0, camera)
 
     def add_buffer(self, buffer):
         buffer.scene = self
-        self.buffers.append(buffer)
+        self.buffers.insert(0, buffer)
 
     def add_light(self, light):
         light.scene = self
