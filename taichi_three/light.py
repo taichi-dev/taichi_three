@@ -50,11 +50,11 @@ class Light:
         def init_light():
             self.dir[None] = dir
             self.color[None] = color
-            self.L2W[None] = transform(makeortho(self.dir[None]), self.dir[None])
+            #self.L2W[None] = transform(makeortho(self.dir[None]), self.dir[None] * 2)
 
         self.dir = ti.Vector.field(3, float, ())
         self.color = ti.Vector.field(3, float, ())
-        self.L2W = ti.Matrix.field(4, 4, float, ())
+        #self.L2W = ti.Matrix.field(4, 4, float, ())
         # store the current light direction in the view space
         # so that we don't have to compute it for each vertex
         self.viewdir = ti.Vector.field(3, float, ())
@@ -75,14 +75,16 @@ class Light:
     def set_view(self, camera):
         self.viewdir[None] = v4trans(camera.L2W[None].inverse(), self.dir[None], 0)
 
-    def make_shadow_camera(self, res=(512, 512), fov=None, **kwargs):
-        shadow = Camera(res=res, fov=fov)
+    def make_shadow_camera(self, res=(512, 512), fov=None, distance=2, **kwargs):
+        shadow = Camera(res=res, fov=fov or math.radians(60))
+        from .buffer import FrameBuffer
+        fb = FrameBuffer(shadow, buffers=dict())  # only record depth info
         shadow.ctl = None
         shadow.type = shadow.ORTHO
         @ti.materialize_callback
         @ti.kernel
         def init_shadow_L2W():
-            shadow.L2W[None] = scale(-1) @ self.L2W[None]
+            shadow.L2W[None] = transform(makeortho(self.dir[None]), self.dir[None] * distance) @ scale(-1, 1, 1)
         self.shadow = shadow
         return shadow
 

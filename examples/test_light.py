@@ -19,7 +19,7 @@ scene.add_light(ambient)
 orient = t3.Model(t3.Mesh.from_obj(t3.readobj('assets/orient.obj', scale=0.4)))
 scene.add_model(orient)
 
-orient.L2W[None] = light.L2W[None].value
+#orient.L2W[None] = light.L2W[None].value
 gui = ti.GUI('Camera', camera.res)
 gui2 = ti.GUI('Shadow', shadow.res)
 gui2.fps_limit = None
@@ -31,6 +31,6 @@ while gui.running and gui2.running:
     camera.from_mouse(gui)
     scene.render()
     gui.set_image(camera.img)
-    gui2.set_image(shadow.img)
+    gui2.set_image(shadow.fb.idepth)
     gui.show()
     gui2.show()

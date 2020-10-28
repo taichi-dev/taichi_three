@@ -37,9 +37,11 @@ def rotateAxis(axis, angle):
     return axis[0] * rotateX(angle) + axis[1] * rotateY(angle) + axis[2] * rotateZ(angle)
 
 
-def transform(linear, offset):
+def transform(linear, offset=None):
     if not isinstance(linear, ti.Matrix):
         linear = ti.Matrix(linear)
+    if offset is None:
+        offset = [0, 0, 0]
     linear = list(linear)
     offset = list(offset)
     return ti.Matrix([
