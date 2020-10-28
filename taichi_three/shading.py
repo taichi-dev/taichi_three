@@ -129,10 +129,14 @@ class Shading(Node):
         normal = self.normal
         res = ts.vec3(0.0)
         viewdir = pos.normalized()
-        wpos = (self.model.scene.cameras[-1].L2W @ ts.vec4(pos, 1)).xyz  # TODO: get curr camera?
+        wpos = v4trans(self.model.scene.cameras[-1].L2W[None], pos, 1)  # TODO: get curr camera?
         if ti.static(self.model.scene.lights):
             for light in ti.static(self.model.scene.lights):
-                res += self.render_func(pos, normal, viewdir, light)
+                occlusion = 1.0
+                if ti.static(hasattr(light, 'shadow_occlusion')):
+                    occlusion = light.shadow_occlusion(wpos)
+                color = self.render_func(pos, normal, viewdir, light)
+                res += occlusion * color
         res += self.get_emission()
         return res
 
@@ -142,6 +146,7 @@ class Shading(Node):
             return light.get_color(pos) * self.get_ambient()
         if ti.static(not isinstance(light, Light)):
             raise NotImplementedError
+
         lightdir = light.get_dir(pos)
         NoL = ts.dot(normal, lightdir)
         l_out = ts.vec3(0.0)
@@ -277,7 +282,7 @@ class IdealRT(Shading):
         clr = ts.vec3(0.0)
         if randomLessThan(self.emission):
             clr = ts.vec3(self.emission_color)
-            outdir = ts.vec3(1e-4)
+            outdir = ts.vec3(EPS)
         elif randomLessThan(self.specular):
             clr = ts.vec3(self.specular_color)
             outdir = ts.reflect(self.indir, self.normal)

@@ -33,7 +33,7 @@ class FrameBuffer:
         else:
             self.dim = None
 
-        self.add_buffer('idepth', ())
+        self.add_buffer('idepth', (), float)
 
     @ti.func
     def render(self):

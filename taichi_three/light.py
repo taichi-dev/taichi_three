@@ -81,17 +81,19 @@ class Light:
         fb = FrameBuffer(shadow, buffers=dict())  # only record depth info
         shadow.ctl = None
         shadow.type = shadow.ORTHO
-        @ti.materialize_callback
-        @ti.kernel
-        def init_shadow_L2W():
-            shadow.L2W[None] = transform(makeortho(self.dir[None]), self.dir[None] * distance) @ scale(-1, 1, 1)
+        shadow.distance = distance
+        ti.materialize_callback(self.update_shadow)
         self.shadow = shadow
         return shadow
+
+    @ti.kernel
+    def update_shadow(self):
+        self.shadow.L2W[None] = transform(makeortho(self.dir[None]), self.dir[None] * self.shadow.distance) @ scale(-1, 1, 1)
 
     @ti.func
     def _sub_SO(self, cur_idepth, lscoor):
         lst_idepth = ts.sample(self.shadow.fb['idepth'], lscoor)
-        return 1 if lst_idepth < cur_idepth + self.shadow.fb.idepth_fixp(1e-3) else 0
+        return 1 if lst_idepth < cur_idepth + self.shadow.fb.idepth_fixp(1e-1) else 0
 
     @ti.func
     def _sub_SDlerp(self, cur_idepth, lscoor, D):
@@ -109,7 +111,7 @@ class Light:
         if ti.static(self.shadow is None):
             return 1
 
-        lspos = (self.shadow.L2W[None] @ ts.vec4(wpos, 1)).xyz
+        lspos = v4trans(self.shadow.L2W[None].inverse(), wpos, 1)
         lscoor = self.shadow.uncook(lspos)
 
         cur_idepth = self.shadow.fb.idepth_fixp(1 / lspos.z)

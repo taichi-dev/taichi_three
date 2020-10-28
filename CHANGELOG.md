@@ -110,6 +110,7 @@ Other updates:
 
 New in latest master
 --------------------
+* Fix broken shadow mapping since v0.0.7.
 
 TODO list
 ---------
@@ -119,7 +120,6 @@ Minor fixes:
 * Fix color artifects on edges due to interpolation.
 * Fix shadow artifects on 90-deg faces.
 * Adapt ambient occulsion to node system.
-* Fix broken shadow mapping since v0.0.7.
 * Support scaling in ORTHO mode.
 
 Major steps:
