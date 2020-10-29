@@ -88,7 +88,10 @@ class FrameBuffer:
     def fetchpixelinfo(self, name, pos):
         if name in self.buffers:
             I = int(pos[0] * self.res[0]), int(pos[1] * self.res[1])
-            return self[name][I].value
+            ret = self[name][I]
+            if hasattr(ret, 'value'):
+                ret = ret.value
+            return ret
         else:
             return None
 
