@@ -81,7 +81,7 @@ And replace the `t3.Constant` with this line in our script:
 model.add_texture('specular', t3.imread())
 model.material = t3.Material(t3.BlinnPhong(
     color=t3.Texture('container2.png'),
-    specular=t3.Texture('container2_specular.png'),  # let Taichi THREE sample specular from this texture
+    specular=t3.Texture('container2_specular.png'),  # let Taichi THREE sample specular rate from this texture
 ))
 ```
 
