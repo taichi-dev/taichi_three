@@ -3,7 +3,7 @@ import taichi_three as t3
 from taichi_three.mciso import MCISO, Voxelizer
 import numpy as np
 
-ti.init(arch=ti.cuda)
+ti.init(arch=ti.cuda)  # can't use metal or opengl since sparse used in MCISO
 
 #dim, n_grid, steps, dt = 2, 128, 20, 2e-4
 #dim, n_grid, steps, dt = 2, 256, 32, 1e-4
@@ -115,11 +115,16 @@ def update_mesh():
 init()
 gui = ti.GUI('MPM3D', camera.res)
 while gui.running:
+    gui.get_event(None)
+    camera.from_mouse(gui)
+    if gui.is_pressed('r'):
+        init()
+    if gui.is_pressed(gui.ESCAPE):
+        gui.running = False
+
     for s in range(steps):
         substep()
 
-    gui.get_event(None)
-    camera.from_mouse(gui)
     mciso.clear()
     voxel.voxelize(mciso.m, x)
     mciso.march()
