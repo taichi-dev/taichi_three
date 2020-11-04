@@ -265,22 +265,22 @@ class MeshGrid:
     class MeshGridFace:
         def __init__(self, parent, i):
             self.parent = parent
-            self.i = i
+            self.seq = [i + ts.D.__, i + ts.D.x_, i + ts.D.xx, i + ts.D._x]
 
         @property
         @ti.func
         def pos(self):
-            return [self.parent.pos[i] for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
+            return [self.parent.pos[i] for i in self.seq]
 
         @property
         @ti.func
         def tex(self):
-            return [i / ts.vec2(*self.parent.res) for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
+            return [i / ts.vec2(*self.parent.res) for i in self.seq]
 
         @property
         @ti.func
         def nrm(self):
-            return [self.parent.snrm[i] for i in [self.i + ts.D.__, self.i + ts.D.x_, self.i + ts.D.xx, self.i + ts.D._x]]
+            return [self.parent.snrm[i] for i in self.seq]
 
     def __init__(self, res):
         if not isinstance(res, (list, tuple)):
@@ -340,7 +340,8 @@ class QuadToTri:
 
     @ti.func
     def get_face(self, i, j: ti.template()):
-        face = self.mesh.get_face(i, ts.vec(*[j[_] for _ in range(1, j.n)]))
+        print('q2t', j)
+        face = self.mesh.get_face(i, ti.static(ts.vec(*j.entries[1:])))
         ret = DataOriented()
         if ti.static(j.x == 0):
             ret.__dict__.update(
@@ -376,7 +377,8 @@ class PolyToEdge:
 
     @ti.func
     def get_face(self, i, j: ti.template()):
-        face = self.mesh.get_face(i, ts.vec(*[j[_] for _ in range(1, j.n)]))
+        print('p2e', j)
+        face = self.mesh.get_face(i, ti.static(ts.vec(*j.entries[1:])))
         r = ti.static([j.x, (j.x + 1) % self.n_poly])
         ret = DataOriented()
         ret.__dict__.update(

@@ -13,10 +13,8 @@ light = t3.AmbientLight(1.0)
 scene.add_light(light)
 
 
-@ti.materialize_callback
 @ti.kernel
 def init_mesh():
-    mesh.nrm[0] = [0, 0, 1]
     mesh.pos[N] = [0, 0, 0]
     for i in range(N):
         a = i / N * t3.tau
@@ -24,9 +22,12 @@ def init_mesh():
         mesh.faces[i] = [[i, 0, 0], [(i + 1) % N, 0, 0], [N, 0, 0]]
 
 
-gui = ti.GUI('Dynamic', camera.res)
+init_mesh()
+
+gui = ti.GUI('Dynamic faces', camera.res)
 while gui.running:
     mesh.n_faces[None] = gui.frame % N
+
     scene.render()
     gui.set_image(camera.img)
     gui.show()
