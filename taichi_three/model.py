@@ -359,9 +359,9 @@ class QuadToTri:
 
 @ti.data_oriented
 class PolyToEdge:
-    def __init__(self, mesh, N=3):
+    def __init__(self, mesh, n_poly=3):
         self.mesh = mesh
-        self.N = N
+        self.n_poly = n_poly
 
     @property
     def shape(self):
@@ -369,7 +369,36 @@ class PolyToEdge:
 
     @property
     def static_shape(self):
-        return [self.N, *self.mesh.static_shape]
+        return [self.n_poly, *self.mesh.static_shape]
+
+    def before_rendering(self):
+        self.mesh.before_rendering()
+
+    @ti.func
+    def get_face(self, i, j: ti.template()):
+        face = self.mesh.get_face(i, ts.vec(*[j[_] for _ in range(1, j.n)]))
+        r = ti.static([j.x, (j.x + 1) % self.n_poly])
+        ret = DataOriented()
+        ret.__dict__.update(
+            pos = [face.pos[i] for i in r],
+            tex = [face.tex[i] for i in r],
+            nrm = [face.nrm[i] for i in r],
+        )
+        return ret
+
+
+@ti.data_oriented
+class MeshNoCulling:
+    def __init__(self, mesh):
+        self.mesh = mesh
+
+    @property
+    def shape(self):
+        return self.mesh.shape
+
+    @property
+    def static_shape(self):
+        return [2, *self.mesh.static_shape]
 
     def before_rendering(self):
         self.mesh.before_rendering()
@@ -378,10 +407,16 @@ class PolyToEdge:
     def get_face(self, i, j: ti.template()):
         face = self.mesh.get_face(i, ts.vec(*[j[_] for _ in range(1, j.n)]))
         ret = DataOriented()
-        r = ti.static([j.x, (j.x + 1) % self.N])
-        ret.__dict__.update(
-            pos = [face.pos[i] for i in r],
-            tex = [face.tex[i] for i in r],
-            nrm = [face.nrm[i] for i in r],
-        )
+        if ti.static(j.x == 0):
+            ret.__dict__.update(
+                pos = [face.pos[i] for i in [0, 1, 2]],
+                tex = [face.tex[i] for i in [0, 1, 2]],
+                nrm = [face.nrm[i] for i in [0, 1, 2]],
+            )
+        else:
+            ret.__dict__.update(
+                pos = [face.pos[i] for i in [0, 2, 1]],
+                tex = [face.tex[i] for i in [0, 2, 1]],
+                nrm = [face.nrm[i] for i in [0, 2, 1]],
+            )
         return ret
