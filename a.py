@@ -18,6 +18,11 @@ def totuple(x):
     return x
 
 
+@ti.func
+def clamp(x, xmin, xmax):
+    return min(xmax, max(xmin, x))
+
+
 @ti.data_oriented
 class IField:
     is_taichi_class = True
@@ -69,6 +74,15 @@ class IRunnable:
         raise NotImplementedError
 
 
+class ICompute(IRunnable):
+    def run(self):
+        self.compute()
+
+    @ti.kernel
+    def compute(self):
+        raise NotImplementedError
+
+
 class FShape(IShapeField):
     def __init__(self, field, shape, dtype=None, vdims=None):
         assert isinstance(field, IField)
@@ -98,6 +112,25 @@ class FLike(IShapeField):
     def _subscript(self, I):
         return self.field[I]
 
+
+class FCache(IShapeField, ICompute):
+    def __init__(self, src):
+        assert isinstance(src, IShapeField)
+
+        self.src = src
+        self.dtype = self.src.dtype
+        self.shape = self.src.shape
+        self.vdims = self.src.vdims
+        self.buf = Field(self.shape, self.dtype, self.vdims)
+
+    @ti.kernel
+    def compute(self):
+        for I in ti.static(self.src):
+            self.buf[I] = self.src[I]
+
+    @ti.func
+    def _subscript(self, I):
+        return self.buf[I]
 
 
 class Field(IShapeField):
@@ -151,8 +184,49 @@ class FConstant(IField):
         return self.value
 
 
+class FClamp(IField):
+    def __init__(self, src, min=0, max=1):
+        assert isinstance(src, IField)
+
+        self.src = src
+        self.min = min
+        self.max = max
+
+    @ti.func
+    def _subscript(self, I):
+        return clamp(self.src[I], self.min, self.max)
+
+
+class FBoundClamp(IShapeField):
+    def __init__(self, src):
+        assert isinstance(src, IShapeField)
+
+        self.src = src
+        self.dtype = self.src.dtype
+        self.shape = self.src.shape
+        self.vdims = self.src.vdims
+
+    @ti.func
+    def _subscript(self, I):
+        return self.src[clamp(I, 0, ti.Vector(self.src.shape) - 1)]
+
+
+class FBoundRepeat(IShapeField):
+    def __init__(self, src):
+        assert isinstance(src, IShapeField)
+
+        self.src = src
+        self.dtype = self.src.dtype
+        self.shape = self.src.shape
+        self.vdims = self.src.vdims
+
+    @ti.func
+    def _subscript(self, I):
+        return self.src[I % ti.Vector(self.src.shape)]
+
+
 class FMix(IField):
-    def __init__(self, f1, f2, k1, k2):
+    def __init__(self, f1, f2, k1=1, k2=1):
         self.f1 = f1
         self.f2 = f2
         self.k1 = k1
@@ -257,8 +331,13 @@ class Canvas:
             gui.show()
 
 
-img = FShape(FChessboard(32), [512, 512], float, [])
-img = FLike(img, FMix(img, FLaplacian(img), 1, 1))
-img = FLike(img, FMix(img, FLaplacian(img), 1, 1))
-for gui in Canvas(img):
-    pass
+def FLaplacianBlur(x):
+    return FCache(FLike(x, FMix(x, FLaplacian(FBoundClamp(x)), 1, 1)))
+
+
+imgs = [FShape(FChessboard(32), [512, 512], float, [])]
+for i in range(16):
+    imgs.append(FLaplacianBlur(imgs[-1]))
+for gui in Canvas(imgs[-1]):
+    for i in imgs[1:]:
+        i.compute()
