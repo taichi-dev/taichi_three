@@ -18,6 +18,10 @@ def totuple(x):
     return x
 
 
+def tovector(x):
+    return ti.Vector(totuple(x))
+
+
 @ti.func
 def clamp(x, xmin, xmax):
     return min(xmax, max(xmin, x))
@@ -45,7 +49,7 @@ class IField:
         raise NotImplementedError
 
     def subscript(self, *indices):
-        I = ti.Vector(totuple(indices))
+        I = tovector(indices)
         return self._subscript(I)
 
     @ti.func
@@ -216,7 +220,7 @@ class FClamp(IField):
         return clamp(self.src[I], self.min, self.max)
 
 
-class FBoundClamp(IShapeField):
+class FBound(IShapeField):
     def __init__(self, src):
         assert isinstance(src, IShapeField)
 
@@ -228,7 +232,7 @@ class FBoundClamp(IShapeField):
         return self.src[clamp(I, 0, ti.Vector(self.meta.shape) - 1)]
 
 
-class FBoundRepeat(IShapeField):
+class FRepeat(IShapeField):
     def __init__(self, src):
         assert isinstance(src, IShapeField)
 
@@ -280,6 +284,18 @@ class FChessboard(IField):
         return (I // self.size).sum() % 2
 
 
+class FGaussDist(IField):
+    def __init__(self, center, radius, height=1):
+        self.center = tovector(center)
+        self.radius = radius
+        self.height = height
+
+    @ti.func
+    def _subscript(self, I):
+        r2 = (I - self.center).norm_sqr() / self.radius**2
+        return self.height * ti.exp(-r2)
+
+
 class FLaplacian(IShapeField):
     def __init__(self, src):
         assert isinstance(src, IShapeField)
@@ -297,7 +313,7 @@ class FLaplacian(IShapeField):
         return res / (2 * dim)
 
 
-class FCopy(IRun):
+class RFCopy(IRun):
     def __init__(self, dst, src):
         assert isinstance(dst, IShapeField)
         assert isinstance(src, IField)
@@ -309,6 +325,29 @@ class FCopy(IRun):
     def run(self):
         for I in ti.static(self.dst):
             self.dst[I] = self.src[I]
+
+
+class RMerge(IRun):
+    def __init__(self, *tasks):
+        assert all(isinstance(t, IRun) for t in tasks)
+
+        self.tasks = tasks
+
+    def run(self):
+        for t in self.tasks:
+            t.run()
+
+
+class RTimes(IRun):
+    def __init__(self, task, times):
+        assert isinstance(task, IRun)
+
+        self.task = task
+        self.times = times
+
+    def run(self):
+        for i in range(self.times):
+            self.task.run()
 
 
 @ti.data_oriented
@@ -355,8 +394,12 @@ class Canvas:
 
 
 def FLaplacianBlur(x):
-    return FLike(x, FMix(x, FLaplacian(FBoundClamp(x)), 1, 1))
+    return FLike(x, FMix(x, FLaplacian(FBound(x)), 1, 1))
 
 
 def FLaplacianStep(pos, vel, kappa):
-    return FLike(pos, FMix(vel, FLaplacian(FBoundClamp(pos)), 1, kappa))
+    return FLike(pos, FMix(vel, FLaplacian(FBound(pos)), 1, kappa))
+
+
+def FPosAdvect(pos, vel, dt):
+    return FLike(pos, FMix(pos, vel, 1, dt))
