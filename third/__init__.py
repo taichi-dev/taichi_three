@@ -1,7 +1,10 @@
 import taichi as ti
 
 
-ti.static = lambda x, *xs: [x] + list(xs) if xs else x
+setattr(ti, 'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
+        ti.Matrix, 'element_wise_writeback_binary', (lambda f: lambda x, y, z:
+        (y.__name__ != 'assign' or not setattr(y, '__name__', '_assign'))
+        and f(x, y, z))(ti.Matrix.element_wise_writeback_binary))
 
 
 def V(*xs):
@@ -9,6 +12,8 @@ def V(*xs):
 
 
 def totuple(x):
+    if x is None:
+        x = []
     if isinstance(x, ti.Matrix):
         x = x.entries
     if isinstance(x, list):
@@ -66,6 +71,10 @@ class Meta:
         self.shape = totuple(shape)
         self.vdims = totuple(vdims)
 
+    @classmethod
+    def copy(cls, other):
+        return cls(other.shape, other.dtype, other.vdims)
+
     def __repr__(self):
         dtype = self.dtype
         if hasattr(dtype, 'to_string'):
@@ -73,6 +82,78 @@ class Meta:
         elif hasattr(dtype, '__name__'):
             dtype = dtype.__name__
         return f'Meta({dtype}, {list(self.vdims)}, {list(self.shape)})'
+
+
+@eval('lambda x: x()')
+class C:
+    _dtypes = 'i8 i16 i32 i64 u8 u16 u32 u64 f32 f64'.split()
+
+    class _TVS(Meta):
+        def __init__(self, dtype, dt_name, vdims, vd_name, shape, sh_name):
+            self.dt_name = dt_name
+            self.vd_name = vd_name
+            self.sh_name = sh_name
+            super().__init__(shape, dtype, vdims)
+
+        def __repr__(self):
+            return f'C.{self.dt_name}{self.vd_name}[{self.sh_name}]'
+
+    class _TV(Meta):
+        def __init__(self, dtype, dt_name, vdims, vd_name):
+            self.dt_name = dt_name
+            self.vd_name = vd_name
+            super().__init__(None, dtype, vdims)
+
+        def __getitem__(self, indices):
+            shape = totuple(indices)
+            sh_name = repr(indices)
+            if sh_name.startswith('(') and sh_name.endswith(')'):
+                sh_name = sh_name[1:-1]
+                if sh_name.endswith(','):
+                    sh_name = sh_name[-1]
+
+            return C._TVS(self.dtype, self.dt_name,
+                    self.vdims, self.vd_name, shape, sh_name)
+
+        def __repr__(self):
+            return f'C.{self.dt_name}{self.vd_name}'
+
+    class _T(Meta):
+        def __init__(self, dtype, dt_name):
+            self.dt_name = dt_name
+            super().__init__(None, dtype, None)
+
+        def __getitem__(self, indices):
+            return C._TV(self.dtype, self.dt_name, (), '')[indices]
+
+        def __call__(self, *indices):
+            vdims = totuple(indices)
+            vd_name = repr(indices)
+            if vd_name.startswith('(') and vd_name.endswith(')'):
+                vd_name = vd_name[1:-1]
+                if vd_name.endswith(','):
+                    vd_name = vd_name[:-1]
+
+            return C._TV(self.dtype, self.dt_name, vdims, f'({vd_name})')
+
+        def __repr__(self):
+            return f'C.{self.dt_name}'
+
+    def _dtype_from_name(self, name):
+        if name in self._dtypes:
+            return getattr(ti, name)
+        if name == 'float':
+            return float
+        if name == 'int':
+            return int
+        assert False, name
+
+    def __getattr__(self, name):
+        dtype = self._dtype_from_name(name)
+        return C._T(dtype, name)
+
+    def __repr__(self):
+        return 'C'
 
 
 class IShapeField(IField):
@@ -246,6 +327,9 @@ class FRepeat(IShapeField):
 
 class FMix(IField):
     def __init__(self, f1, f2, k1=1, k2=1):
+        assert isinstance(f1, IField)
+        assert isinstance(f2, IField)
+
         self.f1 = f1
         self.f2 = f2
         self.k1 = k1
@@ -257,13 +341,29 @@ class FMix(IField):
 
 
 class FMult(IField):
-    def __init__(self, field, scale):
-        self.field = field
-        self.scale = scale
+    def __init__(self, f1, f2):
+        assert isinstance(f1, IField)
+        assert isinstance(f2, IField)
+
+        self.f1 = f1
+        self.f2 = f2
 
     @ti.func
     def _subscript(self, I):
-        return self.field[I] * self.scale
+        return self.f1[I] * self.f2[I]
+
+
+class FFunc(IField):
+    def __init__(self, func, *args):
+        assert all(isinstance(a, IField) for a in args)
+
+        self.func = func
+        self.args = args
+
+    @ti.func
+    def _subscript(self, I):
+        args = [a[I] for a in self.args]
+        return self.func(*args)
 
 
 class FSamIndex(IField):
@@ -313,6 +413,23 @@ class FLaplacian(IShapeField):
         return res / (2 * dim)
 
 
+class FGradient(IShapeField):
+    def __init__(self, src):
+        assert isinstance(src, IShapeField)
+
+        self.src = src
+        self.meta = self.src.meta
+
+    @ti.func
+    def _subscript(self, I):
+        dim = ti.static(len(self.meta.shape))
+        res = ti.Vector.zero(self.meta.dtype, dim)
+        for i in ti.static(range(dim)):
+            D = ti.Vector.unit(dim, i)
+            res[i] = self.src[I + D] - self.src[I - D]
+        return res
+
+
 class RFCopy(IRun):
     def __init__(self, dst, src):
         assert isinstance(dst, IShapeField)
@@ -325,6 +442,20 @@ class RFCopy(IRun):
     def run(self):
         for I in ti.static(self.dst):
             self.dst[I] = self.src[I]
+
+
+class RFAccumate(IRun):
+    def __init__(self, dst, src):
+        assert isinstance(dst, IShapeField)
+        assert isinstance(src, IField)
+
+        self.dst = dst
+        self.src = src
+
+    @ti.kernel
+    def run(self):
+        for I in ti.static(self.dst):
+            self.dst[I] += self.src[I]
 
 
 class RMerge(IRun):

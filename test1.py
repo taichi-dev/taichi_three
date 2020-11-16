@@ -2,8 +2,9 @@ from third import *
 ti.init(ti.cc)
 
 
-#img = FShape(FChessboard(32), Meta([512, 512], float, []))
-ini = FShape(FGaussDist([256, 256], 6, 8), Meta([512, 512], float, []))
+meta = C.f32[512, 512]
+print(meta)
+ini = FShape(FGaussDist([256, 256], 6, 8), meta)
 pos = FDouble(ini)
 vel = FDouble(ini)
 pos.src = FPosAdvect(pos, vel, 0.1)
