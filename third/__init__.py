@@ -4,7 +4,9 @@ import taichi as ti
 setattr(ti, 'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
         ti.Matrix, 'element_wise_writeback_binary', (lambda f: lambda x, y, z:
         (y.__name__ != 'assign' or not setattr(y, '__name__', '_assign'))
-        and f(x, y, z))(ti.Matrix.element_wise_writeback_binary))
+        and f(x, y, z))(ti.Matrix.element_wise_writeback_binary)) or setattr(
+        ti.Matrix, 'is_global', (lambda f: lambda x: len(x) and f(x))(
+        ti.Matrix.is_global))
 
 
 def V(*xs):
@@ -20,6 +22,8 @@ def totuple(x):
         x = tuple(x)
     if not isinstance(x, tuple):
         x = x,
+    if isinstance(x, tuple) and len(x) and x[0] is None:
+        x = []
     return x
 
 
@@ -183,12 +187,12 @@ class IRun:
 
 
 class FShape(IShapeField):
-    def __init__(self, field, meta):
-        assert isinstance(field, IField)
+    def __init__(self, meta, field):
         assert isinstance(meta, Meta)
+        assert isinstance(field, IField)
 
-        self.field = field
         self.meta = meta
+        self.field = field
 
     @ti.func
     def _subscript(self, I):
@@ -298,6 +302,17 @@ class FConst(IField):
         return self.value
 
 
+class FUniform(IField):
+    def __init__(self, value):
+        assert isinstance(value, IField)
+
+        self.value = value
+
+    @ti.func
+    def _subscript(self, I):
+        return self.value[None]
+
+
 class FClamp(IField):
     def __init__(self, src, min=0, max=1):
         assert isinstance(src, IField)
@@ -372,8 +387,7 @@ class FFunc(IField):
 
     @ti.func
     def _subscript(self, I):
-        args = [a[I] for a in self.args]
-        return self.func(*args)
+        return self.func(*[a[I] for a in self.args])
 
 
 class FVChan(IField):
@@ -388,7 +402,7 @@ class FVChan(IField):
         return self.field[I][self.channel]
 
 
-class FVConcat(IField):
+class FVPack(IField):
     def __init__(self, *args):
         assert all(isinstance(a, IField) for a in args)
 
@@ -400,13 +414,54 @@ class FVConcat(IField):
         return vconcat(*args)
 
 
-class FSamIndex(IField):
+class FIndex(IField):
     def __init__(self):
         pass
 
     @ti.func
     def _subscript(self, I):
         return I
+
+
+class FShuffle(IField):
+    def __init__(self, field, index):
+        assert isinstance(field, IField)
+        assert isinstance(index, IField)
+
+        self.field = field
+        self.index = index
+
+    @ti.func
+    def _subscript(self, I):
+        return self.field[self.index[I]]
+
+
+class FBilerp(IField):
+    def __init__(self, field, index):
+        assert isinstance(field, IField)
+        assert isinstance(index, IField)
+
+        self.field = field
+        self.index = index
+
+    @ti.func
+    def _subscript(self, I):
+        return bilerp(self.field, self.index[I])
+
+
+class FVTrans(IField):
+    def __init__(self, vec, mat, off):
+        assert isinstance(vec, IField)
+        assert isinstance(mat, IField)
+        assert isinstance(off, IField)
+
+        self.vec = vec
+        self.mat = mat
+        self.off = off
+
+    @ti.func
+    def _subscript(self, I):
+        return self.mat[I] @ self.vec[I] + self.off[I]
 
 
 class FChessboard(IField):
