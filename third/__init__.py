@@ -23,16 +23,25 @@ def clamp(x, xmin, xmax):
     return min(xmax, max(xmin, x))
 
 
+@ti.func
+def bilerp(f: ti.template(), pos):
+    p = float(pos)
+    I = int(ti.floor(p))
+    x = p - I
+    y = 1 - x
+    ti.static_assert(len(f.meta.shape) == 2)
+    return (f[I + V(1, 1)] * x[0] * x[1] +
+            f[I + V(1, 0)] * x[0] * y[1] +
+            f[I + V(0, 0)] * y[0] * y[1] +
+            f[I + V(0, 1)] * y[0] * x[1])
+
+
 @ti.data_oriented
 class IField:
     is_taichi_class = True
 
     @ti.func
     def _subscript(self, I):
-        raise NotImplementedError
-
-    @ti.func
-    def sample(self, pos):
         raise NotImplementedError
 
     def subscript(self, *indices):
@@ -44,53 +53,47 @@ class IField:
         raise NotImplementedError
 
 
-class IShapeField(IField):
-    shape = NotImplemented
-    dtype = NotImplemented
-    vdims = NotImplemented
+@ti.data_oriented
+class Meta:
+    is_taichi_class = True
 
-    @ti.func
-    def sample(self, pos):
-        p = float(pos)
-        I = int(ti.floor(p))
-        x = p - I
-        y = 1 - x
-        ti.static_assert(len(self.shape) == 2)
-        return (self[I + V(1, 1)] * x[0] * x[1] +
-                self[I + V(1, 0)] * x[0] * y[1] +
-                self[I + V(0, 0)] * y[0] * y[1] +
-                self[I + V(0, 1)] * y[0] * x[1])
+    def __init__(self, shape, dtype=None, vdims=None):
+        self.dtype = dtype
+        self.shape = totuple(shape)
+        self.vdims = totuple(vdims)
+
+    def __repr__(self):
+        dtype = self.dtype
+        if hasattr(dtype, 'to_string'):
+            dtype = 'ti.' + dtype.to_string()
+        elif hasattr(dtype, '__name__'):
+            dtype = dtype.__name__
+        return f'Meta({dtype}, {list(self.vdims)}, {list(self.shape)})'
+
+
+class IShapeField(IField):
+    meta = NotImplemented
 
     @ti.func
     def __iter__(self):
-        for I in ti.grouped(ti.ndrange(*self.shape)):
+        for I in ti.grouped(ti.ndrange(*self.meta.shape)):
             yield I
 
 
 @ti.data_oriented
-class IRunnable:
+class IRun:
     @ti.kernel
     def run(self):
-        raise NotImplementedError
-
-
-class ICompute(IRunnable):
-    def run(self):
-        self.compute()
-
-    @ti.kernel
-    def compute(self):
         raise NotImplementedError
 
 
 class FShape(IShapeField):
-    def __init__(self, field, shape, dtype=None, vdims=None):
+    def __init__(self, field, meta):
         assert isinstance(field, IField)
+        assert isinstance(meta, Meta)
 
         self.field = field
-        self.dtype = dtype
-        self.shape = totuple(shape)
-        self.vdims = totuple(vdims)
+        self.meta = meta
 
     @ti.func
     def _subscript(self, I):
@@ -104,27 +107,23 @@ class FLike(IShapeField):
 
         self.field = field
         self.src = src
-        self.dtype = self.src.dtype
-        self.shape = self.src.shape
-        self.vdims = self.src.vdims
+        self.meta = self.src.meta
 
     @ti.func
     def _subscript(self, I):
         return self.field[I]
 
 
-class FCache(IShapeField, ICompute):
+class FCache(IShapeField, IRun):
     def __init__(self, src):
         assert isinstance(src, IShapeField)
 
         self.src = src
-        self.dtype = self.src.dtype
-        self.shape = self.src.shape
-        self.vdims = self.src.vdims
-        self.buf = Field(self.shape, self.dtype, self.vdims)
+        self.meta = self.src.meta
+        self.buf = Field(self.meta)
 
     @ti.kernel
-    def compute(self):
+    def run(self):
         for I in ti.static(self.src):
             self.buf[I] = self.src[I]
 
@@ -133,13 +132,38 @@ class FCache(IShapeField, ICompute):
         return self.buf[I]
 
 
-class Field(IShapeField):
-    def __init__(self, shape, dtype, vdims):
-        self.dtype = dtype
-        self.vdims = totuple(vdims)
-        self.shape = totuple(shape)
+class FDouble(IShapeField, IRun):
+    def __init__(self, src):
+        assert isinstance(src, IShapeField)
 
-        self.core = self.__mkfield(self.dtype, self.vdims, self.shape)
+        self.src = src
+        self.meta = self.src.meta
+        self.cur = Field(self.meta)
+        self.nxt = Field(self.meta)
+
+    def swap(self):
+        self.cur, self.nxt = self.nxt, self.cur
+
+    def run(self):
+        self._run(self.nxt, self.src)
+        self.swap()
+
+    @ti.kernel
+    def _run(self, nxt: ti.template(), src: ti.template()):
+        for I in ti.static(src):
+            nxt[I] = src[I]
+
+    @ti.func
+    def _subscript(self, I):
+        return self.cur[I]
+
+
+class Field(IShapeField):
+    def __init__(self, meta):
+        assert isinstance(meta, Meta)
+
+        self.meta = meta
+        self.core = self.__mkfield(meta.dtype, meta.vdims, meta.shape)
 
     @staticmethod
     def __mkfield(dtype, vdims, shape):
@@ -161,12 +185,7 @@ class Field(IShapeField):
             yield I
 
     def __repr__(self):
-        dtype = self.dtype
-        if hasattr(dtype, 'to_string'):
-            dtype = 'ti.' + dtype.to_string()
-        elif hasattr(dtype, '__name__'):
-            dtype = dtype.__name__
-        return f'Field({dtype}, {list(self.vdims)}, {list(self.shape)})'
+        return f'Field({self.meta})'
 
     def __str__(self):
         return str(self.core)
@@ -175,7 +194,7 @@ class Field(IShapeField):
         return getattr(self.core, attr)
 
 
-class FConstant(IField):
+class FConst(IField):
     def __init__(self, value):
         self.value = value
 
@@ -202,13 +221,11 @@ class FBoundClamp(IShapeField):
         assert isinstance(src, IShapeField)
 
         self.src = src
-        self.dtype = self.src.dtype
-        self.shape = self.src.shape
-        self.vdims = self.src.vdims
+        self.meta = self.src.meta
 
     @ti.func
     def _subscript(self, I):
-        return self.src[clamp(I, 0, ti.Vector(self.src.shape) - 1)]
+        return self.src[clamp(I, 0, ti.Vector(self.meta.shape) - 1)]
 
 
 class FBoundRepeat(IShapeField):
@@ -216,13 +233,11 @@ class FBoundRepeat(IShapeField):
         assert isinstance(src, IShapeField)
 
         self.src = src
-        self.dtype = self.src.dtype
-        self.shape = self.src.shape
-        self.vdims = self.src.vdims
+        self.meta = self.src.meta
 
     @ti.func
     def _subscript(self, I):
-        return self.src[I % ti.Vector(self.src.shape)]
+        return self.src[I % ti.Vector(self.meta.shape)]
 
 
 class FMix(IField):
@@ -237,7 +252,17 @@ class FMix(IField):
         return self.f1[I] * self.k1 + self.f2[I] * self.k2
 
 
-class FSampleIndex(IField):
+class FMult(IField):
+    def __init__(self, field, scale):
+        self.field = field
+        self.scale = scale
+
+    @ti.func
+    def _subscript(self, I):
+        return self.field[I] * self.scale
+
+
+class FSamIndex(IField):
     def __init__(self):
         pass
 
@@ -260,13 +285,11 @@ class FLaplacian(IShapeField):
         assert isinstance(src, IShapeField)
 
         self.src = src
-        self.dtype = self.src.dtype
-        self.shape = self.src.shape
-        self.vdims = self.src.vdims
+        self.meta = self.src.meta
 
     @ti.func
     def _subscript(self, I):
-        dim = ti.static(len(self.src.shape))
+        dim = ti.static(len(self.meta.shape))
         res = -2 * dim * self.src[I]
         for i in ti.static(range(dim)):
             D = ti.Vector.unit(dim, i)
@@ -274,9 +297,9 @@ class FLaplacian(IShapeField):
         return res / (2 * dim)
 
 
-class FieldCopy(IRunnable):
+class FCopy(IRun):
     def __init__(self, dst, src):
-        assert isinstance(dst, Field)
+        assert isinstance(dst, IShapeField)
         assert isinstance(src, IField)
 
         self.dst = dst
@@ -297,24 +320,24 @@ class Canvas:
         self.res = res or (512, 512)
 
     def _cook(self, color):
-        if len(self.img.vdims) == 0:
+        if len(self.img.meta.vdims) == 0:
             color = ti.Vector([color, color, color])
-        if self.img.dtype not in [ti.u8, ti.i8]:
+        if self.img.meta.dtype not in [ti.u8, ti.i8]:
             color = ti.max(0, ti.min(255, ti.cast(color * 255 + 0.5, int)))
         return color
 
     @ti.func
-    def _image(self, i, j):
-        ti.static_assert(len(self.img.shape) == 2)
-        scale = ti.Vector(self.img.shape) / ti.Vector(self.res)
+    def image_at(self, i, j):
+        ti.static_assert(len(self.img.meta.shape) == 2)
+        scale = ti.Vector(self.img.meta.shape) / ti.Vector(self.res)
         pos = ti.Vector([i, j]) * scale
-        r, g, b = self._cook(self.img.sample(pos))
+        r, g, b = self._cook(bilerp(self.img, pos))
         return int(r), int(g), int(b)
 
     @ti.kernel
     def render(self, out: ti.ext_arr(), res: ti.template()):
         for i in range(res[0] * res[1]):
-            r, g, b = self._image(i % res[0], res[1] - 1 - i // res[0])
+            r, g, b = self.image_at(i % res[0], res[1] - 1 - i // res[0])
             if ti.static(ti.get_os_name() != 'osx'):
                 out[i] = (r << 16) + (g << 8) + b
             else:
@@ -332,12 +355,8 @@ class Canvas:
 
 
 def FLaplacianBlur(x):
-    return FCache(FLike(x, FMix(x, FLaplacian(FBoundClamp(x)), 1, 1)))
+    return FLike(x, FMix(x, FLaplacian(FBoundClamp(x)), 1, 1))
 
 
-imgs = [FShape(FChessboard(32), [512, 512], float, [])]
-for i in range(16):
-    imgs.append(FLaplacianBlur(imgs[-1]))
-for gui in Canvas(imgs[-1]):
-    for i in imgs[1:]:
-        i.compute()
+def FLaplacianStep(pos, vel, kappa):
+    return FLike(pos, FMix(vel, FLaplacian(FBoundClamp(pos)), 1, kappa))
