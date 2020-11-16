@@ -27,6 +27,16 @@ def tovector(x):
     return ti.Vector(totuple(x))
 
 
+def vconcat(*xs):
+    res = []
+    for x in xs:
+        if isinstance(x, ti.Matrix):
+            res.extend(x.entries)
+        else:
+            res.append(x)
+    return ti.Vector(res)
+
+
 @ti.func
 def clamp(x, xmin, xmax):
     return min(xmax, max(xmin, x))
@@ -366,6 +376,30 @@ class FFunc(IField):
         return self.func(*args)
 
 
+class FVChan(IField):
+    def __init__(self, field, channel):
+        assert isinstance(field, IField)
+
+        self.field = field
+        self.channel = channel
+
+    @ti.func
+    def _subscript(self, I):
+        return self.field[I][self.channel]
+
+
+class FVConcat(IField):
+    def __init__(self, *args):
+        assert all(isinstance(a, IField) for a in args)
+
+        self.args = args
+
+    @ti.func
+    def _subscript(self, I):
+        args = [a[I] for a in self.args]
+        return vconcat(*args)
+
+
 class FSamIndex(IField):
     def __init__(self):
         pass
@@ -490,8 +524,18 @@ class Canvas:
         self.res = res or (512, 512)
 
     def _cook(self, color):
-        if len(self.img.meta.vdims) == 0:
+        if isinstance(color, ti.Expr):
             color = ti.Vector([color, color, color])
+        elif isinstance(color, ti.Matrix):
+            assert color.m == 1, color.m
+            if color.n == 1:
+                color = ti.Vector([color(0), color(0), color(0)])
+            elif color.n == 2:
+                color = ti.Vector([color(0), color(1), 0])
+            elif color.n in [3, 4]:
+                color = ti.Vector([color(0), color(1), color(2)])
+            else:
+                assert False, color.n
         if self.img.meta.dtype not in [ti.u8, ti.i8]:
             color = ti.max(0, ti.min(255, ti.cast(color * 255 + 0.5, int)))
         return color
