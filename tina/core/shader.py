@@ -39,7 +39,7 @@ class NormalShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        normal = (engine.W2LT[None] @ normal).normalized()
+        normal = (engine.NL2W[None] @ normal).normalized()
         self.img[P] = normal * 0.5 + 0.5
 
 
@@ -56,8 +56,24 @@ class ChessboardShader:
 
 @ti.func
 def calc_view_dir(engine, pos):
-    pers_vdir = mapply(engine.L2V[None], pos, 1)[0]
-    return -mapply_dir(engine.V2W[None], pers_vdir).normalized()
+    fwd = mapply_dir(engine.V2W[None], V(0., 0., -1.))
+    camera, camera_w = mapply(engine.V2W[None], V(0., 0., 0.), 1)
+    dir = (camera - pos * camera_w).normalized()
+    if dir.dot(fwd) < 0:
+        dir = -dir
+    return dir
+
+
+@ti.data_oriented
+class ViewdirShader:
+    def __init__(self, img):
+        self.img = img
+
+    @ti.func
+    def shade_color(self, engine, P, f, pos, normal, texcoord):
+        pos = mapply_pos(engine.L2W[None], pos)
+        view_dir = calc_view_dir(engine, pos)
+        self.img[P] = view_dir * 0.5 + 0.5
 
 
 @ti.data_oriented
@@ -67,9 +83,11 @@ class SimpleShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        normal = mapply_dir(engine.L2V[None], normal).normalized()
+        normal = (engine.NL2W[None] @ normal).normalized()
+        pos = mapply_pos(engine.L2W[None], pos)
+        view_dir = calc_view_dir(engine, pos)
 
-        self.img[P] = abs(normal.z)
+        self.img[P] = abs(normal.dot(view_dir))
 
 
 @ti.data_oriented
@@ -82,7 +100,7 @@ class Shader:
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
         pos = mapply_pos(engine.L2W[None], pos)
-        normal = (engine.W2LT[None] @ normal).normalized()
+        normal = (engine.NL2W[None] @ normal).normalized()
         view_dir = calc_view_dir(engine, pos)
         pars = {
             'pos': pos,

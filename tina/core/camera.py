@@ -30,7 +30,7 @@ def lookat(pos=(0, 0, 0), back=(0, -1, 0), up=(0, 0, 1), dist=3):
     return np.linalg.inv(affine(lin, (pos + back * dist)))
 
 
-def ortho(left=-1, right=1, bottom=-1, top=1, near=0, far=100):
+def ortho(left=-1, right=1, bottom=-1, top=1, near=-100, far=100):
     lin = np.eye(4)
     lin[0, 0] = 2 / (right - left)
     lin[1, 1] = 2 / (top - bottom)

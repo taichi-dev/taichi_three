@@ -62,7 +62,7 @@ class Engine:
 
         self.L2V = ti.Matrix.field(4, 4, float, ())
         self.L2W = ti.Matrix.field(4, 4, float, ())
-        self.W2LT = ti.Matrix.field(3, 3, float, ())
+        self.NL2W = ti.Matrix.field(3, 3, float, ())
         self.V2W = ti.Matrix.field(4, 4, float, ())
 
         self.bias = ti.Vector.field(2, float, ())
@@ -71,8 +71,8 @@ class Engine:
         @ti.kernel
         def init_engine():
             self.L2W[None] = ti.Matrix.identity(float, 4)
-            self.W2LT[None] = ti.Matrix.identity(float, 3)
             self.L2V[None] = ti.Matrix.identity(float, 4)
+            self.NL2W[None] = ti.Matrix.identity(float, 3)
             self.L2V[None][2, 2] = -1
             self.V2W[None] = ti.Matrix.identity(float, 4)
             self.V2W[None][2, 2] = -1
@@ -240,10 +240,10 @@ class Engine:
 
     def set_camera(self, camera):
         L2W = camera.model
-        W2LT = np.transpose(np.linalg.inv(camera.model[:3, :3]))
         L2V = camera.proj @ camera.view @ camera.model
         V2W = np.linalg.inv(camera.proj @ camera.view)
+        NL2W = np.transpose(np.linalg.inv(L2W[:3, :3]))
         self.L2V.from_numpy(np.array(L2V, dtype=np.float32))
         self.L2W.from_numpy(np.array(L2W, dtype=np.float32))
-        self.W2LT.from_numpy(np.array(W2LT, dtype=np.float32))
+        self.NL2W.from_numpy(np.array(NL2W, dtype=np.float32))
         self.V2W.from_numpy(np.array(V2W, dtype=np.float32))
