@@ -234,8 +234,8 @@ class Engine:
                 for l in ti.static(range(2)):
                     self.coors[i, k][l] = coors[i, k, l]
 
-    def set_camera(self, camera):
-        W2V = camera.proj @ camera.view
+    def set_camera(self, view, proj):
+        W2V = proj @ view
         V2W = np.linalg.inv(W2V)
         self.W2V.from_numpy(np.array(W2V, dtype=np.float32))
         self.V2W.from_numpy(np.array(V2W, dtype=np.float32))

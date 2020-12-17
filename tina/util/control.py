@@ -68,20 +68,20 @@ class Control:
     def on_wheel(self, delta, origin):
         self.on_zoom(delta, origin)
 
-    def get_camera(self, camera):
+    def get_camera(self, engine):
         ret = self.process_events()
 
         from ..core.camera import lookat, orthogonal, perspective
 
         aspect = self.gui.res[0] / self.gui.res[1]
         if self.fov == 0:
-            camera.view = lookat(self.center, self.back, self.up, self.dist)
-            camera.proj = orthogonal(1 / self.scale, aspect)
+            view = lookat(self.center, self.back, self.up, self.dist)
+            proj = orthogonal(1 / self.scale, aspect)
         else:
-            camera.view = lookat(
-                    self.center, self.back, self.up, self.dist / self.scale)
-            camera.proj = perspective(self.fov, aspect)
+            view = lookat(self.center, self.back, self.up, self.dist / self.scale)
+            proj = perspective(self.fov, aspect)
 
+        engine.set_camera(view, proj)
         return ret
 
     def on_event(self, e):

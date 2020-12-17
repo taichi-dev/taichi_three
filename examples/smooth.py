@@ -16,7 +16,6 @@ norms = tina.objnorms(obj)
 
 # enable smooth shading for the engine
 engine = tina.Engine(smoothing=True)
-camera = tina.Camera()
 
 img = ti.Vector.field(3, float, engine.res)
 shader = tina.SimpleShader(img)
@@ -25,8 +24,7 @@ gui = ti.GUI('smooth')
 control = tina.Control(gui)
 
 while gui.running:
-    control.get_camera(camera)
-    engine.set_camera(camera)
+    control.get_camera(engine)
 
     img.fill(0)
     engine.clear_depth()

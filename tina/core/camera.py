@@ -1,13 +1,6 @@
 from ..common import *
 
 
-class Camera:
-    def __init__(self):
-        self.proj = ortho()
-        self.view = lookat()
-        self.model = np.eye(4)
-
-
 def affine(lin, pos):
     lin = np.concatenate([lin, np.zeros((1, 3))], axis=0)
     pos = np.concatenate([pos, np.ones(1)])

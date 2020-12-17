@@ -14,14 +14,12 @@ obj = tina.readobj('assets/monkey.obj')
 verts = tina.objverts(obj)
 print(verts)
 
-# to make tina actually display things, we need five things:
+# to make tina actually display things, we need four things:
 #
 # 1. Engine - the core implementation of rasterization
 engine = tina.Engine()
-# 2. Camera - define the transformations between spaces
-camera = tina.Camera()
 
-# 3. Shader - the method to *shade* the object
+# 2. Shader - the method to *shade* the object
 #
 # the shader also wants an field as frame buffer for storing result:
 img = ti.Vector.field(3, float, engine.res)
@@ -30,16 +28,14 @@ img = ti.Vector.field(3, float, engine.res)
 # see examples/lighting.py for advanced shaders with lights and materials
 shader = tina.SimpleShader(img)
 
-# 4. GUI - we need to create an window for display (if not offline rendering):
+# 3. GUI - we need to create an window for display (if not offline rendering):
 gui = ti.GUI('monkey')
-# 5. Control - allows you to control the camera with mouse drags
+# 4. Control - allows you to control the camera with mouse drags
 control = tina.Control(gui)
 
 while gui.running:
-    # update the camera from the controller
-    control.get_camera(camera)
-    # feed the camera into the engine
-    engine.set_camera(camera)
+    # update the camera transform from the controller
+    control.get_camera(engine)
 
     # clear frame buffer and depth
     img.fill(0)

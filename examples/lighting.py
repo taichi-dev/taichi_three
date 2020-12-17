@@ -11,11 +11,10 @@ obj = tina.readobj('assets/monkey.obj')
 verts = tina.objverts(obj)
 
 engine = tina.Engine()
-camera = tina.Camera()
 
-# 6. Lighting - for describing the lighting conditions
+# 5. Lighting - for describing the lighting conditions
 lighting = tina.Lighting()
-# 7. Material - for describing the material of an object
+# 6. Material - for describing the material of an object
 material = tina.BlinnPhong()
 # you may also specify some parameters for the Blinn-Phong material:
 #material = tina.BlinnPhong(shineness=10, diffuse=[1, 0, 0])
@@ -31,8 +30,7 @@ gui = ti.GUI('lighting')
 control = tina.Control(gui)
 
 while gui.running:
-    control.get_camera(camera)
-    engine.set_camera(camera)
+    control.get_camera(engine)
 
     # specify the number of lights being used:
     lighting.nlights[None] = 2

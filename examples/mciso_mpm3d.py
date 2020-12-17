@@ -106,7 +106,6 @@ mciso = MCISO(n_grid * 2)
 voxel = Voxelizer(mciso.N, radius=1, weight=50)
 
 engine = tina.Engine(smoothing=True)
-camera = tina.Camera()
 
 img = ti.Vector.field(3, float, engine.res)
 shader = tina.SimpleShader(img)
@@ -118,8 +117,7 @@ control.scale = 2
 
 init()
 while gui.running:
-    control.get_camera(camera)
-    engine.set_camera(camera)
+    control.get_camera(engine)
 
     if gui.is_pressed('r'):
         init()

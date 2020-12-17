@@ -12,7 +12,6 @@ vol = extend_bounds(vol)
 mciso = MCISO(vol.shape[0])
 
 engine = tina.Engine((1024, 768), maxfaces=2**20, smoothing=True)
-camera = tina.Camera()
 
 img = ti.Vector.field(3, float, engine.res)
 shader = tina.SimpleShader(img)
@@ -34,9 +33,8 @@ norms = norms[faces]
 
 while gui.running:
     engine.randomize_bias(accum.count[None] <= 1)
-    if control.get_camera(camera):
+    if control.get_camera(engine):
         accum.clear()
-    engine.set_camera(camera)
 
     img.fill(0)
     engine.clear_depth()
