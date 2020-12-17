@@ -3,7 +3,6 @@
 # This tutorial is based on examples/monkey.py, make sure you check that first
 
 import taichi as ti
-import numpy as np
 import tina
 
 ti.init(ti.gpu)

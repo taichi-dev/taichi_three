@@ -14,7 +14,7 @@ import tina   # import our renderer
 #
 # The camera looks from +Z to target by default.
 
-# make a simple triangle
+# make a simple triangle by specifying the vertices
 verts = np.array([[
     [-1, -1,  0],  # vertex 1
     [ 1, -1,  0],  # vertex 2
