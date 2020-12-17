@@ -13,7 +13,6 @@ engine = tina.Engine((1024, 768), maxfaces=len(verts), smoothing=True)
 camera = tina.Camera()
 
 img = ti.Vector.field(3, float, engine.res)
-
 shader = tina.SimpleShader(img)
 
 gui = ti.GUI('visualize', engine.res, fast_gui=True)
@@ -26,7 +25,6 @@ engine.set_face_norms(norms)
 
 while gui.running:
     engine.randomize_bias(accum.count[None] <= 1)
-
     if control.get_camera(camera):
         accum.clear()
     engine.set_camera(camera)

@@ -4,7 +4,7 @@ import tina
 
 from tina.util.mciso import MCISO, Voxelizer
 
-ti.init(arch=ti.cuda)
+ti.init(arch=ti.gpu)
 
 
 #dim, n_grid, steps, dt = 2, 128, 20, 2e-4
@@ -111,7 +111,7 @@ camera = tina.Camera()
 img = ti.Vector.field(3, float, engine.res)
 shader = tina.SimpleShader(img)
 
-gui = ti.GUI('MPM3D', engine.res)
+gui = ti.GUI('mciso_mpm3d', engine.res)
 control = tina.Control(gui)
 control.center[:] = [0.5, 0.5, 0.5]
 control.scale = 2

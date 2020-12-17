@@ -139,6 +139,17 @@ class MCISO:
         return faces, verts
 
 
+def extend_bounds(m, bound=1):
+    assert len(m.shape) == 3
+    x = np.zeros((bound, m.shape[1], m.shape[2]), dtype=m.dtype)
+    y = np.zeros((m.shape[0] + bound * 2, bound, m.shape[2]), dtype=m.dtype)
+    z = np.zeros((m.shape[0] + bound * 2, m.shape[1] + bound * 2, bound), dtype=m.dtype)
+    m = np.concatenate([x, m, x], axis=0)
+    m = np.concatenate([y, m, y], axis=1)
+    m = np.concatenate([z, m, z], axis=2)
+    return m
+
+
 class MCISO_Example(MCISO):
     @ti.func
     def gauss(self, x):
