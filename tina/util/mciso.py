@@ -5,7 +5,7 @@ import base64
 
 @ti.data_oriented
 class MCISO:
-    def __init__(self, N=128, N_res=None, dim=3, use_sparse=True, has_normal=True):
+    def __init__(self, N=128, N_res=None, dim=3, use_sparse=False, has_normal=True):
         self.N = N
         self.dim = dim
         self.N_res = N_res or N**self.dim
@@ -131,9 +131,12 @@ class MCISO:
         return id
 
     def get_mesh(self):
-        Jts = self.Jts.to_numpy()[:self.Js_n[None]]
-        vs = (self.vs.to_numpy()[:self.vs_n[None]] + 0.5) / self.N
-        return vs, Jts
+        faces = self.Jts.to_numpy()[:self.Js_n[None]][:, ::-1]
+        verts = (self.vs.to_numpy()[:self.vs_n[None]] + 0.5) / self.N
+        if self.has_normal:
+            norms = self.ns.to_numpy()[:self.vs_n[None]]
+            return faces, verts, norms
+        return faces, verts
 
 
 class MCISO_Example(MCISO):
@@ -199,12 +202,12 @@ class MCISO_Example(MCISO):
 
 @ti.data_oriented
 class Voxelizer:
-    def __init__(self, N, pmin=0, pmax=1, radius=2, throttle=18):
+    def __init__(self, N, pmin=0, pmax=1, radius=1, weight=50):
         self.N = N
         self.pmin = ti.Vector([pmin for i in range(3)])
         self.pmax = ti.Vector([pmax for i in range(3)])
 
-        self.throttle = throttle
+        self.weight = weight
         self.radius = radius
         if self.radius:
             self.tmp1 = ti.field(float, (N, N, N))
@@ -233,7 +236,7 @@ class Voxelizer:
             w = [0.5 * (1.5 - fx)**2, 0.75 - (fx - 1)**2, 0.5 * (fx - 0.5)**2]
             for offset in ti.static(ti.grouped(ti.ndrange(3, 3, 3))):
                 dpos = (offset - fx) / self.N
-                weight = float(self.throttle)
+                weight = float(self.weight)
                 for t in ti.static(range(3)):
                     weight *= w[offset[t]][t]
                 out[base + offset] += weight

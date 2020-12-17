@@ -107,4 +107,13 @@ def lerp(fac, src, dst):
     return src * (1 - fac) + dst * fac
 
 
+@ti.func
+def list_subscript(a, i):
+    ret = sum(a) * 0
+    for j in ti.static(range(len(a))):
+        if i == j:
+            ret = a[j]
+    return ret
+
+
 import tina

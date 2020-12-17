@@ -75,3 +75,5 @@ def _(self, *args, **kwargs):
 
 
 print('[Tina] Taichi JIT injected!')
+
+__all__ = []
