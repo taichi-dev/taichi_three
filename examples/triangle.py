@@ -37,7 +37,7 @@ img = ti.Vector.field(3, float, engine.res)
 shader = tina.SimpleShader(img)
 
 # 4. GUI - we need to create an window for display (if not offline rendering):
-gui = ti.GUI('monkey')
+gui = ti.GUI('triangle')
 # 5. Control - allows you to control the camera with mouse drags
 control = tina.Control(gui)
 

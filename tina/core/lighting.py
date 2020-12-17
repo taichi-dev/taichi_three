@@ -6,7 +6,7 @@ class Lighting:
     def __init__(self, maxlights=16):
         self.light_dirs = ti.Vector.field(4, float, maxlights)
         self.light_colors = ti.Vector.field(3, float, maxlights)
-        self.ambient = ti.Vector.field(3, float, ())
+        self.ambient_color = ti.Vector.field(3, float, ())
         self.nlights = ti.field(int, ())
 
         @ti.materialize_callback
@@ -24,7 +24,7 @@ class Lighting:
             self.light_colors[i] = color
 
     def set_ambient_light(self, color):
-        self.ambient[None] = np.array(color).tolist()
+        self.ambient_color[None] = np.array(color).tolist()
 
     @ti.func
     def get_lights_range(self):
@@ -37,4 +37,4 @@ class Lighting:
 
     @ti.func
     def get_ambient_light_color(self):
-        return self.ambient[None]
+        return self.ambient_color[None]
