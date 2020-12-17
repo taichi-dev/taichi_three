@@ -60,9 +60,7 @@ class Engine:
         self.boo = ti.Vector.field(2, float, maxfaces)
         self.coo = ti.Vector.field(2, float, maxfaces)
 
-        self.L2V = ti.Matrix.field(4, 4, float, ())
-        self.L2W = ti.Matrix.field(4, 4, float, ())
-        self.NL2W = ti.Matrix.field(3, 3, float, ())
+        self.W2V = ti.Matrix.field(4, 4, float, ())
         self.V2W = ti.Matrix.field(4, 4, float, ())
 
         self.bias = ti.Vector.field(2, float, ())
@@ -70,10 +68,8 @@ class Engine:
         @ti.materialize_callback
         @ti.kernel
         def init_engine():
-            self.L2W[None] = ti.Matrix.identity(float, 4)
-            self.L2V[None] = ti.Matrix.identity(float, 4)
-            self.NL2W[None] = ti.Matrix.identity(float, 3)
-            self.L2V[None][2, 2] = -1
+            self.W2V[None] = ti.Matrix.identity(float, 4)
+            self.W2V[None][2, 2] = -1
             self.V2W[None] = ti.Matrix.identity(float, 4)
             self.V2W[None][2, 2] = -1
             self.bias[None] = [0.5, 0.5]
@@ -93,7 +89,7 @@ class Engine:
 
     @ti.func
     def to_viewspace(self, p):
-        return mapply_pos(self.L2V[None], p)
+        return mapply_pos(self.W2V[None], p)
 
     @ti.func
     def to_viewport(self, p):
@@ -159,7 +155,7 @@ class Engine:
             w_bc = (pos - b).cross(bcn)
             w_ca = (pos - c).cross(can)
             wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
-            wei /= V(*[mapply(self.L2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
+            wei /= V(*[mapply(self.W2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
             wei /= wei.x + wei.y + wei.z
 
             self.interpolate(shader, P, f, 1, wei, Al, Bl, Cl)
@@ -239,11 +235,7 @@ class Engine:
                     self.coors[i, k][l] = coors[i, k, l]
 
     def set_camera(self, camera):
-        L2W = camera.model
-        L2V = camera.proj @ camera.view @ camera.model
-        V2W = np.linalg.inv(camera.proj @ camera.view)
-        NL2W = np.transpose(np.linalg.inv(L2W[:3, :3]))
-        self.L2V.from_numpy(np.array(L2V, dtype=np.float32))
-        self.L2W.from_numpy(np.array(L2W, dtype=np.float32))
-        self.NL2W.from_numpy(np.array(NL2W, dtype=np.float32))
+        W2V = camera.proj @ camera.view
+        V2W = np.linalg.inv(W2V)
+        self.W2V.from_numpy(np.array(W2V, dtype=np.float32))
         self.V2W.from_numpy(np.array(V2W, dtype=np.float32))

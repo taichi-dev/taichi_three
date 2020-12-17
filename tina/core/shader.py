@@ -18,7 +18,6 @@ class PositionShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        pos = mapply_pos(engine.L2W[None], pos)
         self.img[P] = pos
 
 
@@ -39,7 +38,7 @@ class NormalShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        normal = (engine.NL2W[None] @ normal).normalized()
+        normal = normal.normalized()
         self.img[P] = normal * 0.5 + 0.5
 
 
@@ -51,11 +50,12 @@ class ChessboardShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
+        normal = normal.normalized()
         self.img[P] = lerp((texcoord // self.size).sum() % 2, 0.4, 0.9)
 
 
 @ti.func
-def calc_view_dir(engine, pos):
+def calc_viewdir(engine, pos):
     fwd = mapply_dir(engine.V2W[None], V(0., 0., -1.))
     camera, camera_w = mapply(engine.V2W[None], V(0., 0., 0.), 1)
     dir = (camera - pos * camera_w).normalized()
@@ -71,9 +71,9 @@ class ViewdirShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        pos = mapply_pos(engine.L2W[None], pos)
-        view_dir = calc_view_dir(engine, pos)
-        self.img[P] = view_dir * 0.5 + 0.5
+        normal = normal.normalized()
+        viewdir = calc_viewdir(engine, pos)
+        self.img[P] = viewdir * 0.5 + 0.5
 
 
 @ti.data_oriented
@@ -83,11 +83,10 @@ class SimpleShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        normal = (engine.NL2W[None] @ normal).normalized()
-        pos = mapply_pos(engine.L2W[None], pos)
-        view_dir = calc_view_dir(engine, pos)
+        normal = normal.normalized()
+        viewdir = calc_viewdir(engine, pos)
 
-        self.img[P] = abs(normal.dot(view_dir))
+        self.img[P] = abs(normal.dot(viewdir))
 
 
 @ti.data_oriented
@@ -99,13 +98,13 @@ class Shader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        pos = mapply_pos(engine.L2W[None], pos)
-        normal = (engine.NL2W[None] @ normal).normalized()
-        view_dir = calc_view_dir(engine, pos)
+        normal = normal.normalized()
+        viewdir = calc_viewdir(engine, pos)
         pars = {
             'pos': pos,
             'normal': normal,
             'texcoord': texcoord,
+            'viewdir': viewdir,
         }
 
         res = V(0.0, 0.0, 0.0)
@@ -118,7 +117,7 @@ class Shader:
                 light_distance = light_dir.norm()
                 light_dir /= light_distance
                 lcolor /= light_distance**3
-                mcolor = self.material.brdf(pars, light_dir, view_dir)
+                mcolor = self.material.brdf(pars, light_dir, viewdir)
                 res += cos_i * lcolor * mcolor
 
         self.img[P] = res
