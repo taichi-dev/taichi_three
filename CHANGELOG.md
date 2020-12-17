@@ -5,6 +5,7 @@ New in `master`
 ---------------
 
 * Add `t3.MeshNoCulling` node.
+* Add `t3.objmtlids` utility function.
 
 New in 0.0.9
 ------------
