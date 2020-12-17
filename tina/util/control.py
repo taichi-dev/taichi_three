@@ -9,9 +9,10 @@ class Control:
         self.gui = gui
         self.center = np.array([0, 0, 0], dtype=float)
         self.up = np.array([0, 1, 1e-12], dtype=float)
-        self.back = np.array([0, 0, 1], dtype=float)
-        self.dist = 3
         self.scale = 1.0
+        self.radius = 3
+        self.theta = np.pi / 2
+        self.phi = np.pi / 2
         self.fov = fov
 
         self.lmb = None
@@ -30,25 +31,28 @@ class Control:
         up /= np.linalg.norm(up)
 
         delta *= 2
-        self.center -= (right * delta[0] + up * delta[1]) / self.scale
+        self.center -= (right * delta[0] + up * delta[1]) * self.radius
+
+    @property
+    def back(self):
+        x = self.radius * np.sin(self.theta) * np.cos(self.phi)
+        z = self.radius * np.sin(self.theta) * np.sin(self.phi)
+        y = self.radius * np.cos(self.theta)
+        return np.array([x, y, z], dtype=float)
 
     def on_orbit(self, delta, origin):
         delta_phi = delta[0] * ti.pi
         delta_theta = delta[1] * ti.pi
-        pos = self.back
-        radius = np.linalg.norm(pos)
-        theta = np.arccos(pos[1] / radius)
-        phi = np.arctan2(pos[2], pos[0])
 
-        theta = np.clip(theta + delta_theta, 0, ti.pi)
-        phi += delta_phi
+        #radius = np.linalg.norm(pos)
+        #theta = np.arccos(pos[1] / radius)
+        #phi = np.arctan2(pos[2], pos[0])
 
-        pos[0] = radius * np.sin(theta) * np.cos(phi)
-        pos[2] = radius * np.sin(theta) * np.sin(phi)
-        pos[1] = radius * np.cos(theta)
+        self.theta = np.clip(self.theta + delta_theta, 0, np.pi)
+        self.phi += delta_phi
 
     def on_zoom(self, delta, origin):
-        self.scale *= pow(1.12, delta)
+        self.radius *= pow(0.89, delta)
 
     def on_lmb_drag(self, delta, origin):
         if not self.blendish:
@@ -75,10 +79,10 @@ class Control:
 
         aspect = self.gui.res[0] / self.gui.res[1]
         if self.fov == 0:
-            view = lookat(self.center, self.back, self.up, self.dist)
-            proj = orthogonal(1 / self.scale, aspect)
+            view = lookat(self.center, self.back / self.radius, self.up)
+            proj = orthogonal(self.radius, aspect)
         else:
-            view = lookat(self.center, self.back, self.up, self.dist / self.scale)
+            view = lookat(self.center, self.back, self.up)
             proj = perspective(self.fov, aspect)
 
         engine.set_camera(view, proj)

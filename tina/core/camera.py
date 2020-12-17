@@ -8,7 +8,7 @@ def affine(lin, pos):
     return lin
 
 
-def lookat(pos=(0, 0, 0), back=(0, -1, 0), up=(0, 0, 1), dist=3):
+def lookat(pos=(0, 0, 0), back=(0, 0, 3), up=(0, 1, 1e-12)):
     pos = np.array(pos, dtype=float)
     back = np.array(back, dtype=float)
     up = np.array(up, dtype=float)
@@ -20,7 +20,7 @@ def lookat(pos=(0, 0, 0), back=(0, -1, 0), up=(0, 0, 1), dist=3):
     up = np.cross(right, fwd)
 
     lin = np.transpose(np.stack([right, up, -fwd]))
-    return np.linalg.inv(affine(lin, (pos + back * dist)))
+    return np.linalg.inv(affine(lin, (pos + back)))
 
 
 def ortho(left=-1, right=1, bottom=-1, top=1, near=-100, far=100):
