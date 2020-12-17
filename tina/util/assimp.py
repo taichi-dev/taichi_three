@@ -103,8 +103,7 @@ def writeobj(path, obj, name='Object'):
         f = open(path, 'w')
     with f:
         f.write('# Taichi THREE saved OBJ file\n')
-        f.write('# https://github.com/taichi-dev/taichi-three\n')
-        f.write(f'o {name}\n')
+        f.write('# https://github.com/taichi-dev/taichi_three\n')
         for pos in obj['v']:
             f.write(f'v {" ".join(map(str, pos))}\n')
         for pos in obj['vt']:
