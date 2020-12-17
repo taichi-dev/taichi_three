@@ -21,6 +21,9 @@ control = tina.Control(gui)
 
 accum = tina.Accumator(engine.res)
 
+engine.set_face_verts(verts)
+engine.set_face_norms(norms)
+
 while gui.running:
     engine.randomize_bias(accum.count[None] <= 1)
 
@@ -31,8 +34,6 @@ while gui.running:
     img.fill(0)
     engine.clear_depth()
 
-    engine.set_face_verts(verts)
-    engine.set_face_norms(norms)
     engine.render(shader)
 
     accum.update(img)

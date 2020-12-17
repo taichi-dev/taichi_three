@@ -69,7 +69,7 @@ class SimpleShader:
     def shade_color(self, engine, P, f, pos, normal, texcoord):
         normal = mapply_dir(engine.L2V[None], normal).normalized()
 
-        self.img[P] = -normal.z
+        self.img[P] = abs(normal.z)
 
 
 @ti.data_oriented

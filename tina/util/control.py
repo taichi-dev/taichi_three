@@ -8,8 +8,8 @@ class Control:
     def __init__(self, gui, fov=60, blendish=False):
         self.gui = gui
         self.center = np.array([0, 0, 0], dtype=float)
-        self.up = np.array([0, 1e-12, 1], dtype=float)
-        self.back = np.array([0, -1, 0], dtype=float)
+        self.up = np.array([0, 1, 1e-12], dtype=float)
+        self.back = np.array([0, 0, 1], dtype=float)
         self.dist = 3
         self.scale = 1.0
         self.fov = fov
@@ -37,15 +37,15 @@ class Control:
         delta_theta = delta[1] * ti.pi
         pos = self.back
         radius = np.linalg.norm(pos)
-        theta = np.arccos(pos[2] / radius)
-        phi = np.arctan2(pos[1], pos[0])
+        theta = np.arccos(pos[1] / radius)
+        phi = np.arctan2(pos[2], pos[0])
 
         theta = np.clip(theta + delta_theta, 0, ti.pi)
-        phi -= delta_phi
+        phi += delta_phi
 
         pos[0] = radius * np.sin(theta) * np.cos(phi)
-        pos[1] = radius * np.sin(theta) * np.sin(phi)
-        pos[2] = radius * np.cos(theta)
+        pos[2] = radius * np.sin(theta) * np.sin(phi)
+        pos[1] = radius * np.cos(theta)
 
     def on_zoom(self, delta, origin):
         self.scale *= pow(1.12, delta)
