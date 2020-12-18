@@ -7,7 +7,7 @@ ti.init(ti.cpu)
 #verts = tina.objverts(obj)
 #coors = tina.objcoors(obj)
 
-mesh = tina.MeshGrid(3)
+mesh = tina.MeshGrid(32)
 
 engine = tina.Engine(texturing=True)
 lighting = tina.Lighting()

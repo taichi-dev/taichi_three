@@ -224,7 +224,7 @@ class Engine:
                     self.norms[i, k] = norms[k]
             if ti.static(self.texturing):
                 coors = mesh.get_face_coors(i)
-                for k in ti.static(range(2)):
+                for k in ti.static(range(3)):
                     self.coors[i, k] = coors[k]
 
     @ti.kernel

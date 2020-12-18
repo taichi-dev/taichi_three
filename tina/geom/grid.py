@@ -37,11 +37,11 @@ class MeshGrid:
     @ti.func
     def _get_face_props(self, prop, n):
         stride = self.res.x - 1
-        i, j = V(n // 2 % stride, n // 2 // stride)
+        i, j = V(n // 2 // stride, n // 2 % stride)
         a, b = prop[i, j], prop[i + 1, j]
         c, d = prop[i + 1, j + 1], prop[i, j + 1]
         if n % 2 != 0:
-            a, b, c = c, d, a
+            a, b, c = a, c, d
         return a, b, c
 
     @ti.func

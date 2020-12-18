@@ -72,7 +72,7 @@ scene.init_control(gui,
         radius=1.5)
 
 scene.lighting.clear_lights()
-scene.lighting.add_light(dir=[0, 1, 1])
+scene.lighting.add_light(dir=[0, 1, 1], color=[0.9, 0.9, 0.9])
 scene.lighting.set_ambient_light([0.1, 0.1, 0.1])
 
 ball.set_transform(tina.translate(ball_pos) @ tina.scale(ball_radius))
