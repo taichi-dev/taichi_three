@@ -32,6 +32,9 @@ engine = tina.Engine()
 #
 # the shader also wants an field as frame buffer for storing result:
 img = ti.Vector.field(3, float, engine.res)
+# here we use the `tina.SimpleShader` for simplicity of this tutorial
+# basically it shade color by how close the face normal is to view direction
+# see docs/lighting.py for advanced shaders with lights and materials
 shader = tina.SimpleShader(img)
 
 # 3. GUI - we need to create an window for display (if not offline rendering):
