@@ -1,10 +1,11 @@
-from tina.common import *
+from ..common import *
+from .base import MeshEditBase
 
 
-@ti.data_oriented
-class Transform:
+class Transform(MeshEditBase):
     def __init__(self, mesh):
-        self.mesh = mesh
+        super().__init__(mesh)
+
         self.trans = ti.Matrix.field(4, 4, float, ())
         self.trans_normal = ti.Matrix.field(3, 3, float, ())
 
@@ -20,23 +21,11 @@ class Transform:
         self.trans_normal[None] = np.array(trans_normal).tolist()
 
     @ti.func
-    def pre_compute(self):
-        self.mesh.pre_compute()
-
-    @ti.func
-    def get_nfaces(self):
-        return self.mesh.get_nfaces()
-
-    @ti.func
     def get_face_verts(self, n):
         verts = self.mesh.get_face_verts(n)
         for i, vert in ti.static(enumerate(verts)):
             verts[i] = mapply_pos(self.trans[None], vert)
         return verts
-
-    @ti.func
-    def get_face_coors(self, n):
-        return self.mesh.get_face_coors(n)
 
     @ti.func
     def get_face_norms(self, n):

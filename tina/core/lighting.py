@@ -12,9 +12,9 @@ class Lighting:
         @ti.materialize_callback
         @ti.kernel
         def init_lights():
-            self.nlights[None] = 1
-            self.light_dirs[0] = [0, 0, 1, 0]
+            self.nlights[None] = 0
             for i in self.light_dirs:
+                self.light_dirs[i] = [0, 0, 1, 0]
                 self.light_colors[i] = [1, 1, 1]
 
     def set_lights(self, light_dirs):
@@ -22,6 +22,22 @@ class Lighting:
         for i, (dir, color) in enumerate(light_dirs):
             self.light_dirs[i] = dir
             self.light_colors[i] = color
+
+    def clear_lights(self):
+        self.nlights[None] = 0
+
+    def add_light(self, dir_or_pos, color=[1, 1, 1], is_directional=True):
+        i = self.nlights[None]
+        self.nlights[None] = i + 1
+        dir = np.array(dir_or_pos)
+        dirw = 1
+        if is_directional:
+            dir = dir / np.linalg.norm(dir)
+            dirw = 0
+        color = np.array(color)
+        self.light_dirs[i] = dir.tolist() + [dirw]
+        self.light_colors[i] = color.tolist()
+        return i
 
     def set_ambient_light(self, color):
         self.ambient_color[None] = np.array(color).tolist()

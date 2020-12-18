@@ -5,7 +5,6 @@
 __pycache__
 /GNUmakefile
 /.*_localrc
-/tags
 /.idea
 /*.ipynb
 /.vscode
@@ -17,3 +16,4 @@ package-lock.json
 /M275
 *.xcf
 *.png
+tags

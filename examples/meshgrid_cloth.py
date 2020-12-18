@@ -5,6 +5,7 @@ import tina
 
 from tina.geom.grid import MeshGrid
 from tina.geom.mesh import MeshModel
+from tina.geom.cull import NoCulling, FlipNormal
 from tina.geom.trans import Transform
 
 ti.init(arch=ti.gpu)
@@ -58,15 +59,14 @@ def substep():
 
 ### Rendering GUI
 
-engine = tina.Engine(smoothing=True, culling=False)
+engine = tina.Engine(smoothing=True)
 
 img = ti.Vector.field(3, float, engine.res)
-shader = tina.SimpleShader(img)
-#lighting = tina.Lighting()
-#material = tina.CookTorrance()
-#shader = tina.Shader(img, lighting, material)
+lighting = tina.Lighting()
+material = tina.CookTorrance()
+shader = tina.Shader(img, lighting, material)
 
-mesh = MeshGrid((N, N))
+mesh = NoCulling(FlipNormal(MeshGrid((N, N))))
 ball = Transform(MeshModel('assets/sphere.obj'))
 
 
@@ -75,6 +75,9 @@ control = tina.Control(gui)
 control.center[:] = ball_pos
 control.theta = np.pi / 2 - np.radians(30)
 control.radius = 1.5
+
+lighting.add_light([0, 1, 1], is_directional=True)
+lighting.set_ambient_light([0.1, 0.1, 0.1])
 
 ball.set_transform(tina.translate(ball_pos) @ tina.scale(ball_radius))
 

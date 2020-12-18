@@ -112,11 +112,11 @@ class Shader:
         for l in ti.smart(self.lighting.get_lights_range()):
             light, lcolor = self.lighting.get_light_data(l)
             light_dir = light.xyz - pos * light.w
+            light_distance = light_dir.norm()
+            light_dir /= light_distance
             cos_i = normal.dot(light_dir)
             if cos_i > 0:
-                light_distance = light_dir.norm()
-                light_dir /= light_distance
-                lcolor /= light_distance**3
+                lcolor /= light_distance**2
                 mcolor = self.material.brdf(pars, light_dir, viewdir)
                 res += cos_i * lcolor * mcolor
 
