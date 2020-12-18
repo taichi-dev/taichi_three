@@ -116,4 +116,12 @@ def list_subscript(a, i):
     return ret
 
 
+class namespace(dict):
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError as e:
+            raise AttributeError(name) from None
+
+
 import tina

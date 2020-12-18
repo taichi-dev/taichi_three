@@ -29,22 +29,16 @@ shader = tina.Shader(img, lighting, material)
 gui = ti.GUI('lighting')
 control = tina.Control(gui)
 
+# adds a directional light with direction (0, 0, 1), with white color
+# the direction will be automatically normalized to obtain desired result
+lighting.add_light(dir=[0, 0, 1], color=[1, 1, 1])
+# adds a point light at position (1, 1.5, 0.3), with red color
+lighting.add_light(pos=[1, 1.5, 0.3], color=[1, 0, 0])
+# specifies the ambient color to be dark green
+lighting.set_ambient_light([0, 0.06, 0])
+
 while gui.running:
     control.get_camera(engine)
-
-    # specify the number of lights being used:
-    lighting.nlights[None] = 2
-
-    # adds a directional light with direction (0, 0, 1), with white color
-    # the direction should be normalized to get desired result
-    lighting.light_dirs[0] = [0, 0, 1, 0]
-    lighting.light_colors[0] = [1, 1, 1]
-    # adds a point light at position (1, 1.5, 0.3), with red color
-    lighting.light_dirs[1] = [1, 1.5, 0.3, 1]
-    lighting.light_colors[1] = [1, 0, 0]
-
-    # specifies the ambient color to be dark green
-    lighting.ambient_color[None] = [0, 0.06, 0]
 
     img.fill(0)
     engine.clear_depth()

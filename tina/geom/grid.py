@@ -26,7 +26,7 @@ class MeshGrid:
             j1 = min(j + 1, self.res.y - 1)
             dy = self.pos[i, j1] - self.pos[i, j2]
             dx = self.pos[i1, j] - self.pos[i2, j]
-            self.nrm[i, j] = dy.cross(dx).normalized()
+            self.nrm[i, j] = dx.cross(dy).normalized()
 
     @ti.func
     def get_nfaces(self):

@@ -26,12 +26,14 @@ class Lighting:
     def clear_lights(self):
         self.nlights[None] = 0
 
-    def add_light(self, dir_or_pos, color=[1, 1, 1], is_directional=True):
+    def add_light(self, dir=[0, 0, 1], pos=None, color=[1, 1, 1]):
         i = self.nlights[None]
         self.nlights[None] = i + 1
-        dir = np.array(dir_or_pos)
-        dirw = 1
-        if is_directional:
+        if pos is not None:
+            dir = np.array(pos)
+            dirw = 1
+        else:
+            dir = np.array(dir)
             dir = dir / np.linalg.norm(dir)
             dirw = 0
         color = np.array(color)

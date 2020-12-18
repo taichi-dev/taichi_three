@@ -35,3 +35,4 @@ from .advans import *
 from .core import *
 from .util import *
 from .geom import *
+from .scene import *
