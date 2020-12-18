@@ -1,6 +1,6 @@
 # In this episode, you'll learn how to enable smooth shading in Tina
 #
-# This tutorial is based on examples/monkey.py, make sure you check that first
+# This tutorial is based on docs/monkey.py, make sure you check that first
 
 import taichi as ti
 import tina
