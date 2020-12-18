@@ -211,6 +211,19 @@ class Engine:
         return A, B, C
 
     @ti.kernel
+    def set_mesh(self, mesh: ti.template()):
+        mesh.pre_compute()
+        self.nfaces[None] = mesh.get_nfaces()
+        for i in range(self.nfaces[None]):
+            verts = mesh.get_face_verts(i)
+            for k in ti.static(range(3)):
+                self.verts[i, k] = verts[k]
+            if ti.static(self.smoothing):
+                norms = mesh.get_face_norms(i)
+                for k in ti.static(range(3)):
+                    self.norms[i, k] = norms[k]
+
+    @ti.kernel
     def set_face_verts(self, verts: ti.ext_arr()):
         self.nfaces[None] = min(verts.shape[0], self.verts.shape[0])
         for i in range(self.nfaces[None]):

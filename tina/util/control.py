@@ -9,9 +9,8 @@ class Control:
         self.gui = gui
         self.center = np.array([0, 0, 0], dtype=float)
         self.up = np.array([0, 1, 1e-12], dtype=float)
-        self.scale = 1.0
-        self.radius = 3
-        self.theta = np.pi / 2
+        self.radius = 3.0
+        self.theta = np.pi / 2 - 1e-5
         self.phi = np.pi / 2
         self.fov = fov
 

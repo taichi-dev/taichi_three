@@ -1,6 +1,10 @@
 from ..common import *
 
 
+def identity():
+    return np.eye(4)
+
+
 def affine(lin, pos):
     lin = np.concatenate([lin, np.zeros((1, 3))], axis=0)
     pos = np.concatenate([pos, np.ones(1)])

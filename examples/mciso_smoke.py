@@ -19,7 +19,7 @@ shader = tina.SimpleShader(img)
 gui = ti.GUI('mciso_smoke', engine.res, fast_gui=True)
 control = tina.Control(gui)
 control.center[:] = [0.5, 0.5, 0.5]
-control.scale = 2
+control.radius = 1.5
 
 accum = tina.Accumator(engine.res)
 

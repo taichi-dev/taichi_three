@@ -113,7 +113,7 @@ shader = tina.SimpleShader(img)
 gui = ti.GUI('mciso_mpm3d', engine.res)
 control = tina.Control(gui)
 control.center[:] = [0.5, 0.5, 0.5]
-control.scale = 2
+control.radius = 1.5
 
 init()
 while gui.running:
