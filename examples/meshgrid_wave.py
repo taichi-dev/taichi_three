@@ -5,8 +5,6 @@ import tina
 ti.init(ti.gpu)
 
 
-mesh = tina.MeshGrid(64)
-
 @ti.func
 def Z(xy, t):
     return 0.1 * ti.sin(10 * xy.norm() - ti.tau * t)
@@ -17,24 +15,18 @@ def deform_mesh(t: float):
         mesh.pos[i, j].z = Z(mesh.pos[i, j].xy, t)
 
 
-engine = tina.Engine(smoothing=True, culling=False)
+scene = tina.Scene(smoothing=True)
 
-img = ti.Vector.field(3, float, engine.res)
-shader = tina.SimpleShader(img)
+mesh = tina.NoCulling(tina.MeshGrid(64))
+scene.add_object(mesh)
 
-gui = ti.GUI('meshgrid_wave', engine.res)
-control = tina.Control(gui)
+gui = ti.GUI('meshgrid_wave', scene.res)
 
 while gui.running:
-    control.get_camera(engine)
+    scene.input(gui)
 
-    deform_mesh(time.time() % 1e5)
+    deform_mesh(gui.frame * 0.01)
 
-    img.fill(0)
-    engine.clear_depth()
-
-    engine.set_mesh(mesh)
-    engine.render(shader)
-
-    gui.set_image(img)
+    scene.render()
+    gui.set_image(scene.img)
     gui.show()

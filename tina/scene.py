@@ -3,15 +3,19 @@ from .common import *
 
 @ti.data_oriented
 class Scene:
-    def __init__(self, res=512, **options):
+    def __init__(self, res=512, taa=False, **options):
         self.engine = tina.Engine(res, **options)
         self.res = self.engine.res
 
-        self.img = ti.Vector.field(3, float, self.res)
+        self.image = ti.Vector.field(3, float, self.res)
         self.lighting = tina.Lighting()
         self.default_material = tina.Lambert()
         self.shaders = {}
         self.objects = {}
+
+        self.taa = taa
+        if self.taa:
+            self.accum = tina.Accumator(self.res)
 
         @ti.materialize_callback
         def init_light():
@@ -20,24 +24,34 @@ class Scene:
 
     def _ensure_material_shader(self, material):
         if material not in self.shaders:
-            shader = tina.Shader(self.img, self.lighting, material)
+            shader = tina.Shader(self.image, self.lighting, material)
             self.shaders[material] = shader
 
-    def add_object(self, mesh, material=None):
+    def add_object(self, mesh, material=None, **options):
         assert mesh not in self.objects
         if material is None:
             material = self.default_material
 
         self._ensure_material_shader(material)
-        model = tina.Transform(mesh)
 
-        self.objects[mesh] = namespace(model=model, material=material)
+        self.objects[mesh] = namespace(material=material, **options)
 
-    def set_object_transform(self, mesh, trans):
-        self.objects[mesh].model.set_transform(trans)
+    def init_control(self, gui, center=None, theta=None, phi=None, radius=None):
+        self.control = tina.Control(gui)
+        if center is not None:
+            self.control.center[:] = center
+        if theta is not None:
+            self.control.theta = theta
+        if phi is not None:
+            self.control.phi = phi
+        if radius is not None:
+            self.control.radius = radius
 
     def render(self):
-        self.img.fill(0)
+        if self.taa:
+            self.engine.randomize_bias(self.accum.count[None] == 0)
+
+        self.image.fill(0)
         self.engine.clear_depth()
 
         for mesh, object in self.objects.items():
@@ -45,29 +59,19 @@ class Scene:
             self.engine.set_mesh(mesh)
             self.engine.render(shader)
 
+        if self.taa:
+            self.accum.update(self.image)
+
+    @property
+    def img(self):
+        if self.taa:
+            return self.accum.img
+        return self.image
+
     def input(self, gui):
         if not hasattr(self, 'control'):
             self.control = tina.Control(gui)
-        self.control.get_camera(self.engine)
-
-
-if __name__ == '__main__':
-    scene = Scene(smoothing=True)
-
-    mesh = tina.NoCulling(tina.MeshGrid(64))
-    scene.add_object(mesh)
-
-    @ti.kernel
-    def deform_mesh(t: float):
-        for i, j in mesh.pos:
-            xy = mesh.pos[i, j].xy
-            z = 0.1 * ti.sin(10 * xy.norm() - ti.tau * t)
-            mesh.pos[i, j].z = z
-
-    gui = ti.GUI('scene', scene.res)
-    while gui.running:
-        scene.input(gui)
-        deform_mesh(gui.frame * 0.03)
-        scene.render()
-        gui.set_image(scene.img)
-        gui.show()
+        changed = self.control.get_camera(self.engine)
+        if changed and self.taa:
+            self.accum.clear()
+        return changed

@@ -54,32 +54,31 @@ def substep():
 
 ### Rendering GUI
 
-engine = tina.Engine(smoothing=True)
+scene = tina.Scene(smoothing=True)
 
-img = ti.Vector.field(3, float, engine.res)
-lighting = tina.Lighting()
-material = tina.CookTorrance()
-shader = tina.Shader(img, lighting, material)
-
-mesh = tina.NoCulling(tina.FlipNormal(tina.MeshGrid((N, N))))
+mesh = tina.NoCulling(tina.MeshGrid((N, N)))
 ball = tina.Transform(tina.MeshModel('assets/sphere.obj'))
 
+scene.add_object(mesh)
+scene.add_object(ball)
 
-gui = ti.GUI('Mass Spring', engine.res)
-control = tina.Control(gui)
-control.center[:] = ball_pos
-control.theta = np.pi / 2 - np.radians(30)
-control.radius = 1.5
 
-lighting.add_light([0, 1, 1], is_directional=True)
-lighting.set_ambient_light([0.1, 0.1, 0.1])
+gui = ti.GUI('Mass Spring', scene.res)
+scene.init_control(gui,
+        center=ball_pos,
+        theta=np.pi / 2 - np.radians(30),
+        radius=1.5)
+
+scene.lighting.clear_lights()
+scene.lighting.add_light(dir=[0, 1, 1])
+scene.lighting.set_ambient_light([0.1, 0.1, 0.1])
 
 ball.set_transform(tina.translate(ball_pos) @ tina.scale(ball_radius))
 
 init()
 
 while gui.running:
-    control.get_camera(engine)
+    scene.input(gui)
 
     if not gui.is_pressed(gui.SPACE):
         for i in range(steps):
@@ -88,16 +87,8 @@ while gui.running:
     if gui.is_pressed('r'):
         init()
 
-    img.fill(0)
-    engine.clear_depth()
-
     mesh.pos.copy_from(x)
 
-    engine.set_mesh(mesh)
-    engine.render(shader)
-
-    engine.set_mesh(ball)
-    engine.render(shader)
-
-    gui.set_image(img)
+    scene.render()
+    gui.set_image(scene.img)
     gui.show()
