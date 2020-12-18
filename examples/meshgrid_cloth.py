@@ -3,11 +3,6 @@ import taichi_glsl as tl
 import numpy as np
 import tina
 
-from tina.geom.grid import MeshGrid
-from tina.geom.mesh import MeshModel
-from tina.geom.cull import NoCulling, FlipNormal
-from tina.geom.trans import Transform
-
 ti.init(arch=ti.gpu)
 
 ### Parameters
@@ -66,8 +61,8 @@ lighting = tina.Lighting()
 material = tina.CookTorrance()
 shader = tina.Shader(img, lighting, material)
 
-mesh = NoCulling(FlipNormal(MeshGrid((N, N))))
-ball = Transform(MeshModel('assets/sphere.obj'))
+mesh = tina.NoCulling(tina.FlipNormal(tina.MeshGrid((N, N))))
+ball = tina.Transform(tina.MeshModel('assets/sphere.obj'))
 
 
 gui = ti.GUI('Mass Spring', engine.res)

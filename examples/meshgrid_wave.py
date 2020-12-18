@@ -1,12 +1,11 @@
 import taichi as ti
 import time
 import tina
-from tina.geom.grid import MeshGrid
 
 ti.init(ti.gpu)
 
 
-mesh = MeshGrid(64)
+mesh = tina.MeshGrid(64)
 
 @ti.func
 def Z(xy, t):
