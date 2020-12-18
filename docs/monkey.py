@@ -1,51 +1,34 @@
 # Tina is a real-time soft renderer based on Taichi for visualizing 3D scenes.
 #
-# To get started, let's try to load a monkey model and display it in the GUI.
+# To get started, let's try to load and display a monkey model in the GUI.
 
 import taichi as ti
-import tina   # import our renderer
+import tina
 
 ti.init(ti.gpu)  # use GPU backend for better speed
 
-# `tina.readobj` is an utility function for loading mesh model from OBJ files
-# it will also trianglize the mesh for convenience to store in numpy array.
-obj = tina.readobj('assets/monkey.obj')
-# get the triangle vertex positions of the model
-verts = tina.objverts(obj)
-print(verts)
-
-# to make tina actually display things, we need four things:
+# to make tina actually display things, we need at least three things:
 #
-# 1. Engine - the core implementation of rasterization
-engine = tina.Engine()
+# 1. Scene - the top structure that manages all resources in the scene
+scene = tina.Scene()
 
-# 2. Shader - the method to *shade* the object
+# 2. Model - the model to be displayed
 #
-# the shader also wants an field as frame buffer for storing result:
-img = ti.Vector.field(3, float, engine.res)
-# here we use the `tina.SimpleShader` for simplicity of this tutorial
-# basically it shade color by how close the face normal is to view direction
-# see docs/lighting.py for advanced shaders with lights and materials
-shader = tina.SimpleShader(img)
+# here we use `tina.MeshModel` which can load models from OBJ format files
+model = tina.MeshModel('assets/monkey.obj')
+# and, don't forget to add the model into the scene so that it gets displayed
+scene.add_object(model)
 
-# 3. GUI - we need to create an window for display (if not offline rendering):
+# 3. GUI - we also need to create an window for display
 gui = ti.GUI('monkey')
-# 4. Control - allows you to control the camera with mouse drags
-control = tina.Control(gui)
 
 while gui.running:
-    # update the camera transform from the controller
-    control.get_camera(engine)
+    # update the camera transform from mouse events (will invoke gui.get_events)
+    scene.input(gui)
 
-    # clear frame buffer and depth
-    img.fill(0)
-    engine.clear_depth()
+    # render scene to image
+    scene.render()
 
-    # specify the mesh vertices
-    engine.set_face_verts(verts)
-    # render it to image with shader
-    engine.render(shader)
-
-    # update the image to GUI
-    gui.set_image(img)
+    # show the image in GUI
+    gui.set_image(scene.img)
     gui.show()

@@ -4,7 +4,7 @@
 
 import taichi as ti
 import numpy as np
-import tina   # import our renderer
+import tina
 
 # Tina use a right-handed coordinate system in world space:
 #
@@ -21,40 +21,32 @@ verts = np.array([[
     [ 0,  1,  0],  # vertex 3
     ]])
 # also note that face vertices needs to be **counter-clockwise** to be visible
-# you may disable such face culling policy by using tina.Engine(culling=False)
+# you may disable such face culling policy by using tina.Scene(culling=False)
 
-# to make tina actually display things, we need five things:
+# to make tina actually display things, we need at least three things:
 #
-# 1. Engine - the core implementation of rasterization
-engine = tina.Engine()
+# 1. Scene - the top structure that manages all resources in the scene
+scene = tina.Scene()
 
-# 2. Shader - the method to *shade* the object
+# 2. Model - the model to be displayed
 #
-# the shader also wants an field as frame buffer for storing result:
-img = ti.Vector.field(3, float, engine.res)
-# here we use the `tina.SimpleShader` for simplicity of this tutorial
-# basically it shade color by how close the face normal is to view direction
-# see docs/lighting.py for advanced shaders with lights and materials
-shader = tina.SimpleShader(img)
+# here we use `tina.SimpleMesh` which allows use to specify the vertices manually
+mesh = tina.SimpleMesh()
+# and, don't forget to add the object into the scene so that it gets displayed
+scene.add_object(mesh)
 
-# 3. GUI - we need to create an window for display (if not offline rendering):
+# 3. GUI - we also need to create an window for display
 gui = ti.GUI('triangle')
-# 4. Control - allows you to control the camera with mouse drags
-control = tina.Control(gui)
 
 while gui.running:
-    # update the camera transform from the controller
-    control.get_camera(engine)
+    # update the camera transform from mouse events (will invoke gui.get_events)
+    scene.input(gui)
 
-    # clear frame buffer and depth
-    img.fill(0)
-    engine.clear_depth()
+    # set face vertices by feeding a numpy array into it
+    mesh.set_face_verts(verts)
+    # render scene to image
+    scene.render()
 
-    # specify the mesh vertices
-    engine.set_face_verts(verts)
-    # render it to image with shader
-    engine.render(shader)
-
-    # update the image to GUI
-    gui.set_image(img)
+    # show the image in GUI
+    gui.set_image(scene.img)
     gui.show()

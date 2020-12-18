@@ -2,12 +2,12 @@ from ..common import *
 
 
 @ti.data_oriented
-class DynamicMesh:
+class SimpleMesh:
     def __init__(self, maxfaces=65536, npolygon=3):
-        self.verts = ti.Vector.field(3, float, (maxfaces, npolyon))
-        self.coors = ti.Vector.field(2, float, (maxfaces, npolyon))
-        self.norms = ti.Vector.field(3, float, (maxfaces, npolyon))
-        self.nfaces = ti.field(float, ())
+        self.verts = ti.Vector.field(3, float, (maxfaces, npolygon))
+        self.coors = ti.Vector.field(2, float, (maxfaces, npolygon))
+        self.norms = ti.Vector.field(3, float, (maxfaces, npolygon))
+        self.nfaces = ti.field(int, ())
 
         self.maxfaces = maxfaces
         self.npolygon = npolygon
