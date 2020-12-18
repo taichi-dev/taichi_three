@@ -6,13 +6,14 @@ bl_info = {
         'blender': (2, 81, 0),
         'location': 'Render -> Tina',
         'support': 'COMMUNITY',
-        'wiki_url': 'https://github.com/archibate/tina/wiki',
-        'tracker_url': 'https://github.com/archibate/tina/issues',
+        'wiki_url': 'https://github.com/taichi-dev/taichi_three/wiki',
+        'tracker_url': 'https://github.com/taichi-dev/taichi_three/issues',
         'category': 'Render',
 }
 
 __version__ = bl_info['version']
 __author__ = bl_info['author']
+__license__ = 'MIT'
 
 print('[Tina] version', '.'.join(map(str, __version__)))
 
