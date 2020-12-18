@@ -131,6 +131,7 @@ while gui.running:
     mciso.march()
 
     # faces, verts, norms = mciso.get_mesh()
+    # tina.writeobj(f'/tmp/{gui.frame:04d}.obj', dict(v=verts, vn=norms, f=faces))
 
     scene.render()
 

@@ -96,22 +96,29 @@ def readobj(path, orient='xyz', scale=None, simple=False):
     return ret
 
 
-def writeobj(path, obj, name='Object'):
+def writeobj(path, obj):
     if callable(getattr(path, 'write', None)):
         f = path
     else:
         f = open(path, 'w')
     with f:
-        f.write('# Taichi THREE saved OBJ file\n')
+        f.write('# OBJ file saved by tina.writeobj\n')
         f.write('# https://github.com/taichi-dev/taichi_three\n')
         for pos in obj['v']:
             f.write(f'v {" ".join(map(str, pos))}\n')
-        for pos in obj['vt']:
-            f.write(f'vt {" ".join(map(str, pos))}\n')
-        for pos in obj['vn']:
-            f.write(f'vn {" ".join(map(str, pos))}\n')
-        for i, face in enumerate(obj['f']):
-            f.write(f'f {" ".join("/".join(map(str, f + 1)) for f in face)}\n')
+        if 'vt' in obj:
+            for pos in obj['vt']:
+                f.write(f'vt {" ".join(map(str, pos))}\n')
+        if 'vn' in obj:
+            for pos in obj['vn']:
+                f.write(f'vn {" ".join(map(str, pos))}\n')
+        if 'f' in obj:
+            if len(obj['f'].shape) >= 3:
+                for i, face in enumerate(obj['f']):
+                    f.write(f'f {" ".join("/".join(map(str, f + 1)) for f in face)}\n')
+            else:
+                for i, face in enumerate(obj['f']):
+                    f.write(f'f {" ".join("/".join([str(f + 1)] * 3) for f in face)}\n')
 
 
 def objunpackmtls(obj):
