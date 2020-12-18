@@ -43,6 +43,17 @@ class NormalShader:
 
 
 @ti.data_oriented
+class TexcoordShader:
+    def __init__(self, img, size=0.05):
+        self.img = img
+        self.size = size
+
+    @ti.func
+    def shade_color(self, engine, P, f, pos, normal, texcoord):
+        self.img[P] = V23(texcoord, 0.0)
+
+
+@ti.data_oriented
 class ChessboardShader:
     def __init__(self, img, size=0.05):
         self.img = img
@@ -50,7 +61,6 @@ class ChessboardShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        normal = normal.normalized()
         self.img[P] = lerp((texcoord // self.size).sum() % 2, 0.4, 0.9)
 
 

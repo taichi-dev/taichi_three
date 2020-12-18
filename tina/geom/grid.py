@@ -9,13 +9,15 @@ class MeshGrid:
         self.res = V(*res)
         self.pos = ti.Vector.field(3, float, self.res)
         self.nrm = ti.Vector.field(3, float, self.res)
+        self.tex = ti.Vector.field(2, float, self.res)
 
         @ti.materialize_callback
         @ti.kernel
         def init_pos():
             for I in ti.grouped(self.pos):
-                u, v = I / (self.res - 1) * 2 - 1
-                self.pos[I] = V(u, v, 0)
+                u, v = I / (self.res - 1)
+                self.tex[I] = V(u, v)
+                self.pos[I] = V(u * 2 - 1, v * 2 - 1, 0)
 
     @ti.func
     def pre_compute(self):
@@ -49,3 +51,7 @@ class MeshGrid:
     @ti.func
     def get_face_norms(self, n):
         return self._get_face_props(self.nrm, n)
+
+    @ti.func
+    def get_face_coors(self, n):
+        return self._get_face_props(self.tex, n)

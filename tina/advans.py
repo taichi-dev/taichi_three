@@ -2,7 +2,10 @@ from .common import *
 
 
 def texture_as_field(filename):
-    img_np = np.float32(ti.imread(filename) / 255)
+    if isinstance(filename, str):
+        img_np = np.float32(ti.imread(filename) / 255)
+    else:
+        img_np = np.array(filename)
     img = ti.Vector.field(3, float, img_np.shape[:2])
 
     @ti.materialize_callback

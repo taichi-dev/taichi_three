@@ -54,12 +54,14 @@ def substep():
 
 ### Rendering GUI
 
-scene = tina.Scene(smoothing=True)
+scene = tina.Scene(smoothing=True, texturing=True)
 
 mesh = tina.NoCulling(tina.MeshGrid((N, N)))
 ball = tina.Transform(tina.MeshModel('assets/sphere.obj'))
 
-scene.add_object(mesh)
+cloth = tina.CookTorrance(basecolor=tina.Texture('assets/cloth.jpg'))
+
+scene.add_object(mesh, cloth)
 scene.add_object(ball)
 
 

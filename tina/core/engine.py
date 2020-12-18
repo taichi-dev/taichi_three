@@ -222,6 +222,10 @@ class Engine:
                 norms = mesh.get_face_norms(i)
                 for k in ti.static(range(3)):
                     self.norms[i, k] = norms[k]
+            if ti.static(self.texturing):
+                coors = mesh.get_face_coors(i)
+                for k in ti.static(range(2)):
+                    self.coors[i, k] = coors[k]
 
     @ti.kernel
     def set_face_verts(self, verts: ti.ext_arr()):
