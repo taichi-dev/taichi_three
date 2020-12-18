@@ -44,7 +44,7 @@ while gui.running:
 
     # set face vertices by feeding a numpy array into it
     mesh.set_face_verts(verts)
-    # render scene to image
+    # render image with objects (a triangle in this case) in scene
     scene.render()
 
     # show the image in GUI
