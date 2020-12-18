@@ -8,10 +8,10 @@ class Control:
     def __init__(self, gui, fov=60, blendish=False):
         self.gui = gui
         self.center = np.array([0, 0, 0], dtype=float)
-        self.up = np.array([0, 1, 1e-12], dtype=float)
+        #self.up = np.array([0, 1, 1e-12], dtype=float)
         self.radius = 3.0
-        self.theta = np.pi / 2 - 1e-5
-        self.phi = np.pi / 2
+        self.theta = 1e-5
+        self.phi = 0.0
         self.fov = fov
 
         self.lmb = None
@@ -34,20 +34,27 @@ class Control:
 
     @property
     def back(self):
-        x = self.radius * np.sin(self.theta) * np.cos(self.phi)
-        z = self.radius * np.sin(self.theta) * np.sin(self.phi)
+        x = self.radius * np.cos(self.theta) * np.sin(self.phi)
+        z = self.radius * np.cos(self.theta) * np.cos(self.phi)
+        y = self.radius * np.sin(self.theta)
+        return np.array([x, y, z], dtype=float)
+
+    @property
+    def up(self):
+        x = -self.radius * np.sin(self.theta) * np.sin(self.phi)
+        z = -self.radius * np.sin(self.theta) * np.cos(self.phi)
         y = self.radius * np.cos(self.theta)
         return np.array([x, y, z], dtype=float)
 
     def on_orbit(self, delta, origin):
-        delta_phi = delta[0] * ti.pi
-        delta_theta = delta[1] * ti.pi
+        delta_phi = -delta[0] * np.pi
+        delta_theta = -delta[1] * np.pi
 
         #radius = np.linalg.norm(pos)
         #theta = np.arccos(pos[1] / radius)
         #phi = np.arctan2(pos[2], pos[0])
 
-        self.theta = np.clip(self.theta + delta_theta, 0, np.pi)
+        self.theta = np.clip(self.theta + delta_theta, -np.pi / 2, np.pi / 2)
         self.phi += delta_phi
 
     def on_zoom(self, delta, origin):
