@@ -118,7 +118,7 @@ class Shader:
         }
 
         res = V(0.0, 0.0, 0.0)
-        res += self.lighting.get_ambient_light_color()
+        res += self.lighting.get_ambient_light_color() * self.material.ambient(pars)
         for l in ti.smart(self.lighting.get_lights_range()):
             light, lcolor = self.lighting.get_light_data(l)
             light_dir = light.xyz - pos * light.w

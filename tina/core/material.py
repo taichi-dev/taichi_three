@@ -34,6 +34,9 @@ class IMaterial(Node):
     def brdf(self, pars, idir, odir):
         raise NotImplementedError(type(self))
 
+    def ambient(self, pars):
+        return V(1., 1., 1.)
+
 
 class Const(Node):
     def __init__(self, value):
@@ -110,6 +113,9 @@ class CookTorrance(IMaterial):
 
         return kd * basecolor + ks * fdf * vdf * ndf
 
+    def ambient(self, pars):
+        return self.basecolor(pars)
+
 
 class BlinnPhong(IMaterial):
     arguments = ['normal', 'diffuse', 'specular', 'shineness']
@@ -126,6 +132,9 @@ class BlinnPhong(IMaterial):
         ks = (shineness + 8) / 8 * pow(max(0, half.dot(nrm)), shineness)
         return diffuse + ks * specular
 
+    def ambient(self, pars):
+        return self.diffuse(pars)
+
 
 class Lambert(IMaterial):
     arguments = ['color']
@@ -133,4 +142,7 @@ class Lambert(IMaterial):
 
     @ti.func
     def brdf(self, pars, idir, odir):
+        return self.color(pars)
+
+    def ambient(self, pars):
         return self.color(pars)
