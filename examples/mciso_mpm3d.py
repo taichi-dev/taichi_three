@@ -103,21 +103,22 @@ def init():
 
 
 mciso = MCISO(n_grid * 2)
-voxel = Voxelizer(mciso.N, radius=1, weight=50)
+voxel = Voxelizer(mciso.N, radius=2, weight=64)
 
-engine = tina.Engine(smoothing=True)
+scene = tina.Scene(smoothing=True)
 
-img = ti.Vector.field(3, float, engine.res)
-shader = tina.SimpleShader(img)
+gui = ti.GUI('mciso_mpm3d', scene.res)
+scene.init_control(gui, center=[0.5, 0.5, 0.5], radius=1.5)
 
-gui = ti.GUI('mciso_mpm3d', engine.res)
-control = tina.Control(gui)
-control.center[:] = [0.5, 0.5, 0.5]
-control.radius = 1.5
+scene.lighting.clear_lights()
+scene.lighting.add_light([-0.4, 1.5, 1.8], color=[0.8, 0.8, 0.8])
+scene.lighting.set_ambient_light([0.22, 0.22, 0.22])
+
+scene.add_object(mciso)
 
 init()
 while gui.running:
-    control.get_camera(engine)
+    scene.input(gui)
 
     if gui.is_pressed('r'):
         init()
@@ -128,14 +129,10 @@ while gui.running:
     mciso.clear()
     voxel.voxelize(mciso.m, x)
     mciso.march()
-    faces, verts, norms = mciso.get_mesh()
 
-    img.fill(0)
-    engine.clear_depth()
+    # faces, verts, norms = mciso.get_mesh()
 
-    engine.set_face_verts(verts[faces])
-    engine.set_face_norms(norms[faces])
-    engine.render(shader)
+    scene.render()
 
-    gui.set_image(img)
+    gui.set_image(scene.img)
     gui.show()

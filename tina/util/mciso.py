@@ -138,6 +138,28 @@ class MCISO:
             return faces, verts, norms
         return faces, verts
 
+    @ti.func
+    def pre_compute(self):
+        pass
+
+    @ti.func
+    def get_nfaces(self):
+        return self.Js_n[None]
+
+    @ti.func
+    def get_face_verts(self, n):
+        a = (self.vs[self.Jts[n][2]] + 0.5) / self.N
+        b = (self.vs[self.Jts[n][1]] + 0.5) / self.N
+        c = (self.vs[self.Jts[n][0]] + 0.5) / self.N
+        return a, b, c
+
+    @ti.func
+    def get_face_norms(self, n):
+        a = self.ns[self.Jts[n][2]]
+        b = self.ns[self.Jts[n][1]]
+        c = self.ns[self.Jts[n][0]]
+        return a, b, c
+
 
 def extend_bounds(m, bound=1):
     assert len(m.shape) == 3
