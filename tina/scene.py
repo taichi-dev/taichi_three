@@ -3,14 +3,16 @@ from .common import *
 
 @ti.data_oriented
 class Scene:
-    def __init__(self, res=512, taa=False, **options):
+    def __init__(self, res=512, raster_cls=tina.TriangleRaster,
+            taa=False, **options):
         self.engine = tina.Engine(res)
-        self.raster = tina.Raster(self.engine, **options)
+        self.raster = raster_cls(self.engine, **options)
         self.res = self.engine.res
 
         self.image = ti.Vector.field(3, float, self.res)
         self.lighting = tina.Lighting()
         self.default_material = tina.Lambert()
+        self.default_shader = tina.SimpleShader(self.image)
         self.shaders = {}
         self.objects = {}
 
@@ -59,6 +61,10 @@ class Scene:
             shader = self.shaders[object.material]
             self.raster.set_mesh(mesh)
             self.raster.render(shader)
+
+        pos = np.float32(np.random.rand(512, 3) * 2 - 1)
+        self.raster.set_particle_positions(pos)
+        self.raster.render(self.default_shader)
 
         if self.taa:
             self.accum.update(self.image)

@@ -2,7 +2,7 @@ from ..common import *
 
 
 @ti.data_oriented
-class Raster:
+class TriangleRaster:
     def __init__(self, engine, maxfaces=65536, smoothing=False, texturing=False,
             culling=True, clipping=False):
         self.engine = engine
@@ -135,13 +135,12 @@ class Raster:
             n = (b - a).cross(c - a)
             bcn = (b - c) / n
             can = (c - a) / n
-            for i, j in ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1)):
-                pos = float(V(i, j)) + self.engine.bias[None]
+            for P in ti.grouped(ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1))):
+                pos = float(P) + self.engine.bias[None]
                 w_bc = (pos - b).cross(bcn)
                 w_ca = (pos - c).cross(can)
                 wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
                 if all(wei >= 0):
-                    P = int(pos)
                     depth_f = wei.x * Av.z + wei.y * Bv.z + wei.z * Cv.z
                     depth = int(depth_f * self.engine.maxdepth)
                     if ti.atomic_min(self.engine.depth[P], depth) > depth:
@@ -174,6 +173,139 @@ class Raster:
             wei /= wei.x + wei.y + wei.z
 
             self.interpolate(shader, P, f, 1, wei, Al, Bl, Cl)
+
+    def render(self, shader):
+        self.render_occup()
+        self.render_color(shader)
+
+
+@ti.data_oriented
+class ParticleRaster:
+    def __init__(self, engine, maxpars=65536, coloring=False, clipping=False):
+        self.engine = engine
+        self.res = self.engine.res
+        self.maxpars = maxpars
+        self.coloring = coloring
+        self.clipping = clipping
+
+        self.occup = ti.field(int, self.res)
+
+        self.npars = ti.field(int, ())
+        self.verts = ti.Vector.field(3, float, maxpars)
+        self.sizes = ti.field(float, maxpars)
+        if self.coloring:
+            self.colors = ti.Vector.field(3, float, maxpars)
+
+        @ti.materialize_callback
+        def init_pars():
+            self.sizes.fill(0.05)
+            if self.coloring:
+                self.colors.fill(1)
+
+    @ti.func
+    def interpolate(self, shader: ti.template(), P, f, facing, wei, A, B, C):
+        pos = wei.x * A + wei.y * B + wei.z * C
+
+        normal = V(0., 0., 0.)
+        if ti.static(self.smoothing):
+            An, Bn, Cn = self.get_face_normals(f)
+            normal = wei.x * An + wei.y * Bn + wei.z * Cn
+        else:
+            normal = (B - A).cross(C - A)  # let the shader normalize it
+        normal = normal.normalized()
+
+        texcoord = V(0., 0.)
+        if ti.static(self.texturing):
+            At, Bt, Ct = self.get_face_texcoords(f)
+            texcoord = wei.x * At + wei.y * Bt + wei.z * Ct
+
+        if ti.static(not self.culling):
+            if facing < 0:
+                normal = -normal
+        shader.shade_color(self.engine, P, f, pos, normal, texcoord)
+
+    @ti.func
+    def get_particles_range(self):
+        for i in range(self.npars[None]):
+            yield i
+
+    @ti.func
+    def get_particle_position(self, f):
+        return self.verts[f]
+
+    @ti.func
+    def get_particle_radius(self, f):
+        return self.sizes[f]
+
+    @ti.func
+    def get_particle_color(self, f):
+        return self.colors[f]
+
+    @ti.kernel
+    def set_particle_positions(self, verts: ti.ext_arr()):
+        self.npars[None] = min(verts.shape[0], self.verts.shape[0])
+        for i in range(self.npars[None]):
+            for k in ti.static(range(3)):
+                self.verts[i][k] = verts[i, k]
+
+    @ti.kernel
+    def set_particle_radii(self, sizes: ti.ext_arr()):
+        for i in range(self.npars[None]):
+            self.sizes[i] = sizes[i]
+
+    @ti.kernel
+    def set_particle_colors(self, colors: ti.ext_arr()):
+        ti.static_assert(self.coloring)
+        for i in range(self.npars[None]):
+            for k in ti.static(range(3)):
+                self.colors[i][k] = colors[i, k]
+
+    @ti.kernel
+    def render_occup(self):
+        for P in ti.grouped(self.occup):
+            self.occup[P] = -1
+        for f in ti.smart(self.get_particles_range()):
+            Al = self.get_particle_position(f)
+            Rl = self.get_particle_radius(f)
+            Av = self.engine.to_viewspace(Al)
+            Rv = self.engine.to_viewspace_scalar(Rl)
+            if ti.static(self.clipping):
+                if not all(-1 - Rv <= Av <= 1 + Rv):
+                    continue
+
+            a = self.engine.to_viewport(Av)
+            r = self.engine.to_viewport_scalar(Rv)
+
+            bot, top = ifloor(a - r), iceil(a + r)
+            bot, top = max(bot, 0), min(top, self.res - 1)
+            for P in ti.grouped(ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1))):
+                pos = float(P) + self.engine.bias[None]
+
+                dpos = pos - a.xy
+                dp2 = dpos.norm_sqr()
+                if dp2 > r**2:
+                    continue
+
+                dz = ti.sqrt(r**2 - dp2)
+                nrm = V23(dpos.xy, -dz).normalized()
+
+                depth_f = Av.z  ##
+                depth = int(depth_f * self.engine.maxdepth)
+                if ti.atomic_min(self.engine.depth[P], depth) > depth:
+                    if self.engine.depth[P] >= depth:
+                        self.occup[P] = f
+
+    @ti.kernel
+    def render_color(self, shader: ti.template()):
+        for P in ti.grouped(self.occup):
+            f = self.occup[P]
+            if f == -1:
+                continue
+
+            pos = self.get_particle_position(f)
+            normal = V(0., 0., 1.)
+            texcoord = V(0., 0.)
+            shader.shade_color(self.engine, P, f, pos, normal, texcoord)
 
     def render(self, shader):
         self.render_occup()
@@ -268,8 +400,17 @@ class Engine:
         return mapply_pos(self.W2V[None], p)
 
     @ti.func
+    def to_viewspace_scalar(self, r):
+        return r  ##
+
+    @ti.func
     def to_viewport(self, p):
         return (p.xy * 0.5 + 0.5) * self.res
+
+    @ti.func
+    def to_viewport_scalar(self, r):
+        avgsize = (self.res.x + self.res.y) / 2
+        return r * avgsize  ##
 
     @ti.kernel
     def clear_depth(self):
