@@ -81,31 +81,29 @@ class ParticleRaster:
         for f in ti.smart(self.get_particles_range()):
             Al = self.get_particle_position(f)
             Rl = self.get_particle_radius(f)
-            X1l = Al - Rl * U3(0)
-            X2l = Al + Rl * U3(0)
-            Y1l = Al - Rl * U3(1)
-            Y2l = Al + Rl * U3(1)
-            Z1l = Al - Rl * U3(2)
-            Z2l = Al + Rl * U3(2)
             Av = self.engine.to_viewspace(Al)
-            if ti.static(self.clipping):
-                if not all(-1 - Rv <= Av <= 1 + Rv):
-                    continue
-
+            DXl = mapply_dir(self.engine.V2W[None], V(1., 0., 0.)).normalized()
+            DYl = mapply_dir(self.engine.V2W[None], V(0., 1., 0.)).normalized()
+            Rv = V(0., 0.)
+            Rv.x = self.engine.to_viewspace(Al + DXl * Rl).x - Av.x
+            Rv.y = self.engine.to_viewspace(Al + DYl * Rl).y - Av.y
+            Bv = [
+                    Av - V(Rv.x, 0., 0.),
+                    Av + V(Rv.x, 0., 0.),
+                    Av - V(0., Rv.y, 0.),
+                    Av + V(0., Rv.y, 0.),
+            ]
             a = self.engine.to_viewport(Av)
-            r = self.engine.to_viewport_scalar(Rv)
+            b = [self.engine.to_viewport(Bv) for Bv in Bv]
 
-            bot, top = ifloor(a - r), iceil(a + r)
+            bot, top = ifloor(min(b[0], b[2])), iceil(max(b[1], b[3]))
             bot, top = max(bot, 0), min(top, self.res - 1)
             for P in ti.grouped(ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1))):
                 p = float(P) + self.engine.bias[None]
-                dpos = self.engine.from_viewport(p) - Av.xy
-                dz = Rv**2 - dpos.norm_sqr()
-                if dz < 0:
+                Pv = V23(self.engine.from_viewport(p), Av.z)
+                Pl = self.engine.from_viewspace(Pv)
+                if (Pl - Al).norm_sqr() > Rl**2:
                     continue
-                dz = ti.sqrt(dz)
-                NV2W = linear_part(self.engine.W2V[None]).transpose()
-                nrm = (NV2W @ V23(dpos, -dz)).normalized()
 
                 depth_f = Av.z
                 depth = int(depth_f * self.engine.maxdepth)
@@ -122,22 +120,27 @@ class ParticleRaster:
 
             Al = self.get_particle_position(f)
             Rl = self.get_particle_radius(f)
-            color = self.get_particle_color(f)
             Av = self.engine.to_viewspace(Al)
-            Rv = self.engine.to_viewspace_scalar(Al, Rl)
-            a = self.engine.to_viewport(Av)
-            r = self.engine.to_viewport_scalar(Rv)
+            DXl = mapply_dir(self.engine.V2W[None], V(1., 0., 0.)).normalized()
+            DYl = mapply_dir(self.engine.V2W[None], V(0., 1., 0.)).normalized()
+            Rv = V(0., 0.)
+            Rv.x = self.engine.to_viewspace(Al + DXl * Rl).x - Av.x
+            Rv.y = self.engine.to_viewspace(Al + DYl * Rl).y - Av.y
 
             p = float(P) + self.engine.bias[None]
-            dpos = self.engine.from_viewport(p) - Av.xy
-            dz = Rv**2 - dpos.norm_sqr()
-            dz = ti.sqrt(dz)
-            NV2W = linear_part(self.engine.W2V[None]).transpose()
-            nrm = (NV2W @ V23(dpos, -dz)).normalized()
+            Pv = V23(self.engine.from_viewport(p), Av.z)
+            Pl = self.engine.from_viewspace(Pv)
 
-            pos = Al
-            normal = nrm
+            Dl = (Pl - Al) / Rl
+            Zl = mapply_dir(self.engine.V2W[None], V(0., 0., 1.)).normalized()
+            Dl -= Zl * ti.sqrt(1 - Dl.norm_sqr())
+            Dl = Dl.normalized()
+
+            normal = Dl
+            pos = Al + Dl * Rl
             texcoord = V(0., 0.)
+            color = self.get_particle_color(f)
+
             shader.shade_color(self.engine, P, f, pos, normal, texcoord, color)
 
     def render(self, shader):

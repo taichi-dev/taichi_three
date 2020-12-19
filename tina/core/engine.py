@@ -88,6 +88,10 @@ class Engine:
         return mapply_pos(self.W2V[None], p)
 
     @ti.func
+    def from_viewspace(self, p):
+        return mapply_pos(self.V2W[None], p)
+
+    @ti.func
     def to_viewport(self, p):
         return (p.xy * 0.5 + 0.5) * self.res
 

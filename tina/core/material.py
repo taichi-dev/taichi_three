@@ -119,7 +119,7 @@ class CookTorrance(IMaterial):
 
 class BlinnPhong(IMaterial):
     arguments = ['normal', 'diffuse', 'specular', 'shineness']
-    defaults = ['normal', 'color', 0.2, 32.0]
+    defaults = ['normal', 'color', 0.1, 32.0]
 
     @ti.func
     def brdf(self, pars, idir, odir):
