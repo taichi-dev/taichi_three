@@ -1,13 +1,23 @@
 # Tina
 
-A real-time soft renderer based on the [Taichi](https://github.com/taichi-dev/taichi) programming language (previously named Taichi THREE)
+A real-time soft renderer based on the [Taichi](https://github.com/taichi-dev/taichi) programming language
 
-See [`docs/`](https://github.com/taichi-dev/taichi_three/tree/master/docs) for tutorials.
-See [`examples/`](https://github.com/taichi-dev/taichi_three/tree/master/examples) for examples.
+See [`docs/`](https://github.com/taichi-dev/taichi_three/tree/master/docs) to getting started.
+See [`examples/`](https://github.com/taichi-dev/taichi_three/tree/master/examples) for usage examples.
+
+NOTE: the renderer has been previously named Taichi THREE, see below.
+
+## Installation
+
+```bash
+git clone https://github.com/taichi-dev/taichi_three.git --depth=1
+cd taichi_three
+python3 -m pip install wheel
+python3 setup.py bdist_wheel
+python3 -m pip install dist/*.whl
+```
 
 ## Legacy
-
-Thank for all the discussions here! Here's the recent progress on this topic:
 
 The core is completely re-written after Taichi THREE v0.0.9 is released making the API more intuitive and much easier to maintain in hope for make it available to everyone.
 Don't worry, many of the good things from legacy Taichi THREE are left, like cook-torrance, mesh editing nodes, OBJ importer, marching cube... but some of the very core parts, including the triangle rasterizer, is completely thrown away and replaced by a more efficient algorithm that is friendly to GPUs when faces are a bit large. The new rasterizer also make compilation a bit faster and no more growing compilation time when there are a lot of models (reliefs #26). Also note that the camera system is completely re-written (sorry @Zony-Zhao and @victoriacity!) and now we no longer have dead-lock (万向节死锁) at +Y and -Y.

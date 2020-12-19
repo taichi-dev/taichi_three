@@ -38,7 +38,6 @@ class NormalShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        normal = normal.normalized()
         self.img[P] = normal * 0.5 + 0.5
 
 
@@ -81,7 +80,6 @@ class ViewdirShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        normal = normal.normalized()
         viewdir = calc_viewdir(engine, pos)
         self.img[P] = viewdir * 0.5 + 0.5
 
@@ -93,7 +91,6 @@ class SimpleShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        normal = normal.normalized()
         viewdir = calc_viewdir(engine, pos)
 
         self.img[P] = abs(normal.dot(viewdir))
@@ -108,7 +105,6 @@ class Shader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        normal = normal.normalized()
         viewdir = calc_viewdir(engine, pos)
         pars = {
             'pos': pos,

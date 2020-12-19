@@ -179,6 +179,7 @@ class Engine:
             normal = wei.x * An + wei.y * Bn + wei.z * Cn
         else:
             normal = (B - A).cross(C - A)  # let the shader normalize it
+        normal = normal.normalized()
 
         texcoord = V(0., 0.)
         if ti.static(self.texturing):
