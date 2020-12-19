@@ -70,7 +70,7 @@ class TriangleRaster:
         return A, B, C
 
     @ti.kernel
-    def set_mesh(self, mesh: ti.template()):
+    def set_object(self, mesh: ti.template()):
         mesh.pre_compute()
         self.nfaces[None] = mesh.get_nfaces()
         for i in range(self.nfaces[None]):
@@ -239,6 +239,19 @@ class ParticleRaster:
                 self.colors[i][k] = colors[i, k]
 
     @ti.kernel
+    def set_object(self, pars: ti.template()):
+        pars.pre_compute()
+        self.npars[None] = pars.get_npars()
+        for i in range(self.npars[None]):
+            vert = mesh.get_particle_position(i)
+            self.verts[i] = vert
+            size = mesh.get_particle_radius(i)
+            self.sizes[i] = size
+            if ti.static(self.coloring):
+                color = mesh.get_particle_color(i)
+                self.colors[i] = color
+
+    @ti.kernel
     def render_occup(self):
         for P in ti.grouped(self.occup):
             self.occup[P] = -1
@@ -282,10 +295,8 @@ class ParticleRaster:
 
             Al = self.get_particle_position(f)
             Rl = self.get_particle_radius(f)
-
             Av = self.engine.to_viewspace(Al)
             Rv = self.engine.to_viewspace_scalar(Al, Rl)
-
             a = self.engine.to_viewport(Av)
             r = self.engine.to_viewport_scalar(Rv)
 

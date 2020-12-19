@@ -12,7 +12,6 @@ class Scene:
         self.image = ti.Vector.field(3, float, self.res)
         self.lighting = tina.Lighting()
         self.default_material = tina.Lambert()
-        self.default_shader = tina.NormalShader(self.image)
         self.shaders = {}
         self.objects = {}
 
@@ -25,24 +24,19 @@ class Scene:
             self.lighting.add_light(dir=[0, 1, 1], color=[0.9, 0.9, 0.9])
             self.lighting.set_ambient_light([0.1, 0.1, 0.1])
 
-        @ti.materialize_callback
-        def init_pars():
-            pos = np.float32(np.random.rand(512, 3) * 2 - 1)
-            self.raster.set_particle_positions(pos)
-
     def _ensure_material_shader(self, material):
         if material not in self.shaders:
             shader = tina.Shader(self.image, self.lighting, material)
             self.shaders[material] = shader
 
-    def add_object(self, mesh, material=None, **options):
-        assert mesh not in self.objects
+    def add_object(self, object, material=None):
+        assert object not in self.objects
         if material is None:
             material = self.default_material
 
         self._ensure_material_shader(material)
 
-        self.objects[mesh] = namespace(material=material, **options)
+        self.objects[object] = material
 
     def init_control(self, gui, center=None, theta=None, phi=None, radius=None):
         self.control = tina.Control(gui)
@@ -62,12 +56,10 @@ class Scene:
         self.image.fill(0)
         self.engine.clear_depth()
 
-        for mesh, object in self.objects.items():
-            shader = self.shaders[object.material]
-            self.raster.set_mesh(mesh)
+        for object, material in self.objects.items():
+            shader = self.shaders[material]
+            self.raster.set_object(object)
             self.raster.render(shader)
-
-        self.raster.render(self.default_shader)
 
         if self.taa:
             self.accum.update(self.image)
