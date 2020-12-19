@@ -2,7 +2,7 @@ from ..common import *
 from .base import MeshEditBase
 
 
-class FlatNormal(MeshEditBase):
+class MeshFlatNormal(MeshEditBase):
     @ti.func
     def _calc_norm(self, a, b, c):
         return (b - a).cross(c - a).normalized()

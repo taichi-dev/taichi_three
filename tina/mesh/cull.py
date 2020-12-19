@@ -2,7 +2,7 @@ from ..common import *
 from .base import MeshEditBase
 
 
-class FlipCulling(MeshEditBase):
+class MeshFlipCulling(MeshEditBase):
     @ti.func
     def _flip(self, props: ti.template()):
         props_rev = list(reversed(props))
@@ -28,7 +28,7 @@ class FlipCulling(MeshEditBase):
         return coors
 
 
-class NoCulling(FlipCulling):
+class MeshNoCulling(MeshFlipCulling):
     @ti.func
     def get_nfaces(self):
         return self.mesh.get_nfaces() * 2
@@ -57,7 +57,7 @@ class NoCulling(FlipCulling):
         return coors
 
 
-class FlipNormal(MeshEditBase):
+class MeshFlipNormal(MeshEditBase):
     @ti.func
     def get_face_norms(self, n):
         norms = self.mesh.get_face_norms(n)

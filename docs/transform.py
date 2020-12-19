@@ -12,7 +12,7 @@ scene = tina.Scene()
 # load the monkey model with the `tina.MeshModel` node:
 model = tina.MeshModel('assets/monkey.obj')
 # transform the mesh using the `tina.Transform` node:
-tmodel = tina.Transform(model)
+tmodel = tina.MeshTransform(model)
 # load the desired node to be displayed:
 scene.add_object(tmodel)
 #scene.add_object(model)
