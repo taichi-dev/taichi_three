@@ -181,7 +181,7 @@ class TriangleRaster:
 
 @ti.data_oriented
 class ParticleRaster:
-    def __init__(self, engine, maxpars=65536, coloring=False, clipping=True):
+    def __init__(self, engine, maxpars=65536, coloring=True, clipping=True):
         self.engine = engine
         self.res = self.engine.res
         self.maxpars = maxpars
@@ -220,7 +220,7 @@ class ParticleRaster:
         return self.colors[f]
 
     @ti.kernel
-    def set_particle_positions(self, verts: ti.ext_arr()):
+    def set_particles(self, verts: ti.ext_arr()):
         self.npars[None] = min(verts.shape[0], self.verts.shape[0])
         for i in range(self.npars[None]):
             for k in ti.static(range(3)):
@@ -294,6 +294,7 @@ class ParticleRaster:
 
             Al = self.get_particle_position(f)
             Rl = self.get_particle_radius(f)
+            color = self.get_particle_color(f)
             Av = self.engine.to_viewspace(Al)
             Rv = self.engine.to_viewspace_scalar(Al, Rl)
             a = self.engine.to_viewport(Av)
@@ -308,7 +309,7 @@ class ParticleRaster:
 
             pos = Al
             normal = nrm
-            texcoord = V(0., 0.)
+            texcoord = color
             shader.shade_color(self.engine, P, f, pos, normal, texcoord)
 
     def render(self, shader):

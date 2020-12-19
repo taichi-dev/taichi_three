@@ -37,7 +37,7 @@ class SimpleParticles:
         return self.colors[n]
 
     @ti.kernel
-    def set_particle_positions(self, verts: ti.ext_arr()):
+    def set_particles(self, verts: ti.ext_arr()):
         self.npars[None] = min(verts.shape[0], self.verts.shape[0])
         for i in range(self.npars[None]):
             for k in ti.static(range(3)):
