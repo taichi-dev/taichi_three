@@ -3,7 +3,8 @@ from ..common import *
 
 @ti.data_oriented
 class ParticleRaster:
-    def __init__(self, engine, maxpars=65536, coloring=True, clipping=True):
+    def __init__(self, engine, maxpars=65536, coloring=True,
+            clipping=True, **extra_options):
         self.engine = engine
         self.res = self.engine.res
         self.maxpars = maxpars
@@ -80,8 +81,13 @@ class ParticleRaster:
         for f in ti.smart(self.get_particles_range()):
             Al = self.get_particle_position(f)
             Rl = self.get_particle_radius(f)
+            X1l = Al - Rl * U3(0)
+            X2l = Al + Rl * U3(0)
+            Y1l = Al - Rl * U3(1)
+            Y2l = Al + Rl * U3(1)
+            Z1l = Al - Rl * U3(2)
+            Z2l = Al + Rl * U3(2)
             Av = self.engine.to_viewspace(Al)
-            Rv = self.engine.to_viewspace_scalar(Al, Rl)
             if ti.static(self.clipping):
                 if not all(-1 - Rv <= Av <= 1 + Rv):
                     continue

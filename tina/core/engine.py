@@ -88,22 +88,12 @@ class Engine:
         return mapply_pos(self.W2V[None], p)
 
     @ti.func
-    def to_viewspace_scalar(self, p, r):
-        w = mapply(self.W2V[None], p, 1)[1]
-        return r / w
-
-    @ti.func
     def to_viewport(self, p):
         return (p.xy * 0.5 + 0.5) * self.res
 
     @ti.func
     def from_viewport(self, p):
         return p / self.res * 2 - 1
-
-    @ti.func
-    def to_viewport_scalar(self, r):
-        avgsize = (self.res.x + self.res.y) / 2
-        return r * avgsize  ##
 
     @ti.kernel
     def clear_depth(self):

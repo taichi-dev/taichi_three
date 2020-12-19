@@ -16,6 +16,10 @@ def V34(xyz, w):
     return V(xyz.x, xyz.y, xyz.z, w)
 
 
+def U3(i):
+    return ti.Vector.unit(3, i)
+
+
 ti.Matrix.xy = property(lambda v: V(v.x, v.y))
 ti.Matrix.xyz = property(lambda v: V(v.x, v.y, v.z))
 
