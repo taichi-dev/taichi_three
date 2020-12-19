@@ -4,7 +4,8 @@ from .common import *
 @ti.data_oriented
 class Scene:
     def __init__(self, res=512, taa=False, **options):
-        self.engine = tina.Engine(res, **options)
+        self.engine = tina.Engine(res)
+        self.raster = tina.Raster(self.engine, **options)
         self.res = self.engine.res
 
         self.image = ti.Vector.field(3, float, self.res)
@@ -56,8 +57,8 @@ class Scene:
 
         for mesh, object in self.objects.items():
             shader = self.shaders[object.material]
-            self.engine.raster.set_mesh(mesh)
-            self.engine.raster.render(shader)
+            self.raster.set_mesh(mesh)
+            self.raster.render(shader)
 
         if self.taa:
             self.accum.update(self.image)

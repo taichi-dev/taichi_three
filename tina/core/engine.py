@@ -229,7 +229,7 @@ class Engine:
             nrm = ts.normalize(n)
             yield a + nrm * r, nrm
 
-    def __init__(self, res=512, **options):
+    def __init__(self, res=512):
 
         self.res = tovector((res, res) if isinstance(res, int) else res)
 
@@ -238,8 +238,6 @@ class Engine:
 
         self.W2V = ti.Matrix.field(4, 4, float, ())
         self.V2W = ti.Matrix.field(4, 4, float, ())
-
-        self.raster = Raster(self, **options)
 
         self.bias = ti.Vector.field(2, float, ())
 
