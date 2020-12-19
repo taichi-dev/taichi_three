@@ -7,10 +7,9 @@ N = 12
 dt = 0.01
 
 scene = t3.Scene()
-model = t3.ScatterModel()
+model = t3.ScatterModel(N)
 scene.add_model(model)
 camera = t3.Camera()
-#camera.add_buffer('normal', 3)
 scene.add_camera(camera)
 light = t3.Light()
 scene.add_light(light)
@@ -19,9 +18,6 @@ pos = ti.Vector.field(3, float, N)
 vel = ti.Vector.field(3, float, N)
 radius = ti.field(float, N)
 
-model.pos = pos
-model.radius = radius
-
 
 @ti.kernel
 def init():
@@ -29,6 +25,14 @@ def init():
         pos[i] = ts.randNDRange(ts.vec3(-1), ts.vec3(1))
         vel[i] = ts.randNDRange(ts.vec3(-1.1), ts.vec3(1.1))
         radius[i] = ts.randRange(0.1, 0.2)
+
+@ti.kernel
+def update():
+    for i in pos:
+        model.pos[i] = pos[i]
+        model.radius[i] = radius[i]
+        v = ts.clamp(vel[i].norm() * 0.6)
+        model.color[i] = ts.vec3(v, 1 - v, 1 - v)
 
 @ti.func
 def interact(i, j):
@@ -69,8 +73,8 @@ while gui.running:
     gui.running = not gui.is_pressed(ti.GUI.ESCAPE)
     for i in range(4):
         substep()
+    update()
     camera.from_mouse(gui)
     scene.render()
     gui.set_image(camera.img)
-    #gui.set_image(camera.buf('normal').to_numpy() * 0.5 + 0.5)
     gui.show()

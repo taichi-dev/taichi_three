@@ -18,10 +18,12 @@ class ScatterModel(ModelBase):
         if num is not None:
             self.pos = ti.Vector.field(3, float, num)
             self.radius = ti.field(float, num)
+            self.color = ti.Vector.field(3, float, num)
 
             @ti.materialize_callback
             def initialize_radius():
                 self.radius.fill(0.1)
+                self.color.fill(1.0)
 
         from .shading import Material, CookTorrance
         self.material = Material(CookTorrance())
@@ -32,6 +34,6 @@ class ScatterModel(ModelBase):
             render_particle(self, camera, i)
 
     @ti.func
-    def colorize(self, pos, normal):
+    def colorize(self, pos, normal, color):
         with self.material.specify_inputs(model=self, pos=pos, texcoor=None, normal=normal, tangent=None, bitangent=None) as shader:
-            return shader.colorize()
+            return color * shader.colorize()

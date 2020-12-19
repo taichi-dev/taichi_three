@@ -193,6 +193,7 @@ def render_particle(model, camera, index):
     scene = model.scene
     a = (model.L2C[None] @ ts.vec4(model.pos[index], 1)).xyz
     r = model.radius[index]
+    c = model.color[index]
     A = camera.uncook(a)
 
     rad = camera.uncook(ts.vec3(r, r, a.z), False)
@@ -218,6 +219,6 @@ def render_particle(model, camera, index):
         normal = ts.normalize(n)
         view = ts.normalize(a + n)
 
-        color = model.colorize(pos, normal)
+        color = model.colorize(pos, normal, c)
         camera.fb['img'][X] = color
         camera.fb['normal'][X] = normal

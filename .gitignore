@@ -10,10 +10,10 @@ __pycache__
 /*.ipynb
 /.vscode
 node_modules/
-/assets/skybox2.jpg
 package-lock.json
 /games
 /t3editor
 /M275
 *.xcf
 *.png
+*.jpg
