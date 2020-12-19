@@ -44,10 +44,12 @@ class TriangleRaster:
             At, Bt, Ct = self.get_face_texcoords(f)
             texcoord = wei.x * At + wei.y * Bt + wei.z * Ct
 
+        color = V(1., 1., 1.)
+
         if ti.static(not self.culling):
             if facing < 0:
                 normal = -normal
-        shader.shade_color(self.engine, P, f, pos, normal, texcoord)
+        shader.shade_color(self.engine, P, f, pos, normal, texcoord, color)
 
     @ti.func
     def get_faces_range(self):
@@ -309,8 +311,8 @@ class ParticleRaster:
 
             pos = Al
             normal = nrm
-            texcoord = color
-            shader.shade_color(self.engine, P, f, pos, normal, texcoord)
+            texcoord = V(0., 0.)
+            shader.shade_color(self.engine, P, f, pos, normal, texcoord, color)
 
     def render(self, shader):
         self.render_occup()

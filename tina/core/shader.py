@@ -7,7 +7,7 @@ class MagentaShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord):
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         self.img[P] = V(1.0, 0.0, 1.0)
 
 
@@ -17,7 +17,7 @@ class PositionShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord):
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         self.img[P] = pos
 
 
@@ -27,7 +27,7 @@ class DepthShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord):
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         self.img[P] = engine.depth[P]
 
 
@@ -37,19 +37,28 @@ class NormalShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord):
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         self.img[P] = normal * 0.5 + 0.5
 
 
 @ti.data_oriented
 class TexcoordShader:
-    def __init__(self, img, size=0.05):
+    def __init__(self, img):
         self.img = img
-        self.size = size
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord):
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         self.img[P] = V23(texcoord, 0.0)
+
+
+@ti.data_oriented
+class ColorShader:
+    def __init__(self, img):
+        self.img = img
+
+    @ti.func
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
+        self.img[P] = color
 
 
 @ti.data_oriented
@@ -59,7 +68,7 @@ class ChessboardShader:
         self.size = size
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord):
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         self.img[P] = lerp((texcoord // self.size).sum() % 2, 0.4, 0.9)
 
 
@@ -79,7 +88,7 @@ class ViewdirShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord):
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         viewdir = calc_viewdir(engine, pos)
         self.img[P] = viewdir * 0.5 + 0.5
 
@@ -90,7 +99,7 @@ class SimpleShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord):
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         viewdir = calc_viewdir(engine, pos)
 
         self.img[P] = abs(normal.dot(viewdir))
@@ -104,10 +113,11 @@ class Shader:
         self.material = material
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord):
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         viewdir = calc_viewdir(engine, pos)
         pars = {
             'pos': pos,
+            'color': color,
             'normal': normal,
             'texcoord': texcoord,
             'viewdir': viewdir,

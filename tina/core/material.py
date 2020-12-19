@@ -74,7 +74,7 @@ class Texture(Node):
 # http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
 class CookTorrance(IMaterial):
     arguments = ['normal', 'roughness', 'metallic', 'specular', 'basecolor']
-    defaults = ['normal', 0.4, 0.0, 0.5, (1.0, 1.0, 1.0)]
+    defaults = ['normal', 0.4, 0.0, 0.5, 'color']
 
     @ti.func
     def brdf(self, pars, idir, odir):
@@ -119,7 +119,7 @@ class CookTorrance(IMaterial):
 
 class BlinnPhong(IMaterial):
     arguments = ['normal', 'diffuse', 'specular', 'shineness']
-    defaults = ['normal', (0.78, 0.78, 0.78), 0.5, 128.0]
+    defaults = ['normal', 'color', 0.2, 32.0]
 
     @ti.func
     def brdf(self, pars, idir, odir):
@@ -138,7 +138,7 @@ class BlinnPhong(IMaterial):
 
 class Lambert(IMaterial):
     arguments = ['color']
-    defaults = [(1.0, 1.0, 1.0)]
+    defaults = ['color']
 
     @ti.func
     def brdf(self, pars, idir, odir):

@@ -7,8 +7,7 @@ ti.init(ti.gpu)
 scene = tina.Scene()
 
 pars = tina.SimpleParticles()
-material = tina.Lambert(color=tina.Input('texcoord'))
-scene.add_object(pars, material)
+scene.add_object(pars)
 
 gui = ti.GUI('particles')
 
