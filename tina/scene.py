@@ -56,8 +56,8 @@ class Scene:
 
         for mesh, object in self.objects.items():
             shader = self.shaders[object.material]
-            self.engine.set_mesh(mesh)
-            self.engine.render(shader)
+            self.engine.raster.set_mesh(mesh)
+            self.engine.raster.render(shader)
 
         if self.taa:
             self.accum.update(self.image)
