@@ -7,7 +7,8 @@ ti.init(ti.gpu)
 scene = tina.Scene()
 
 pars = tina.SimpleParticles()
-scene.add_object(pars)
+material = tina.BlinnPhong()
+scene.add_object(pars, material)
 
 gui = ti.GUI('particles')
 
