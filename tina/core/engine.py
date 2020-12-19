@@ -181,7 +181,7 @@ class TriangleRaster:
 
 @ti.data_oriented
 class ParticleRaster:
-    def __init__(self, engine, maxpars=65536, coloring=False, clipping=False):
+    def __init__(self, engine, maxpars=65536, coloring=False, clipping=True):
         self.engine = engine
         self.res = self.engine.res
         self.maxpars = maxpars
@@ -201,28 +201,6 @@ class ParticleRaster:
             self.sizes.fill(0.05)
             if self.coloring:
                 self.colors.fill(1)
-
-    @ti.func
-    def interpolate(self, shader: ti.template(), P, f, facing, wei, A, B, C):
-        pos = wei.x * A + wei.y * B + wei.z * C
-
-        normal = V(0., 0., 0.)
-        if ti.static(self.smoothing):
-            An, Bn, Cn = self.get_face_normals(f)
-            normal = wei.x * An + wei.y * Bn + wei.z * Cn
-        else:
-            normal = (B - A).cross(C - A)  # let the shader normalize it
-        normal = normal.normalized()
-
-        texcoord = V(0., 0.)
-        if ti.static(self.texturing):
-            At, Bt, Ct = self.get_face_texcoords(f)
-            texcoord = wei.x * At + wei.y * Bt + wei.z * Ct
-
-        if ti.static(not self.culling):
-            if facing < 0:
-                normal = -normal
-        shader.shade_color(self.engine, P, f, pos, normal, texcoord)
 
     @ti.func
     def get_particles_range(self):
@@ -268,7 +246,7 @@ class ParticleRaster:
             Al = self.get_particle_position(f)
             Rl = self.get_particle_radius(f)
             Av = self.engine.to_viewspace(Al)
-            Rv = self.engine.to_viewspace_scalar(Rl)
+            Rv = self.engine.to_viewspace_scalar(Al, Rl)
             if ti.static(self.clipping):
                 if not all(-1 - Rv <= Av <= 1 + Rv):
                     continue
@@ -286,10 +264,10 @@ class ParticleRaster:
                 if dp2 > r**2:
                     continue
 
-                dz = ti.sqrt(r**2 - dp2)
-                nrm = V23(dpos.xy, -dz).normalized()
-
-                depth_f = Av.z  ##
+                #dz = ti.sqrt(r**2 - dp2)
+                #nrm = V23(dpos, dz).normalized()
+                #depth_f = Av.z - max(nrm.z, 0) * Rv  ##
+                depth_f = Av.z
                 depth = int(depth_f * self.engine.maxdepth)
                 if ti.atomic_min(self.engine.depth[P], depth) > depth:
                     if self.engine.depth[P] >= depth:
@@ -302,8 +280,23 @@ class ParticleRaster:
             if f == -1:
                 continue
 
-            pos = self.get_particle_position(f)
-            normal = V(0., 0., 1.)
+            Al = self.get_particle_position(f)
+            Rl = self.get_particle_radius(f)
+
+            Av = self.engine.to_viewspace(Al)
+            Rv = self.engine.to_viewspace_scalar(Al, Rl)
+
+            a = self.engine.to_viewport(Av)
+            r = self.engine.to_viewport_scalar(Rv)
+
+            dpos = float(P) + self.engine.bias[None] - a.xy
+            dz = ti.sqrt(r**2 - dpos.norm_sqr())
+
+            NV2W = linear_part(self.engine.W2V[None]).transpose()
+            nrm = (NV2W @ V23(dpos, -dz)).normalized()
+
+            pos = Al
+            normal = nrm
             texcoord = V(0., 0.)
             shader.shade_color(self.engine, P, f, pos, normal, texcoord)
 
@@ -400,8 +393,9 @@ class Engine:
         return mapply_pos(self.W2V[None], p)
 
     @ti.func
-    def to_viewspace_scalar(self, r):
-        return r  ##
+    def to_viewspace_scalar(self, p, r):
+        w = mapply(self.W2V[None], p, 1)[1]
+        return r / w
 
     @ti.func
     def to_viewport(self, p):

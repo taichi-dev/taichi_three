@@ -12,7 +12,7 @@ class Scene:
         self.image = ti.Vector.field(3, float, self.res)
         self.lighting = tina.Lighting()
         self.default_material = tina.Lambert()
-        self.default_shader = tina.SimpleShader(self.image)
+        self.default_shader = tina.NormalShader(self.image)
         self.shaders = {}
         self.objects = {}
 
@@ -24,6 +24,11 @@ class Scene:
         def init_light():
             self.lighting.add_light(dir=[0, 1, 1], color=[0.9, 0.9, 0.9])
             self.lighting.set_ambient_light([0.1, 0.1, 0.1])
+
+        @ti.materialize_callback
+        def init_pars():
+            pos = np.float32(np.random.rand(512, 3) * 2 - 1)
+            self.raster.set_particle_positions(pos)
 
     def _ensure_material_shader(self, material):
         if material not in self.shaders:
@@ -62,8 +67,6 @@ class Scene:
             self.raster.set_mesh(mesh)
             self.raster.render(shader)
 
-        pos = np.float32(np.random.rand(512, 3) * 2 - 1)
-        self.raster.set_particle_positions(pos)
         self.raster.render(self.default_shader)
 
         if self.taa:

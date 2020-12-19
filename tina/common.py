@@ -92,9 +92,14 @@ def mapply_pos(mat, pos):
     return res / rew
 
 @ti.func
-def mapply_dir(mat, pos):
-    res, rew = mapply(mat, pos, 0)
+def mapply_dir(mat, dir):
+    res, rew = mapply(mat, dir, 0)
     return res
+
+
+@ti.func
+def linear_part(mat):
+    return ti.Matrix([[mat[i, j] for j in range(3)] for i in range(3)])
 
 
 @ti.pyfunc
