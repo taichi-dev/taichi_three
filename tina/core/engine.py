@@ -198,7 +198,7 @@ class ParticleRaster:
 
         @ti.materialize_callback
         def init_pars():
-            self.sizes.fill(0.05)
+            self.sizes.fill(0.1)
             if self.coloring:
                 self.colors.fill(1)
 
@@ -243,12 +243,12 @@ class ParticleRaster:
         pars.pre_compute()
         self.npars[None] = pars.get_npars()
         for i in range(self.npars[None]):
-            vert = mesh.get_particle_position(i)
+            vert = pars.get_particle_position(i)
             self.verts[i] = vert
-            size = mesh.get_particle_radius(i)
+            size = pars.get_particle_radius(i)
             self.sizes[i] = size
             if ti.static(self.coloring):
-                color = mesh.get_particle_color(i)
+                color = pars.get_particle_color(i)
                 self.colors[i] = color
 
     @ti.kernel
@@ -270,16 +270,15 @@ class ParticleRaster:
             bot, top = ifloor(a - r), iceil(a + r)
             bot, top = max(bot, 0), min(top, self.res - 1)
             for P in ti.grouped(ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1))):
-                pos = float(P) + self.engine.bias[None]
-
-                dpos = pos - a.xy
-                dp2 = dpos.norm_sqr()
-                if dp2 > r**2:
+                p = float(P) + self.engine.bias[None]
+                dpos = self.engine.from_viewport(p) - Av.xy
+                dz = Rv**2 - dpos.norm_sqr()
+                if dz < 0:
                     continue
+                dz = ti.sqrt(dz)
+                NV2W = linear_part(self.engine.W2V[None]).transpose()
+                nrm = (NV2W @ V23(dpos, -dz)).normalized()
 
-                #dz = ti.sqrt(r**2 - dp2)
-                #nrm = V23(dpos, dz).normalized()
-                #depth_f = Av.z - max(nrm.z, 0) * Rv  ##
                 depth_f = Av.z
                 depth = int(depth_f * self.engine.maxdepth)
                 if ti.atomic_min(self.engine.depth[P], depth) > depth:
@@ -300,9 +299,10 @@ class ParticleRaster:
             a = self.engine.to_viewport(Av)
             r = self.engine.to_viewport_scalar(Rv)
 
-            dpos = float(P) + self.engine.bias[None] - a.xy
-            dz = ti.sqrt(r**2 - dpos.norm_sqr())
-
+            p = float(P) + self.engine.bias[None]
+            dpos = self.engine.from_viewport(p) - Av.xy
+            dz = Rv**2 - dpos.norm_sqr()
+            dz = ti.sqrt(dz)
             NV2W = linear_part(self.engine.W2V[None]).transpose()
             nrm = (NV2W @ V23(dpos, -dz)).normalized()
 
@@ -411,6 +411,10 @@ class Engine:
     @ti.func
     def to_viewport(self, p):
         return (p.xy * 0.5 + 0.5) * self.res
+
+    @ti.func
+    def from_viewport(self, p):
+        return p / self.res * 2 - 1
 
     @ti.func
     def to_viewport_scalar(self, r):

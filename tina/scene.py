@@ -3,11 +3,12 @@ from .common import *
 
 @ti.data_oriented
 class Scene:
-    def __init__(self, res=512, raster_cls=tina.TriangleRaster,
-            taa=False, **options):
+    def __init__(self, res=512, taa=False, **options):
         self.engine = tina.Engine(res)
-        self.raster = raster_cls(self.engine, **options)
         self.res = self.engine.res
+
+        self.triangle_raster = tina.TriangleRaster(self.engine, **options)
+        self.particle_raster = tina.ParticleRaster(self.engine, **options)
 
         self.image = ti.Vector.field(3, float, self.res)
         self.lighting = tina.Lighting()
@@ -58,8 +59,14 @@ class Scene:
 
         for object, material in self.objects.items():
             shader = self.shaders[material]
-            self.raster.set_object(object)
-            self.raster.render(shader)
+            if hasattr(object, 'get_nfaces'):
+                raster = self.triangle_raster
+            elif hasattr(object, 'get_npars'):
+                raster = self.particle_raster
+            else:
+                raise ValueError(f'cannot determine raster type of object: {object}')
+            raster.set_object(object)
+            raster.render(shader)
 
         if self.taa:
             self.accum.update(self.image)

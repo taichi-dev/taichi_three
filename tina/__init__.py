@@ -36,4 +36,5 @@ from .advans import *
 from .core import *
 from .util import *
 from .mesh import *
+from .pars import *
 from .scene import *
