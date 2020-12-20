@@ -18,6 +18,19 @@ __license__ = 'MIT'
 print('[Tina] version', '.'.join(map(str, __version__)))
 
 
+def require_version(*ver):
+    def tos(ver):
+        return '.'.join(map(str, ver))
+
+    msg = f'This program requires Tina version {tos(ver)} to work.\n'
+    msg += f'However your installed Tina version is {tos(__version__)}.\n'
+    msg += f'Consider run `pip install tina=={tos(ver)}` to upgrade/downgrade.'
+    if __version__ > ver:
+        print(msg)
+    elif __version__ < ver:
+        raise RuntimeError(msg)
+
+
 def register():
     print('[Tina] registering as blender addon')
     from . import blend

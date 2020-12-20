@@ -17,7 +17,7 @@ def deform_mesh(t: float):
 
 scene = tina.Scene(smoothing=True)
 
-mesh = tina.NoCulling(tina.MeshGrid(64))
+mesh = tina.MeshNoCulling(tina.MeshGrid(64))
 scene.add_object(mesh)
 
 gui = ti.GUI('meshgrid_wave', scene.res)

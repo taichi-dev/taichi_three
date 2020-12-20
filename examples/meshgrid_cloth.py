@@ -56,8 +56,8 @@ def substep():
 
 scene = tina.Scene(smoothing=True, texturing=True)
 
-mesh = tina.NoCulling(tina.MeshGrid((N, N)))
-ball = tina.Transform(tina.MeshModel('assets/sphere.obj'))
+mesh = tina.MeshNoCulling(tina.MeshGrid((N, N)))
+ball = tina.MeshTransform(tina.MeshModel('assets/sphere.obj'))
 
 cloth = tina.CookTorrance(basecolor=tina.Texture('assets/cloth.jpg'))
 
