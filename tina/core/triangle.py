@@ -28,7 +28,7 @@ class TriangleRaster:
         self.coo = ti.Vector.field(2, float, maxfaces)
 
     @ti.func
-    def interpolate(self, shader: ti.template(), P, f, facing, wei, A, B, C):
+    def interpolate(self, shader: ti.template(), P, f, wei, A, B, C):
         pos = wei.x * A + wei.y * B + wei.z * C
 
         normal = V(0., 0., 0.)
@@ -45,10 +45,6 @@ class TriangleRaster:
             texcoord = wei.x * At + wei.y * Bt + wei.z * Ct
 
         color = V(1., 1., 1.)
-
-        if ti.static(not self.culling):
-            if facing < 0:
-                normal = -normal
         shader.shade_color(self.engine, P, f, pos, normal, texcoord, color)
 
     @ti.func
@@ -174,7 +170,7 @@ class TriangleRaster:
             wei /= V(*[mapply(self.engine.W2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
             wei /= wei.x + wei.y + wei.z
 
-            self.interpolate(shader, P, f, 1, wei, Al, Bl, Cl)
+            self.interpolate(shader, P, f, wei, Al, Bl, Cl)
 
     def render(self, shader):
         self.render_occup()
