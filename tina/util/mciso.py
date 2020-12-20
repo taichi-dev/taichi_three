@@ -131,12 +131,12 @@ class MCISO:
         return id
 
     def get_mesh(self):
-        faces = self.Jts.to_numpy()[:self.Js_n[None]][:, ::-1]
-        verts = (self.vs.to_numpy()[:self.vs_n[None]] + 0.5) / self.N
+        ret = {}
+        ret['f'] = self.Jts.to_numpy()[:self.Js_n[None]][:, ::-1]
+        ret['v'] = (self.vs.to_numpy()[:self.vs_n[None]] + 0.5) / self.N
         if self.has_normal:
-            norms = self.ns.to_numpy()[:self.vs_n[None]]
-            return faces, verts, norms
-        return faces, verts
+            ret['vn'] = self.ns.to_numpy()[:self.vs_n[None]]
+        return ret
 
     @ti.func
     def pre_compute(self):

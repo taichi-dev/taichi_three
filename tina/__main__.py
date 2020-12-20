@@ -6,6 +6,9 @@ def main(*args):
     if cmd == 'volume':
         from .cli.volume import main
         return main(*args)
+    if cmd == 'particles':
+        from .cli.particles import main
+        return main(*args)
     else:
         print('bad command:', cmd)
         exit(1)

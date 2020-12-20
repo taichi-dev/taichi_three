@@ -2,38 +2,19 @@ import taichi as ti
 import tina
 
 
-def main(*args):
+def main(filename):
     ti.init(ti.gpu)
 
-    obj = tina.readobj(args[0], scale='auto')
-    verts = obj['v'][obj['f'][:, :, 0]]
-    norms = obj['vn'][obj['f'][:, :, 2]]
+    obj = tina.readobj(filename, scale='auto')
+    scene = tina.Scene((1024, 768), maxfaces=len(obj['f']), smoothing=True)
+    model = tina.MeshModel(obj)
+    scene.add_object(model)
 
-    engine = tina.Engine((1024, 768), maxfaces=len(verts), smoothing=True)
-
-    img = ti.Vector.field(3, float, engine.res)
-    shader = tina.SimpleShader(img)
-
-    gui = ti.GUI('mesh visualize', engine.res, fast_gui=True)
-    control = tina.Control(gui)
-
-    accum = tina.Accumator(engine.res)
-
-    engine.set_face_verts(verts)
-    engine.set_face_norms(norms)
-
+    gui = ti.GUI('mesh', scene.res, fast_gui=True)
     while gui.running:
-        engine.randomize_bias(accum.count[None] <= 1)
-        if control.get_camera(engine):
-            accum.clear()
-
-        img.fill(0)
-        engine.clear_depth()
-
-        engine.render(shader)
-
-        accum.update(img)
-        gui.set_image(accum.img)
+        scene.input(gui)
+        scene.render()
+        gui.set_image(scene.img)
         gui.show()
 
 

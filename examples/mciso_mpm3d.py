@@ -130,8 +130,9 @@ while gui.running:
     voxel.voxelize(mciso.m, x)
     mciso.march()
 
-    # faces, verts, norms = mciso.get_mesh()
-    # tina.writeobj(f'/tmp/{gui.frame:04d}.obj', dict(v=verts, vn=norms, f=faces))
+    # obj = mciso.get_mesh()
+    # tina.writeobj(f'/tmp/{gui.frame:04d}.obj', obj)
+    np.save(f'/tmp/{gui.frame:04d}.npy', x.to_numpy())
 
     scene.render()
 
