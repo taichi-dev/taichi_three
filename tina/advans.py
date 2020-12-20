@@ -70,7 +70,7 @@ def sample_cube(tex: ti.template(), dir):
 
 
 @ti.func
-def noise(x):
+def _inoise(x):
     value = ti.cast(x, ti.u32)
     value = (value ^ 61) ^ (value >> 16)
     value *= 9
@@ -81,21 +81,17 @@ def noise(x):
 
 
 @ti.func
-def vnoise(x):
+def inoise(x):
+    if ti.static(not isinstance(x, ti.Matrix)):
+        return _inoise(x)
     index = ti.cast(x, ti.u32)
-    value = noise(index.entries[0])
+    value = _inoise(index.entries[0])
     for i in ti.static(index.entries[1:]):
-        value = noise(i ^ value)
+        value = _inoise(i ^ value)
     return value
 
 
 @ti.func
-def fnoise(x):
-    u = noise(x) >> 1
-    return u * (2 / 4294967296)
-
-
-@ti.func
-def fvnoise(x):
-    u = noise(x) >> 1
+def noise(x):
+    u = inoise(x) >> 1
     return u * (2 / 4294967296)
