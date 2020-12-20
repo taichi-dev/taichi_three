@@ -9,10 +9,12 @@ class Scene:
 
         self.triangle_raster = tina.TriangleRaster(self.engine, **options)
         self.particle_raster = tina.ParticleRaster(self.engine, **options)
+        self.volume_raster = tina.VolumeRaster(self.engine, **options)
 
         self.image = ti.Vector.field(3, float, self.res)
         self.lighting = tina.Lighting()
         self.default_material = tina.Lambert()
+        self.default_shader = tina.SimpleShader(self.image)
         self.shaders = {}
         self.objects = {}
 
@@ -67,6 +69,8 @@ class Scene:
                 raise ValueError(f'cannot determine raster type of object: {object}')
             raster.set_object(object)
             raster.render(shader)
+
+        self.volume_raster.render(self.default_shader)
 
         if self.taa:
             self.accum.update(self.image)

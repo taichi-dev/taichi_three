@@ -20,6 +20,10 @@ def U3(i):
     return ti.Vector.unit(3, i)
 
 
+def U2(i):
+    return ti.Vector.unit(2, i)
+
+
 ti.Matrix.xy = property(lambda v: V(v.x, v.y))
 ti.Matrix.xyz = property(lambda v: V(v.x, v.y, v.z))
 
@@ -123,6 +127,15 @@ def list_subscript(a, i):
         if i == j:
             ret = a[j]
     return ret
+
+
+def ranprint(*args, **kwargs):
+    @ti.func
+    def func(r):
+        if ti.random() < r:
+            print(*args)
+
+    func(kwargs.get('r', 1e-3))
 
 
 class namespace(dict):
