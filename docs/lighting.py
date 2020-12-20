@@ -14,7 +14,7 @@ material = tina.BlinnPhong()
 # you may also specify some parameters for the Blinn-Phong material:
 #material = tina.BlinnPhong(shineness=10, diffuse=[1, 0, 0])
 # or use the Cook-Torrance material for PBR:
-#material = tina.CookTorrance(metallic=0.6, roughness=0.2)
+material = tina.CookTorrance(metallic=0.6, roughness=0.2)
 # or even specify parameter by textures, see docs/texture.py for more details
 
 model = tina.MeshModel('assets/monkey.obj')

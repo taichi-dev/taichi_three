@@ -54,7 +54,7 @@ def substep():
 
 ### Rendering GUI
 
-scene = tina.Scene(smoothing=True, texturing=True)
+scene = tina.Scene((1024, 768), smoothing=True, texturing=True)
 
 mesh = tina.MeshNoCulling(tina.MeshGrid((N, N)))
 ball = tina.MeshTransform(tina.MeshModel('assets/sphere.obj'))
@@ -65,7 +65,7 @@ scene.add_object(mesh, cloth)
 scene.add_object(ball)
 
 
-gui = ti.GUI('Mass Spring', scene.res)
+gui = ti.GUI('Mass Spring', scene.res, fast_gui=True)
 scene.init_control(gui,
         center=ball_pos,
         theta=np.pi / 2 - np.radians(30),

@@ -2,7 +2,7 @@ import setuptools
 import tina
 
 setuptools.setup(
-    name='tina',
+    name='taichi-tina',
     version='.'.join(map(str, tina.__version__)),
     author=tina.__author__.split('<')[0][:-1],
     author_email=tina.__author__.split('<')[1][:-1],
