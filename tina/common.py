@@ -74,13 +74,30 @@ def iceil(x):
 @ti.func
 def bilerp(f: ti.template(), pos):
     p = float(pos)
-    I = int(ti.floor(p))
+    I = ifloor(p)
     x = p - I
     y = 1 - x
     return (f[I + V(1, 1)] * x[0] * x[1] +
             f[I + V(1, 0)] * x[0] * y[1] +
             f[I + V(0, 0)] * y[0] * y[1] +
             f[I + V(0, 1)] * y[0] * x[1])
+
+@ti.func
+def trilerp(f: ti.template(), pos):
+    p = float(pos)
+    I = ifloor(p)
+    w0 = p - I
+    w1 = 1 - w0
+
+    c00 = f[I + V(0,0,0)] * w1.x + f[I + V(1,0,0)] * w0.x
+    c01 = f[I + V(0,0,1)] * w1.x + f[I + V(1,0,1)] * w0.x
+    c10 = f[I + V(0,1,0)] * w1.x + f[I + V(1,1,0)] * w0.x
+    c11 = f[I + V(0,1,1)] * w1.x + f[I + V(1,1,1)] * w0.x
+
+    c0 = c00 * w1.y + c10 * w0.y
+    c1 = c01 * w1.y + c11 * w0.y
+
+    return c0 * w1.z + c1 * w0.z
 
 
 @ti.func

@@ -1,9 +1,10 @@
 from ..common import *
+from ..advans import *
 
 
 @ti.data_oriented
 class VolumeRaster:
-    def __init__(self, engine, N=32, radius=16, **extra_options):
+    def __init__(self, engine, N=128, radius=4, taa=True, **extra_options):
         self.engine = engine
         self.res = self.engine.res
         self.radius = radius
@@ -18,11 +19,17 @@ class VolumeRaster:
             self.dens.fill(1)
 
     @ti.kernel
+    def set_object(self, voxl: ti.template()):
+        for I in ti.grouped(self.dens):
+            self.dens[I] = voxl.sample_volume(I / self.N)
+
+    @ti.kernel
     def render_occup(self):
+        uniq = V(ti.random(ti.u32), ti.random(ti.u32), ti.random(ti.u32))
         for P in ti.grouped(self.occup):
             self.occup[P] = 0
         for I in ti.grouped(self.dens):
-            bias = V(0, 0, 0)#V(ti.random(), ti.random(), ti.random())
+            bias = [fvnoise(V34(I, u)) for u in uniq]
             Pl = (I + bias) / self.N * 2 - 1
             Pv = self.engine.to_viewspace(Pl)
             P = int(self.engine.to_viewport(Pv))
@@ -56,7 +63,8 @@ class VolumeRaster:
     @ti.kernel
     def render_color(self, shader: ti.template()):
         for P in ti.grouped(self.occup):
-            shader.img[P] = self.occup[P]
+            rho = max(0, self.occup[P])
+            shader.img[P] = 1 - ti.exp(-rho)
 
     def render(self, shader):
         self.render_occup()

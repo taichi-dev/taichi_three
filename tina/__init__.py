@@ -37,4 +37,5 @@ from .core import *
 from .util import *
 from .mesh import *
 from .pars import *
+from .voxl import *
 from .scene import *

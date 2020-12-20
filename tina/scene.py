@@ -3,7 +3,7 @@ from .common import *
 
 @ti.data_oriented
 class Scene:
-    def __init__(self, res=512, taa=False, **options):
+    def __init__(self, res=512, **options):
         self.engine = tina.Engine(res)
         self.res = self.engine.res
 
@@ -18,7 +18,7 @@ class Scene:
         self.shaders = {}
         self.objects = {}
 
-        self.taa = taa
+        self.taa = options.get('taa', False)
         if self.taa:
             self.accum = tina.Accumator(self.res)
 
@@ -65,6 +65,8 @@ class Scene:
                 raster = self.triangle_raster
             elif hasattr(object, 'get_npars'):
                 raster = self.particle_raster
+            elif hasattr(object, 'sample_volume'):
+                raster = self.volume_raster
             else:
                 raise ValueError(f'cannot determine raster type of object: {object}')
             raster.set_object(object)

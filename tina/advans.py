@@ -67,3 +67,35 @@ def sample_cube(tex: ti.template(), dir):
         I = V(3 / 8, 1 / 8) + V(dir.x, dir.z) / -dir.y / 8 * dps
     I = V(tex.shape[0], tex.shape[0]) * I
     return bilerp(tex, I)
+
+
+@ti.func
+def noise(x):
+    value = ti.cast(x, ti.u32)
+    value = (value ^ 61) ^ (value >> 16)
+    value *= 9
+    value ^= value << 4
+    value *= 0x27d4eb2d
+    value ^= value >> 15
+    return value
+
+
+@ti.func
+def vnoise(x):
+    index = ti.cast(x, ti.u32)
+    value = noise(index.entries[0])
+    for i in ti.static(index.entries[1:]):
+        value = noise(i ^ value)
+    return value
+
+
+@ti.func
+def fnoise(x):
+    u = noise(x) >> 1
+    return u * (2 / 4294967296)
+
+
+@ti.func
+def fvnoise(x):
+    u = noise(x) >> 1
+    return u * (2 / 4294967296)
