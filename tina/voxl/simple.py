@@ -16,13 +16,6 @@ class SimpleVolume:
         def init_pars():
             self.dens.fill(1)
 
-        self.trans = ti.Matrix.field(4, 4, float, ())
-
-        @ti.materialize_callback
-        @ti.kernel
-        def init_trans():
-            self.trans[None] = ti.Matrix.identity(float, 4)
-
     def set_volume_density(self, dens):
         self.dens.from_numpy(dens)
 
@@ -36,7 +29,4 @@ class SimpleVolume:
 
     @ti.func
     def get_transform(self):
-        return self.trans[None]
-
-    def set_transform(self, trans):
-        self.trans[None] = np.array(trans).tolist()
+        return ti.Matrix.identity(float, 4)

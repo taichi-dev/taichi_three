@@ -6,10 +6,7 @@ class Scene:
     def __init__(self, res=512, **options):
         self.engine = tina.Engine(res)
         self.res = self.engine.res
-
-        self.triangle_raster = tina.TriangleRaster(self.engine, **options)
-        self.particle_raster = tina.ParticleRaster(self.engine, **options)
-        self.volume_raster = tina.VolumeRaster(self.engine, **options)
+        self.options = options
 
         self.image = ti.Vector.field(3, float, self.res)
         self.lighting = tina.Lighting()
@@ -32,14 +29,30 @@ class Scene:
             shader = tina.Shader(self.image, self.lighting, material)
             self.shaders[material] = shader
 
-    def add_object(self, object, material=None):
+    def add_object(self, object, material=None, raster=None):
         assert object not in self.objects
         if material is None:
             material = self.default_material
 
+        if raster is None:
+            if hasattr(object, 'get_nfaces'):
+                if not hasattr(self, 'triangle_raster'):
+                    self.triangle_raster = tina.TriangleRaster(self.engine, **self.options)
+                raster = self.triangle_raster
+            elif hasattr(object, 'get_npars'):
+                if not hasattr(self, 'particle_raster'):
+                    self.particle_raster = tina.ParticleRaster(self.engine, **self.options)
+                raster = self.particle_raster
+            elif hasattr(object, 'sample_volume'):
+                if not hasattr(self, 'volume_raster'):
+                    self.volume_raster = tina.VolumeRaster(self.engine, **self.options)
+                raster = self.volume_raster
+            else:
+                raise ValueError(f'cannot determine raster type of object: {object}')
+
         self._ensure_material_shader(material)
 
-        self.objects[object] = material
+        self.objects[object] = namespace(material=material, raster=raster)
 
     def init_control(self, gui, center=None, theta=None, phi=None, radius=None):
         self.control = tina.Control(gui)
@@ -59,18 +72,10 @@ class Scene:
         self.image.fill(0)
         self.engine.clear_depth()
 
-        for object, material in self.objects.items():
-            shader = self.shaders[material]
-            if hasattr(object, 'get_nfaces'):
-                raster = self.triangle_raster
-            elif hasattr(object, 'get_npars'):
-                raster = self.particle_raster
-            elif hasattr(object, 'sample_volume'):
-                raster = self.volume_raster
-            else:
-                raise ValueError(f'cannot determine raster type of object: {object}')
-            raster.set_object(object)
-            raster.render(shader)
+        for object, o in self.objects.items():
+            shader = self.shaders[o.material]
+            o.raster.set_object(object)
+            o.raster.render(shader)
 
         if self.taa:
             self.accum.update(self.image)

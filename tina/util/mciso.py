@@ -160,6 +160,15 @@ class MCISO:
         c = self.ns[self.Jts[n][0]]
         return a, b, c
 
+    @ti.func
+    def sample_volume(self, pos):
+        from ..advans import trilerp
+        return trilerp(self.m, pos * self.N)
+
+    @ti.func
+    def get_transform(self):
+        return ti.Matrix.identity(float, 4)
+
 
 def extend_bounds(m, bound=1):
     assert len(m.shape) == 3

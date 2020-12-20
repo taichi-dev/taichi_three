@@ -106,6 +106,7 @@ mciso = MCISO(n_grid * 2)
 voxel = Voxelizer(mciso.N, radius=2, weight=64)
 
 scene = tina.Scene(smoothing=True)
+scene.add_object(mciso)
 
 gui = ti.GUI('mciso_mpm3d', scene.res)
 scene.init_control(gui, center=[0.5, 0.5, 0.5], radius=1.5)
@@ -113,8 +114,6 @@ scene.init_control(gui, center=[0.5, 0.5, 0.5], radius=1.5)
 scene.lighting.clear_lights()
 scene.lighting.add_light([-0.4, 1.5, 1.8], color=[0.8, 0.8, 0.8])
 scene.lighting.set_ambient_light([0.22, 0.22, 0.22])
-
-scene.add_object(mciso)
 
 init()
 while gui.running:
