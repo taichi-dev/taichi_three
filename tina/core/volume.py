@@ -30,9 +30,16 @@ class VolumeRaster:
             self.occup = ti.field(float, self.res)
             self.tmcup = ti.field(float, self.res)
 
+        self.L2W = ti.Matrix.field(4, 4, float, ())
+
         @ti.materialize_callback
         def init_dens():
             self.dens.fill(1)
+
+        @ti.materialize_callback
+        @ti.kernel
+        def init_L2W():
+            self.L2W[None] = ti.Matrix.identity(float, 4)
 
         if self.gaussian:
             self.wei = ti.field(float, self.radius + 1)
@@ -51,8 +58,12 @@ class VolumeRaster:
 
     @ti.kernel
     def set_object(self, voxl: ti.template()):
+        self.L2W[None] = voxl.get_transform()
         for I in ti.grouped(self.dens):
             self.dens[I] = voxl.sample_volume(I / self.N)
+
+    def set_volume_density(self, dens):
+        self.dens.from_numpy(dens)
 
     @ti.kernel
     def render_occup(self):
@@ -65,7 +76,8 @@ class VolumeRaster:
             bias = V(0., 0., 0.)
             if ti.static(self.taa):
                 bias = ti.Vector([noise(V34(I, uniq[i])) for i in range(3)])
-            Pl = (I + bias) / self.N * 2 - 1
+            Pll = (I + bias) / self.N * 2 - 1
+            Pl = mapply_pos(self.L2W[None], Pll)
             Pv = self.engine.to_viewspace(Pl)
             if not all(-1 < Pv < 1):
                 continue

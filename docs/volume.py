@@ -13,7 +13,7 @@ scene.add_object(volume)
 
 gui = ti.GUI('volume', scene.res)
 
-volume.dens.from_numpy(dens)
+volume.set_volume_density(dens)
 while gui.running:
     scene.input(gui)
     scene.render()
