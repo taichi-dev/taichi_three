@@ -5,7 +5,7 @@ from ..advans import *
 @ti.data_oriented
 class VolumeRaster:
     def __init__(self, engine, N=128, taa=False, density=32,
-            depthing=True, radius=None, gaussian=None, **extra_options):
+            radius=None, gaussian=None, coloring=False, **extra_options):
         self.engine = engine
         self.res = self.engine.res
         if radius is None:
@@ -15,14 +15,20 @@ class VolumeRaster:
         if not taa:
             density = density * 6
         self.density = density
+        self.coloring = coloring
         self.gaussian = gaussian
         self.radius = radius
         self.taa = taa
         self.N = N
 
-        self.dens = ti.field(float, (N, N, N))
-        self.occup = ti.field(float, self.res)
-        self.tmcup = ti.field(float, self.res)
+        if self.coloring:
+            self.dens = ti.Vector.field(3, float, (N, N, N))
+            self.occup = ti.Vector.field(3, float, self.res)
+            self.tmcup = ti.Vector.field(3, float, self.res)
+        else:
+            self.dens = ti.field(float, (N, N, N))
+            self.occup = ti.field(float, self.res)
+            self.tmcup = ti.field(float, self.res)
 
         @ti.materialize_callback
         def init_dens():
@@ -90,7 +96,7 @@ class VolumeRaster:
     @ti.kernel
     def blur(self, src: ti.template(), dst: ti.template(), dir: ti.template()):
         for P in ti.grouped(src):
-            res = 0.0
+            res = src[P] * 0
             bot = min(self.radius, P[dir])
             top = min(self.radius, self.res[dir] - 1 - P[dir])
             for i in range(-bot, top + 1):
