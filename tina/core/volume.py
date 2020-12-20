@@ -4,13 +4,17 @@ from ..advans import *
 
 @ti.data_oriented
 class VolumeRaster:
-    def __init__(self, engine, N=128, radius=None, gaussian=None, taa=False, **extra_options):
+    def __init__(self, engine, N=128, taa=False, density=32,
+            depthing=True, radius=None, gaussian=None, **extra_options):
         self.engine = engine
         self.res = self.engine.res
         if radius is None:
-            radius = 1 if taa else 12
+            radius = 1 if taa else 8
         if gaussian is None:
             gaussian = not taa
+        if not taa:
+            density = density * 6
+        self.density = density
         self.gaussian = gaussian
         self.radius = radius
         self.taa = taa
@@ -46,15 +50,15 @@ class VolumeRaster:
 
     @ti.kernel
     def render_occup(self):
-        uniq = V(0, 0, 0).cast(ti.u32)
+        uniq = ti.Vector([0 for i in range(4)]).cast(ti.u32)
         if ti.static(self.taa):
-            uniq = V(ti.random(ti.u32), ti.random(ti.u32), ti.random(ti.u32))
+            uniq = ti.Vector([ti.random(ti.u32) for i in range(4)])
         for P in ti.grouped(self.occup):
             self.occup[P] = 0
         for I in ti.grouped(self.dens):
             bias = V(0., 0., 0.)
             if ti.static(self.taa):
-                bias = ti.Vector([noise(V34(I, u)) for u in uniq])
+                bias = ti.Vector([noise(V34(I, uniq[i])) for i in range(3)])
             Pl = (I + bias) / self.N * 2 - 1
             Pv = self.engine.to_viewspace(Pl)
             if not all(-1 < Pv < 1):
@@ -62,17 +66,26 @@ class VolumeRaster:
             P = int(self.engine.to_viewport(Pv))
             if not all(0 <= P <= self.res - 1):
                 continue
-
-            DXl = mapply_dir(self.engine.V2W[None], V(1., 0., 0.)).normalized()
-            DYl = mapply_dir(self.engine.V2W[None], V(0., 1., 0.)).normalized()
-            Rv = V(0., 0.)
             Rl = 2 / self.N
-            Rv.x = self.engine.to_viewspace(Pl + DXl * Rl).x - Pv.x
-            Rv.y = self.engine.to_viewspace(Pl + DYl * Rl).y - Pv.y
-            r = Rv * self.res
 
-            rho = self.dens[I] / self.N
-            self.occup[P] += rho * r.x * r.y / (2 * self.radius + 1)
+            depth_f = Pv.z
+            if ti.static(self.taa):
+                DZl = mapply_dir(self.engine.V2W[None], V(0., 0., 1.)).normalized()
+                Rvz = self.engine.to_viewspace(Pl + DZl * Rl).z - Pv.z
+                depth_f += Rvz * noise(V34(I, uniq[3]))
+
+            depth = int(depth_f * self.engine.maxdepth)
+            if self.engine.depth[P] >= depth:
+
+                DXl = mapply_dir(self.engine.V2W[None], V(1., 0., 0.)).normalized()
+                DYl = mapply_dir(self.engine.V2W[None], V(0., 1., 0.)).normalized()
+                Rv = V(0., 0.)
+                Rv.x = self.engine.to_viewspace(Pl + DXl * Rl).x - Pv.x
+                Rv.y = self.engine.to_viewspace(Pl + DYl * Rl).y - Pv.y
+                r = Rv * self.res
+
+                rho = self.dens[I] / self.N * self.density
+                self.occup[P] += rho * r.x * r.y / (2 * self.radius + 1)
 
     @ti.kernel
     def blur(self, src: ti.template(), dst: ti.template(), dir: ti.template()):
@@ -92,7 +105,8 @@ class VolumeRaster:
     def render_color(self, shader: ti.template()):
         for P in ti.grouped(self.occup):
             rho = max(0, self.occup[P])
-            shader.img[P] = 1 - ti.exp(-rho)
+            fac = 1 - ti.exp(-rho)
+            shader.img[P] = shader.img[P] * (1 - fac) + fac
 
     def render(self, shader):
         self.render_occup()

@@ -72,8 +72,6 @@ class Scene:
             raster.set_object(object)
             raster.render(shader)
 
-        self.volume_raster.render(self.default_shader)
-
         if self.taa:
             self.accum.update(self.image)
 
