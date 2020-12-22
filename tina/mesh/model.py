@@ -4,6 +4,11 @@ from ..common import *
 @ti.data_oriented
 class MeshModel:
     def __init__(self, obj, *_, **__):
+        '''
+        :param obj: (OBJ | str) the OBJ model as to be displayed, automatically invoke tina.readobj if a string is specified
+        :return: (Mesh) the mesh object to add into scene
+        '''
+
         if isinstance(obj, str):
             obj = tina.readobj(obj, *_, **__)
 
@@ -22,6 +27,10 @@ class MeshModel:
     @ti.func
     def pre_compute(self):
         pass
+
+    @ti.func
+    def get_max_vert_nindex(self):
+        return self.verts.shape[0]
 
     @ti.func
     def get_nfaces(self):

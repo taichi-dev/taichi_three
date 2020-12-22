@@ -4,6 +4,12 @@ from ..common import *
 @ti.data_oriented
 class SimpleMesh:
     def __init__(self, maxfaces=65536, npolygon=3):
+        '''
+        :param maxfaces: (int) the maximum amount of faces to be supported
+        :param npolygon: (int) number of polygon edges, 3 for triangles
+        :return: (Mesh) the mesh object to add into scene
+        '''
+
         self.verts = ti.Vector.field(3, float, (maxfaces, npolygon))
         self.coors = ti.Vector.field(2, float, (maxfaces, npolygon))
         self.norms = ti.Vector.field(3, float, (maxfaces, npolygon))
@@ -38,6 +44,14 @@ class SimpleMesh:
 
     @ti.kernel
     def set_face_verts(self, verts: ti.ext_arr()):
+        '''
+        :param verts: (np.array[nfaces, npolygon, 3]) the vertex positions of faces
+
+        Specify the face vertex positions to be rendered
+
+        :note: the number of faces is determined by the array's shape[0]
+        '''
+
         self.nfaces[None] = min(verts.shape[0], self.verts.shape[0])
         for i in range(self.nfaces[None]):
             for k in ti.static(range(3)):
@@ -46,6 +60,15 @@ class SimpleMesh:
 
     @ti.kernel
     def set_face_norms(self, norms: ti.ext_arr()):
+        '''
+        :param norms: (np.array[nfaces, npolygon, 3]) the vertex normal vectors of faces
+
+        Specify the face vertex normals to be rendered
+
+        :note: the normals should be normalized to get desired result
+        :note: this should be invoked only *after* set_face_verts for nfaces
+        '''
+
         for i in range(self.nfaces[None]):
             for k in ti.static(range(3)):
                 for l in ti.static(range(3)):
@@ -53,6 +76,14 @@ class SimpleMesh:
 
     @ti.kernel
     def set_face_coors(self, coors: ti.ext_arr()):
+        '''
+        :param norms: (np.array[nfaces, npolygon, 2]) the vertex texture coordinates of faces
+
+        Specify the face vertex texcoords to be rendered
+
+        :note: this should be invoked only *after* set_face_verts for nfaces
+        '''
+
         for i in range(self.nfaces[None]):
             for k in ti.static(range(3)):
                 for l in ti.static(range(2)):
