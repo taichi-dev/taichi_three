@@ -7,11 +7,9 @@ from tina.util.mciso import MCISO, Voxelizer
 ti.init(arch=ti.gpu)
 
 
-#dim, n_grid, steps, dt = 2, 128, 20, 2e-4
-#dim, n_grid, steps, dt = 2, 256, 32, 1e-4
-dim, n_grid, steps, dt = 3, 32, 25, 4e-4
-#dim, n_grid, steps, dt = 3, 64, 25, 2e-4
-#dim, n_grid, steps, dt = 3, 128, 25, 8e-5
+#dim, n_grid, steps, dt = 3, 32, 25, 4e-4
+dim, n_grid, steps, dt = 3, 64, 10, 2e-4
+#dim, n_grid, steps, dt = 3, 128, 30, 8e-5
 
 n_particles = n_grid**dim // 2**(dim - 1)
 dx = 1 / n_grid
@@ -99,13 +97,14 @@ def substep():
 def init():
     for i in range(n_particles):
         x[i] = ti.Vector([ti.random() for i in range(dim)]) * 0.4 + 0.15
+        v[i] *= 0
         J[i] = 1
 
 
-mciso = MCISO(n_grid * 2)
-voxel = Voxelizer(mciso.N, radius=2, weight=64)
+mciso = MCISO(int(n_grid * 1))
+voxel = Voxelizer(mciso.N, radius=1, weight=18)
 
-scene = tina.Scene(smoothing=True)
+scene = tina.Scene(smoothing=True, maxfaces=2**18)
 scene.add_object(mciso)
 
 gui = ti.GUI('mciso_mpm3d', scene.res)

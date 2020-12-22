@@ -244,7 +244,7 @@ class MCISO_Example(MCISO):
 
 @ti.data_oriented
 class Voxelizer:
-    def __init__(self, N, pmin=0, pmax=1, radius=1, weight=50):
+    def __init__(self, N, pmin=0, pmax=1, radius=1, weight=18):
         self.N = N
         self.pmin = ti.Vector([pmin for i in range(3)])
         self.pmax = ti.Vector([pmax for i in range(3)])
@@ -261,7 +261,7 @@ class Voxelizer:
             def init_gwei():
                 sum = -1.0
                 for i in self.gwei:
-                    x = i / self.radius
+                    x = 0.8 * i / self.radius
                     y = ti.exp(-x**2)
                     self.gwei[i] = y
                     sum += y * 2
