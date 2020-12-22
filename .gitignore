@@ -17,3 +17,5 @@ package-lock.json
 *.png
 *.jpg
 tags
+/a.py
+/b.py

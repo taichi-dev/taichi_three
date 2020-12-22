@@ -24,17 +24,28 @@ class MeshModel:
             self.coors.from_numpy(obj['vt'])
             self.norms.from_numpy(obj['vn'])
 
+        self.maxfaces = len(obj['f'])
+        self.maxverts = len(obj['v'])
+        self.maxcoors = len(obj['vt'])
+        self.maxnorms = len(obj['vn'])
+
     @ti.func
     def pre_compute(self):
         pass
 
-    @ti.func
     def get_max_vert_nindex(self):
-        return self.verts.shape[0]
+        return self.maxverts
 
     @ti.func
     def get_nfaces(self):
         return self.faces.shape[0]
+
+    @ti.func
+    def get_face_vert_indices(self, n):
+        i = self.faces[n][0, 0]
+        j = self.faces[n][1, 0]
+        k = self.faces[n][2, 0]
+        return i, j, k
 
     @ti.func
     def _get_face_props(self, prop, index: ti.template(), n):

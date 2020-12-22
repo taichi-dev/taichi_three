@@ -30,7 +30,7 @@ class MeshSmoothNormal(MeshEditBase):
         for i in self.norm:
             self.norm[i] = 0
         for n in range(self.mesh.get_nfaces()):
-            i, j, k = self.mesh.get_face_indices(n)
+            i, j, k = self.mesh.get_face_vert_indices(n)
             a, b, c = self.mesh.get_face_verts(n)
             nrm = (b - a).cross(c - a).normalized()
             self.norm[i] += nrm
@@ -41,5 +41,5 @@ class MeshSmoothNormal(MeshEditBase):
 
     @ti.func
     def get_face_norms(self, n):
-        i, j, k = self.mesh.get_face_indices(n)
+        i, j, k = self.mesh.get_face_vert_indices(n)
         return self.norm[i], self.norm[j], self.norm[k]
