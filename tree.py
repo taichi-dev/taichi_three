@@ -1,6 +1,5 @@
 import taichi as ti
 import numpy as np
-ti.init(print_ir=True)
 
 
 @ti.func
@@ -23,7 +22,12 @@ def ray_aabb_hit(bmin, bmax, ro, rd, inf=1e6, eps=1e-6):
     if near > far:
         hit = 0
 
-    return hit
+    return hit, near
+
+
+@ti.func
+def ray_sphere_hit(pos, rad, ro, rd):
+    return ray_aabb_hit(pos - rad, pos + rad, ro, rd)
 
 
 @ti.data_oriented
@@ -71,6 +75,8 @@ class Tree:
         self.N_pars = N_pars
         self.dim = dim
 
+        self.stack = Stack()
+
         self.dir = ti.field(int)
         self.min = ti.Vector.field(self.dim, float)
         self.max = ti.Vector.field(self.dim, float)
@@ -78,14 +84,18 @@ class Tree:
         self.bvh = ti.root.pointer(ti.i, self.N_tree)
         self.bvh.place(self.dir, self.min, self.max, self.ind)
 
-        self.stack = Stack()
+        self.pos = ti.Vector.field(self.dim, float, self.N_pars)
 
-    def build(self, pos, ind, curr=1):
+    def build(self, pos):
+        self.pos.from_numpy(pos)
+        self._build(pos, np.arange(len(pos)), 1)
+
+    def _build(self, pos, ind, curr):
         if not len(pos):
             return
         elif len(pos) <= 1:
             self.dir[curr] = 0
-            self.ind[curr] = 1 + ind[0]
+            self.ind[curr] = ind[0]
             return
         bmax = np.max(pos, axis=0)
         bmin = np.min(pos, axis=0)
@@ -97,38 +107,52 @@ class Tree:
         self.dir[curr] = 1 + dir
         self.min[curr] = bmin.tolist()
         self.max[curr] = bmax.tolist()
-        self.build(l, li, curr * 2)
-        self.build(r, ri, curr * 2 + 1)
+        self._build(l, li, curr * 2)
+        self._build(r, ri, curr * 2 + 1)
 
     @ti.func
-    def hit(self, stkid, ro, rd):
+    def hit(self, stkid, ro, rd, inf=1e6):
+        near = inf
+
         stack = self.stack.get(stkid)
         stack.push(1)
-
         while stack.size():
             curr = stack.pop()
-            if self.dir[curr] == -1:
-                continue
+
+            if self.dir[curr] == 0:
+                ind = self.ind[curr]
+                pos = self.pos[ind]
+                hit, depth = ray_sphere_hit(pos, 0.2, ro, rd)
+                if hit == 0:
+                    continue
+                if depth < near:
+                    near = depth
+
             bmin, bmax = self.min[curr], self.max[curr]
-            if not ray_aabb_hit(bmin, bmax, ro, rd):
+            if not ray_aabb_hit(bmin, bmax, ro, rd)[0]:
                 continue
 
             stack.push(curr * 2)
             stack.push(curr * 2 + 1)
 
+        return near
+
 
 
 tree = Tree()
 pos = np.float32(np.random.rand(tree.N_pars, tree.dim)) * 2 - 1
-tree.build(pos, np.arange(len(pos)))
+tree.build(pos)
 
 @ti.kernel
 def func():
-    ro = ti.Vector([-2.0, 0.0])
-    rd = ti.Vector([1.0, 0.2]).normalized()
+    ro = ti.Vector([-3.0, 0.0])
+    rd = ti.Vector([1.0, 0.05]).normalized()
     hit = tree.hit(0, ro, rd)
     print(hit)
 
 func()
 
-exit(1)
+gui = ti.GUI()
+while not gui.get_event(gui.ESCAPE, gui.SPACE):
+    gui.circles(pos * 0.5 + 0.5, radius=10)
+    gui.show()
