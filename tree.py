@@ -21,13 +21,16 @@ def ray_aabb_hit(bmin, bmax, ro, rd, inf=1e6, eps=1e-6):
 
     if near > far:
         hit = 0
+    if near < 0:
+        hit = 0
 
     return hit, near
 
 
 @ti.func
 def ray_sphere_hit(pos, rad, ro, rd):
-    return ray_aabb_hit(pos - rad, pos + rad, ro, rd)
+    bmin, bmax = pos - rad * ti.sqrt(pos.n), pos + rad * ti.sqrt(pos.n)
+    return ray_aabb_hit(bmin, bmax, ro, rd)
 
 
 @ti.data_oriented
@@ -69,8 +72,8 @@ class Stack:
 
 
 @ti.data_oriented
-class Tree:
-    def __init__(self, N_pars=16, N_tree=32, dim=2):
+class BVHTree:
+    def __init__(self, N_pars=1, N_tree=32, dim=2):
         self.N_tree = N_tree
         self.N_pars = N_pars
         self.dim = dim
@@ -81,8 +84,8 @@ class Tree:
         self.min = ti.Vector.field(self.dim, float)
         self.max = ti.Vector.field(self.dim, float)
         self.ind = ti.field(int)
-        self.bvh = ti.root.pointer(ti.i, self.N_tree)
-        self.bvh.place(self.dir, self.min, self.max, self.ind)
+        self.tree = ti.root.pointer(ti.i, self.N_tree)
+        self.tree.place(self.dir, self.min, self.max, self.ind)
 
         self.pos = ti.Vector.field(self.dim, float, self.N_pars)
 
@@ -114,15 +117,17 @@ class Tree:
     def hit(self, stkid, ro, rd, inf=1e6):
         near = inf
 
+        ntimes = 0
         stack = self.stack.get(stkid)
         stack.push(1)
-        while stack.size():
+        while ntimes < 32 and stack.size() != 0:
+            ntimes += 1
             curr = stack.pop()
 
             if self.dir[curr] == 0:
                 ind = self.ind[curr]
                 pos = self.pos[ind]
-                hit, depth = ray_sphere_hit(pos, 0.2, ro, rd)
+                hit, depth = ray_sphere_hit(pos, 0.1, ro, rd)
                 if hit == 0:
                     continue
                 if depth < near:
@@ -138,21 +143,19 @@ class Tree:
         return near
 
 
-
-tree = Tree()
+tree = BVHTree()
 pos = np.float32(np.random.rand(tree.N_pars, tree.dim)) * 2 - 1
 tree.build(pos)
 
 @ti.kernel
-def func():
-    ro = ti.Vector([-3.0, 0.0])
-    rd = ti.Vector([1.0, 0.05]).normalized()
+def func(mx: float, my: float):
+    ro = ti.Vector([0.0, 0.0])
+    rd = (ti.Vector([mx, my]) - 0.5).normalized()
     hit = tree.hit(0, ro, rd)
     print(hit)
 
-func()
-
 gui = ti.GUI()
-while not gui.get_event(gui.ESCAPE, gui.SPACE):
-    gui.circles(pos * 0.5 + 0.5, radius=10)
+while gui.running and not gui.get_event(gui.ESCAPE, gui.SPACE):
+    func(*gui.get_cursor_pos())
+    gui.circles(pos * 0.5 + 0.5, radius=512 * 0.1)
     gui.show()
