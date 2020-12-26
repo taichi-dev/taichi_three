@@ -2,6 +2,18 @@ import taichi as ti
 import numpy as np
 
 
+def rects(self, topleft, bottomright, radius=1, color=0xffff):
+    topright = np.stack([topleft[:, 0], bottomright[:, 1]], axis=1)
+    bottomleft = np.stack([bottomright[:, 0], topleft[:, 1]], axis=1)
+    self.lines(topleft, topright, radius, color)
+    self.lines(topright, bottomright, radius, color)
+    self.lines(bottomright, bottomleft, radius, color)
+    self.lines(bottomleft, topleft, radius, color)
+
+ti.GUI.rects = rects
+del rects
+
+
 pos = np.load('assets/fluid.npy') * 2 - 1
 
 
@@ -81,49 +93,49 @@ def ray_sphere_hit(pos, rad, ro, rd, inf=1e6, eps=1e-6):
 
 @ti.data_oriented
 class Stack:
-    def __init__(self, N=64, L=512, field=None):
+    def __init__(self, N_mt=1024, N_len=4096, field=None):
         self.val = ti.field(int) if field is None else field
         self.len = ti.field(int)
-        ti.root.dense(ti.i, N).dynamic(ti.j, L).place(self.val)
-        ti.root.dense(ti.i, N).place(self.len)
+        ti.root.dense(ti.i, N_mt).dynamic(ti.j, N_len).place(self.val)
+        ti.root.dense(ti.i, N_mt).place(self.len)
 
-    def get(self, n):
-        return self.Proxy(self, n)
+    def get(self, mtid):
+        return self.Proxy(self, mtid)
 
     @ti.data_oriented
     class Proxy:
-        def __init__(self, stack, n):
+        def __init__(self, stack, mtid):
             self.stack = stack
-            self.n = n
+            self.mtid = mtid
 
         def __getattr__(self, attr):
             return getattr(self.stack, attr)
 
         @ti.func
         def size(self):
-            return self.len[self.n]
+            return self.len[self.mtid]
 
         @ti.func
         def clear(self):
-            self.len[self.n] = 0
+            self.len[self.mtid] = 0
 
         @ti.func
         def push(self, val):
-            l = self.len[self.n]
-            self.val[self.n, l] = val
-            self.len[self.n] = l + 1
+            l = self.len[self.mtid]
+            self.val[self.mtid, l] = val
+            self.len[self.mtid] = l + 1
 
         @ti.func
         def pop(self):
-            l = self.len[self.n]
-            val = self.val[self.n, l - 1]
-            self.len[self.n] = l - 1
+            l = self.len[self.mtid]
+            val = self.val[self.mtid, l - 1]
+            self.len[self.mtid] = l - 1
             return val
 
 
 @ti.data_oriented
 class BVHTree:
-    def __init__(self, N_pars=1, N_tree=2**16, dim=2):
+    def __init__(self, N_pars, N_tree=2**16, dim=2):
         self.N_tree = N_tree
         self.N_pars = N_pars
         self.dim = dim
@@ -139,56 +151,86 @@ class BVHTree:
 
         self.pos = ti.Vector.field(self.dim, float, self.N_pars)
 
-    def build(self, pos):
-        self.pos.from_numpy(pos)
-        self._build(pos, np.arange(len(pos)), 1)
+    def build(self, pmin, pmax):
+        assert len(pmin) == len(pmax)
+        assert np.all(pmax > pmin)
+        self._build(pmin, pmax, np.arange(len(pmin)), 1)
 
-    def _build(self, pos, ind, curr):
+    def _build(self, pmin, pmax, pind, curr):
         assert curr < self.N_tree, curr
-        if not len(pos):
+        if not len(pind):
             return
-        elif len(pos) <= 1:
+        elif len(pind) <= 1:
             self.dir[curr] = 0
-            self.ind[curr] = ind[0]
+            self.ind[curr] = pind[0]
             return
-        bmax = np.max(pos, axis=0)
-        bmin = np.min(pos, axis=0)
+        bmax = np.max(pmax, axis=0)
+        bmin = np.min(pmin, axis=0)
         dir = np.argmax(bmax - bmin)
-        sort = np.argsort(pos[:, dir])
+        sort = np.argsort(pmax[:, dir] + pmin[:, dir])
         mid = len(sort) // 2
-        l, r = pos[mid:], pos[:mid]
-        li, ri = ind[mid:], ind[:mid]
+        lsort = sort[:mid]
+        rsort = sort[mid:]
+        lmin, rmin = pmin[lsort], pmin[rsort]
+        lmax, rmax = pmax[lsort], pmax[rsort]
+        lind, rind = pind[lsort], pind[rsort]
         self.dir[curr] = 1 + dir
         self.min[curr] = bmin.tolist()
         self.max[curr] = bmax.tolist()
-        self._build(l, li, curr * 2)
-        self._build(r, ri, curr * 2 + 1)
+        #print(lmax[:, dir].max(), rmin[:, dir].min())
+        self._build(lmin, lmax, lind, curr * 2)
+        self._build(rmin, rmax, rind, curr * 2 + 1)
+
+    @ti.kernel
+    def _active_indices(self, out: ti.ext_arr()):
+        for curr in self.dir:
+            if self.dir[curr] != 0:
+                out[curr] = 1
+
+    def active_indices(self):
+        ind = np.zeros(self.N_tree, dtype=np.int32)
+        self._active_indices(ind)
+        return np.bool_(ind)
+
+    def visualize(self, gui):
+        bmin = self.min.to_numpy()
+        bmax = self.max.to_numpy()
+        ind = self.active_indices()
+        bmin, bmax = bmin[ind], bmax[ind]
+        delta = bmax - bmin
+        ind = np.all((0.03 <= delta) & (delta <= 2), axis=1)
+        bmin, bmax = bmin[ind], bmax[ind]
+        bmin = bmin * 0.5 + 0.5
+        bmax = bmax * 0.5 + 0.5
+        gui.rects(bmin, bmax, color=0xff0000)
 
     @ti.func
-    def hit(self, stkid, ro, rd, inf=1e6):
+    def element_hit(self, ind, ro, rd):
+        pos = self.pos[ind]
+        hit, depth = ray_sphere_hit(pos, 0.002, ro, rd)
+        return hit, depth
+
+    @ti.func
+    def hit(self, mtid, ro, rd, inf=1e6):
         near = inf
 
         ntimes = 0
-        stack = self.stack.get(stkid)
+        stack = self.stack.get(mtid)
         stack.clear()
         stack.push(1)
         while ntimes < self.N_tree and stack.size() != 0:
             curr = stack.pop()
 
             if self.dir[curr] == 0:
-                #print('zero', curr)
                 ind = self.ind[curr]
-                pos = self.pos[ind]
-                hit, depth = ray_sphere_hit(pos, 0.002, ro, rd)
-                if hit == 0:
-                    continue
-                if depth < near:
+                hit, depth = self.element_hit(ind, ro, rd)
+                if hit != 0 and depth < near:
                     near = depth
+                continue
 
             bmin, bmax = self.min[curr], self.max[curr]
             hit, depth = ray_aabb_hit(bmin, bmax, ro, rd)
             if hit == 0:
-                #print('aabb', curr, bmin, bmax, ro, rd, depth)
                 continue
 
             ntimes += 1
@@ -201,7 +243,8 @@ class BVHTree:
 
 tree = BVHTree(N_pars=len(pos))
 pos = pos[:, :tree.dim]
-tree.build(pos)
+tree.pos.from_numpy(pos)
+tree.build(pos - 0.002, pos + 0.002)
 
 @ti.kernel
 def func(mx: float, my: float):
@@ -213,5 +256,6 @@ def func(mx: float, my: float):
 gui = ti.GUI()
 while gui.running and not gui.get_event(gui.ESCAPE, gui.SPACE):
     func(*gui.get_cursor_pos())
+    tree.visualize(gui)
     gui.circles(pos * 0.5 + 0.5, radius=512 * 0.002)
     gui.show()
