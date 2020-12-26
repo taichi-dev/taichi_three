@@ -100,13 +100,12 @@ def ray_sphere_hit(pos, rad, ro, rd):
 
 
 @ti.data_oriented
-class Stack:
+class Stack:  # consumes 512 MiB by default:
     def __init__(self, N_mt=512**2, N_len=512, field=None):
         self.val = ti.field(int) if field is None else field
-        self.blk1 = ti.root.pointer(ti.i, N_mt // 32)
-        self.blk2 = self.blk1.pointer(ti.i, 32)
-        self.blk3 = self.blk2.dynamic(ti.j, N_len)
-        self.blk3.place(self.val)
+        self.blk1 = ti.root.dense(ti.i, N_mt)
+        self.blk2 = self.blk1.dense(ti.j, N_len)
+        self.blk2.place(self.val)
 
         self.len = ti.field(int, N_mt)
 
@@ -115,8 +114,8 @@ class Stack:
 
     @ti.kernel
     def deactivate(self):
-        for i in self.blk2:
-            ti.deactivate(self.blk3, [i])
+        for i in self.blk1:
+            ti.deactivate(self.blk2, [i])
 
     @ti.data_oriented
     class Proxy:
@@ -159,7 +158,7 @@ class BVHTree:
         self.min = ti.Vector.field(self.dim, float)
         self.max = ti.Vector.field(self.dim, float)
         self.ind = ti.field(int)
-        self.tree = ti.root.pointer(ti.i, self.N_tree)
+        self.tree = ti.root.dense(ti.i, self.N_tree)
         self.tree.place(self.dir, self.min, self.max, self.ind)
 
     def build(self, pmin, pmax):
