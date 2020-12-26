@@ -14,7 +14,7 @@ def _tri_append(faces, indices):
         assert False, len(indices)
 
 
-def readobj(path, orient='xyz', scale=None, simple=False):
+def readobj(path, orient='xyz', scale=None, simple=False, usemtl=True):
     v = []
     vt = []
     vn = []
@@ -79,8 +79,9 @@ def readobj(path, orient='xyz', scale=None, simple=False):
     ret['vt'] = np.array([[0, 0]], dtype=np.float32) if len(vt) == 0 else np.array(vt, dtype=np.float32)
     ret['vn'] = np.array([[0, 0, 0]], dtype=np.float32) if len(vn) == 0 else np.array(vn, dtype=np.float32)
     ret['f'] = np.zeros((1, 3, 3), dtype=np.int32) if len(faces) == 0 else np.array(faces, dtype=np.int32)
-    ret['usemtl'] = usemtls
-    ret['mtllib'] = mtllib
+    if usemtl:
+        ret['usemtl'] = usemtls
+        ret['mtllib'] = mtllib
 
     if orient is not None:
         objorient(ret, orient)
