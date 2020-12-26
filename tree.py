@@ -1,5 +1,12 @@
 import taichi as ti
 import numpy as np
+import taichi_inject
+
+ti.init(ti.cuda)
+
+
+inf = 1e6
+eps = 1e-6
 
 
 def rects(self, topleft, bottomright, radius=1, color=0xffff):
@@ -15,10 +22,11 @@ del rects
 
 
 pos = np.load('assets/fluid.npy') * 2 - 1
+rad = 0.004
 
 
 @ti.func
-def ray_aabb_hit(bmin, bmax, ro, rd, inf=1e6, eps=1e-6):
+def ray_aabb_hit(bmin, bmax, ro, rd):
     near = -inf
     far = inf
     hit = 1
@@ -41,7 +49,7 @@ def ray_aabb_hit(bmin, bmax, ro, rd, inf=1e6, eps=1e-6):
 
 
 @ti.func
-def ray_triangle_hit(self, v0, v1, v2, ro, rd, inf=1e6, eps=1e-6):
+def ray_triangle_hit(self, v0, v1, v2, ro, rd):
     e1 = v1 - v0
     e2 = v2 - v0
     p = rd.cross(e2)
@@ -76,7 +84,7 @@ def ray_triangle_hit(self, v0, v1, v2, ro, rd, inf=1e6, eps=1e-6):
 
 
 @ti.func
-def ray_sphere_hit(pos, rad, ro, rd, inf=1e6, eps=1e-6):
+def ray_sphere_hit(pos, rad, ro, rd):
     t = inf
     op = pos - ro
     b = op.dot(rd)
@@ -93,14 +101,22 @@ def ray_sphere_hit(pos, rad, ro, rd, inf=1e6, eps=1e-6):
 
 @ti.data_oriented
 class Stack:
-    def __init__(self, N_mt=1024, N_len=4096, field=None):
+    def __init__(self, N_mt=512**2, N_len=512, field=None):
         self.val = ti.field(int) if field is None else field
-        self.len = ti.field(int)
-        ti.root.dense(ti.i, N_mt).dynamic(ti.j, N_len).place(self.val)
-        ti.root.dense(ti.i, N_mt).place(self.len)
+        self.blk1 = ti.root.pointer(ti.i, N_mt // 32)
+        self.blk2 = self.blk1.pointer(ti.i, 32)
+        self.blk3 = self.blk2.dynamic(ti.j, N_len)
+        self.blk3.place(self.val)
+
+        self.len = ti.field(int, N_mt)
 
     def get(self, mtid):
         return self.Proxy(self, mtid)
+
+    @ti.kernel
+    def deactivate(self):
+        for i in self.blk2:
+            ti.deactivate(self.blk3, [i])
 
     @ti.data_oriented
     class Proxy:
@@ -135,11 +151,9 @@ class Stack:
 
 @ti.data_oriented
 class BVHTree:
-    def __init__(self, N_tree=2**16, dim=2):
+    def __init__(self, N_tree=2**16, dim=3):
         self.N_tree = N_tree
         self.dim = dim
-
-        self.stack = Stack()
 
         self.dir = ti.field(int)
         self.min = ti.Vector.field(self.dim, float)
@@ -181,12 +195,14 @@ class BVHTree:
         assert curr < self.N_tree, curr
         if not len(pind):
             return
+
         elif len(pind) <= 1:
             data.dir[curr] = 0
             data.ind[curr] = pind[0]
             data.min[curr] = pmin[0]
             data.max[curr] = pmax[0]
             return
+
         bmax = np.max(pmax, axis=0)
         bmin = np.min(pmin, axis=0)
         dir = np.argmax(bmax - bmin)
@@ -194,6 +210,7 @@ class BVHTree:
         mid = len(sort) // 2
         lsort = sort[:mid]
         rsort = sort[mid:]
+
         lmin, rmin = pmin[lsort], pmin[rsort]
         lmax, rmax = pmax[lsort], pmax[rsort]
         lind, rind = pind[lsort], pind[rsort]
@@ -201,7 +218,6 @@ class BVHTree:
         data.ind[curr] = 0
         data.min[curr] = bmin
         data.max[curr] = bmax
-        #print(lmax[:, dir].max(), rmin[:, dir].min())
         self._build(data, lmin, lmax, lind, curr * 2)
         self._build(data, rmin, rmax, rind, curr * 2 + 1)
 
@@ -217,6 +233,7 @@ class BVHTree:
         return np.bool_(ind)
 
     def visualize(self, gui):
+        assert self.dim == 2
         bmin = self.min.to_numpy()
         bmax = self.max.to_numpy()
         ind = self.active_indices()
@@ -233,11 +250,9 @@ class BVHTree:
         raise NotImplementedError
 
     @ti.func
-    def hit(self, mtid, ro, rd, inf=1e6):
+    def hit(self, stack, ro, rd):
         near = inf
-
         ntimes = 0
-        stack = self.stack.get(mtid)
         stack.clear()
         stack.push(1)
         while ntimes < self.N_tree and stack.size() != 0:
@@ -258,33 +273,110 @@ class BVHTree:
             ntimes += 1
             stack.push(curr * 2)
             stack.push(curr * 2 + 1)
-
-        print('ntimes', ntimes)
         return near
 
 
-tree = BVHTree()
+@ti.data_oriented
+class Camera:
+    def __init__(self, scene, res=512):
+        if isinstance(res, int): res = res, res
+        self.res = ti.Vector(res)
+        del res
+
+        self.ro = ti.Vector.field(3, float)
+        self.rd = ti.Vector.field(3, float)
+        self.rc = ti.Vector.field(3, float)
+
+        self.rays = ti.root.bitmasked(ti.ij, self.res)
+        self.rays.place(self.ro)
+        self.rays.place(self.rd)
+        self.rays.place(self.rc)
+
+        self.img = ti.Vector.field(3, float, self.res)
+        self.cnt = ti.field(int, self.res)
+
+        self.scene = scene
+        self.stack = Stack()
+
+    @ti.kernel
+    def _get_image(self, out: ti.ext_arr()):
+        for I in ti.grouped(self.img):
+            val = self.img[I] / self.cnt[I]
+            for k in ti.static(range(3)):
+                out[I, k] = val[k]
+
+    def get_image(self):
+        img = np.zeros((*self.res, 3))
+        self._get_image(img)
+        return img
+
+    @ti.kernel
+    def deactivate(self):
+        for I in ti.grouped(self.rays):
+            ti.deactivate(self.rays, I)
+
+    @ti.kernel
+    def load_rays(self):
+        for I in ti.grouped(ti.ndrange(*self.res)):
+            bias = ti.Vector([ti.random(), ti.random()])
+            uv = (I + bias) / self.res * 2 - 1
+            ro = ti.Vector([0.0, 0.0, 3.0])
+            rd = ti.Vector([uv.x, uv.y, -2.0]).normalized()
+            rc = ti.Vector([1.0, 1.0, 1.0])
+            self.ro[I] = ro
+            self.rd[I] = rd
+            self.rc[I] = rc
+
+    @ti.kernel
+    def _step_rays(self):
+        for I in ti.grouped(self.rays):
+            stack = self.stack.get(I.y * self.res.x + I.x)
+            ro = self.ro[I]
+            rd = self.rd[I]
+            rc = self.rc[I]
+            if all(rd == 0):
+                continue
+            near = self.scene.hit(stack, ro, rd)
+            if near >= inf:
+                rc *= 0
+                rd *= 0
+            self.ro[I] = ro
+            self.rd[I] = rd
+            self.rc[I] = rc
+
+    def step_rays(self):
+        self._step_rays()
+        self.stack.deactivate()
+
+    @ti.kernel
+    def update_image(self):
+        for I in ti.grouped(ti.ndrange(*self.res)):
+            rc = self.rc[I]
+            self.img[I] += rc
+            self.cnt[I] += 1
+
+
+tree = BVHTree(dim=3)
+camera = Camera(res=512, scene=tree)
+
 pos_ti = ti.Vector.field(tree.dim, float, len(pos))
 ti.materialize_callback(lambda: pos_ti.from_numpy(pos))
+ti.materialize_callback(lambda: tree.build(pos - rad, pos + rad))
+
 @ti.func
 def element_hit(ind, ro, rd):
     pos = pos_ti[ind]
-    hit, depth = ray_sphere_hit(pos, 0.002, ro, rd)
+    hit, depth = ray_sphere_hit(pos, rad, ro, rd)
     return hit, depth
+
 tree.element_hit = element_hit
-pos = pos[:, :tree.dim]
-tree.build(pos - 0.002, pos + 0.002)
 
-@ti.kernel
-def func(mx: float, my: float):
-    ro = ti.Vector([-3.0, 0.0])
-    rd = (ti.Vector([mx, my]) * 2 - 1 - ro).normalized()
-    hit = tree.hit(0, ro, rd)
-    print('hit', hit)
 
-gui = ti.GUI()
+gui = ti.GUI('BVH', tuple(camera.res.entries))
 while gui.running and not gui.get_event(gui.ESCAPE, gui.SPACE):
-    func(*gui.get_cursor_pos())
-    tree.visualize(gui)
-    gui.circles(pos * 0.5 + 0.5, radius=512 * 0.002)
+    camera.deactivate()
+    camera.load_rays()
+    camera.step_rays()
+    camera.update_image()
+    gui.set_image(camera.get_image())
     gui.show()
