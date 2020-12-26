@@ -324,6 +324,7 @@ class Camera:
         blue = ti.Vector([0.5, 0.7, 1.0])
         white = ti.Vector([1.0, 1.0, 1.0])
         ret = (1 - t) * white + t * blue
+        ret = 0.1
         return ret
 
     @ti.func
@@ -362,30 +363,52 @@ class Camera:
             self.cnt[I] += 1
 
 
+
+@ti.data_oriented
+class Material:
+    def __init__(self, ks=0.0, kd=1.0, ke=0.0):
+        self.ks = ks
+        self.kd = kd
+        self.ke = ke
+
+    @ti.func
+    def emittance(self, idir, nrm):
+        return self.ke
+
+    @ti.func
+    def sample(self, idir, nrm):
+        spec = reflect(idir, nrm)
+        diff = tangentspace(nrm) @ spherical(ti.random(), ti.random())
+        odir = spec * self.ks + diff * self.kd
+        odir = odir.normalized()
+        return odir, 1.0
+
+
 @ti.data_oriented
 class Particles:
     @ti.func
     def transmit(self, near, ind, ro, rd, rc):
         ro = ro + near * rd
-
-        ks = 0.0
-        kd = 1.0
-
         nrm = (ro - self.pos[ind]).normalized()
-        rd_spec = reflect(rd, nrm)
-        rd_diff = tangentspace(nrm) @ spherical(ti.random(), ti.random())
-        rd = (ks * rd_spec + kd * rd_diff).normalized()
-        ro += nrm * eps * 8
+
+        if ind == 0:
+            rc *= 3
+            rd *= 0
+        else:
+            rd, wei = self.matr.sample(rd, nrm)
+            rc *= wei
 
         return ro, rd, rc
 
-    def __init__(self, pos, rad=0.01, dim=3):
+    def __init__(self, matr, pos, rad=0.05, dim=3):
         self.pos = ti.Vector.field(dim, float, len(pos))
         self.rad = rad
 
         @ti.materialize_callback
         def init_pos():
             self.pos.from_numpy(pos)
+
+        self.matr = matr
 
     def build(self, tree):
         pos = self.pos.to_numpy()
@@ -398,8 +421,9 @@ class Particles:
         return hit, depth
 
 
-pars = Particles(np.load('assets/fluid.npy') * 2 - 1, 0.02)
-#pars = Particles(np.array([[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]], np.float32), 0.2)
+matr = Material()
+#pars = Particles(matr, np.load('assets/fluid.npy') * 2 - 1, 0.02)
+pars = Particles(matr, np.array([[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]], np.float32), 0.2)
 tree = BVHTree(geom=pars)
 camera = Camera(scene=tree)
 
