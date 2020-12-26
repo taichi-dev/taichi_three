@@ -21,9 +21,8 @@ ti.GUI.rects = rects
 del rects
 
 
-@ti.pyfunc
-def reflect(I, N):
-    return I - 2 * N.dot(I) * N
+
+from tina.advans import *
 
 
 @ti.func
@@ -112,11 +111,6 @@ class Stack:  # consumes 64 MiB by default:
 
     def get(self, mtid):
         return self.Proxy(self, mtid)
-
-    @ti.kernel
-    def deactivate(self):
-        for i in self.blk1:
-            ti.deactivate(self.blk2, [i])
 
     @ti.data_oriented
     class Proxy:
@@ -300,6 +294,7 @@ class Camera:
     def _get_image(self, out: ti.ext_arr()):
         for I in ti.grouped(self.img):
             val = self.img[I] / self.cnt[I]
+            val = aces_tonemap(val)
             for k in ti.static(range(3)):
                 out[I, k] = val[k]
 
@@ -307,11 +302,6 @@ class Camera:
         img = np.zeros((*self.res, 3))
         self._get_image(img)
         return img
-
-    #@ti.kernel
-    #def deactivate(self):
-    #    for I in ti.grouped(self.ro):
-    #        ti.deactivate(self.rays, I)
 
     @ti.kernel
     def load_rays(self):
@@ -327,7 +317,6 @@ class Camera:
 
     def step_rays(self):
         self._step_rays()
-        self.stack.deactivate()
 
     @ti.func
     def fallback(self, rd):
@@ -341,7 +330,6 @@ class Camera:
     def transmit(self, near, ind, ro, rd, rc):
         if ind == -1:
             rc *= self.fallback(rd)
-            ro = ti.Vector([inf, inf, inf])
             rd *= 0
         else:
             ro, rd, rc = self.scene.geom.transmit(near, ind, ro, rd, rc)
@@ -368,6 +356,8 @@ class Camera:
             rc = self.rc[I]
             ro = self.ro[I]
             rd = self.rd[I]
+            if rd.norm_sqr() > 0.5:
+                continue
             self.img[I] += rc
             self.cnt[I] += 1
 
@@ -377,13 +367,16 @@ class Particles:
     @ti.func
     def transmit(self, near, ind, ro, rd, rc):
         ro = ro + near * rd
-        if ind % 2 == 0:
-            rc *= 1
-            rd *= 0
-        else:
-            nrm = (ro - self.pos[ind]).normalized()
-            rd = reflect(rd, nrm)
-            ro += nrm * eps * 8
+
+        ks = 0.0
+        kd = 1.0
+
+        nrm = (ro - self.pos[ind]).normalized()
+        rd_spec = reflect(rd, nrm)
+        rd_diff = tangentspace(nrm) @ spherical(ti.random(), ti.random())
+        rd = (ks * rd_spec + kd * rd_diff).normalized()
+        ro += nrm * eps * 8
+
         return ro, rd, rc
 
     def __init__(self, pos, rad=0.01, dim=3):
@@ -405,8 +398,8 @@ class Particles:
         return hit, depth
 
 
-#pars = Particles(np.load('assets/fluid.npy') * 2 - 1, 0.01)
-pars = Particles(np.array([[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]], np.float32), 0.2)
+pars = Particles(np.load('assets/fluid.npy') * 2 - 1, 0.02)
+#pars = Particles(np.array([[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]], np.float32), 0.2)
 tree = BVHTree(geom=pars)
 camera = Camera(scene=tree)
 
@@ -416,8 +409,8 @@ pars.build(tree)
 gui = ti.GUI('BVH', tuple(camera.res.entries))
 while gui.running and not gui.get_event(gui.ESCAPE, gui.SPACE):
     camera.load_rays()
-    camera.step_rays()
-    camera.step_rays()
+    for step in range(6):
+        camera.step_rays()
     camera.update_image()
     gui.set_image(camera.get_image())
     gui.show()
