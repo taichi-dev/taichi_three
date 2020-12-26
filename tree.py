@@ -135,9 +135,8 @@ class Stack:
 
 @ti.data_oriented
 class BVHTree:
-    def __init__(self, N_pars, N_tree=2**16, dim=2):
+    def __init__(self, N_tree=2**16, dim=2):
         self.N_tree = N_tree
-        self.N_pars = N_pars
         self.dim = dim
 
         self.stack = Stack()
@@ -149,10 +148,7 @@ class BVHTree:
         self.tree = ti.root.pointer(ti.i, self.N_tree)
         self.tree.place(self.dir, self.min, self.max, self.ind)
 
-        self.pos = ti.Vector.field(self.dim, float, self.N_pars)
-
     def build(self, pmin, pmax):
-        print('building tree...')
         assert len(pmin) == len(pmax)
         assert np.all(pmax >= pmin)
         data = lambda: None
@@ -161,6 +157,7 @@ class BVHTree:
         data.min = self.min.to_numpy()
         data.max = self.max.to_numpy()
         data.ind = self.ind.to_numpy()
+        print('building tree...')
         self._build(data, pmin, pmax, np.arange(len(pmin)), 1)
         self._build_from_data(data.dir, data.min, data.max, data.ind)
         print('building tree done')
@@ -225,7 +222,7 @@ class BVHTree:
         ind = self.active_indices()
         bmin, bmax = bmin[ind], bmax[ind]
         delta = bmax - bmin
-        ind = np.all(0.03 <= delta, axis=1)
+        ind = np.any(delta >= 0.02, axis=1)
         bmin, bmax = bmin[ind], bmax[ind]
         bmin = bmin * 0.5 + 0.5
         bmax = bmax * 0.5 + 0.5
@@ -233,9 +230,7 @@ class BVHTree:
 
     @ti.func
     def element_hit(self, ind, ro, rd):
-        pos = self.pos[ind]
-        hit, depth = ray_sphere_hit(pos, 0.002, ro, rd)
-        return hit, depth
+        raise NotImplementedError
 
     @ti.func
     def hit(self, mtid, ro, rd, inf=1e6):
@@ -268,9 +263,16 @@ class BVHTree:
         return near
 
 
-tree = BVHTree(N_pars=len(pos))
+tree = BVHTree()
+pos_ti = ti.Vector.field(tree.dim, float, len(pos))
+ti.materialize_callback(lambda: pos_ti.from_numpy(pos))
+@ti.func
+def element_hit(ind, ro, rd):
+    pos = pos_ti[ind]
+    hit, depth = ray_sphere_hit(pos, 0.002, ro, rd)
+    return hit, depth
+tree.element_hit = element_hit
 pos = pos[:, :tree.dim]
-tree.pos.from_numpy(pos)
 tree.build(pos - 0.002, pos + 0.002)
 
 @ti.kernel
