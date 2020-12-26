@@ -152,17 +152,43 @@ class BVHTree:
         self.pos = ti.Vector.field(self.dim, float, self.N_pars)
 
     def build(self, pmin, pmax):
+        print('building tree...')
         assert len(pmin) == len(pmax)
-        assert np.all(pmax > pmin)
-        self._build(pmin, pmax, np.arange(len(pmin)), 1)
+        assert np.all(pmax >= pmin)
+        data = lambda: None
+        data.dir = self.dir.to_numpy()
+        data.dir[:] = -1
+        data.min = self.min.to_numpy()
+        data.max = self.max.to_numpy()
+        data.ind = self.ind.to_numpy()
+        self._build(data, pmin, pmax, np.arange(len(pmin)), 1)
+        self._build_from_data(data.dir, data.min, data.max, data.ind)
+        print('building tree done')
 
-    def _build(self, pmin, pmax, pind, curr):
+    @ti.kernel
+    def _build_from_data(self,
+            data_dir: ti.ext_arr(),
+            data_min: ti.ext_arr(),
+            data_max: ti.ext_arr(),
+            data_ind: ti.ext_arr()):
+        for i in range(self.dir.shape[0]):
+            if data_dir[i] == -1:
+                continue
+            self.dir[i] = data_dir[i]
+            for k in ti.static(range(self.dim)):
+                self.min[i][k] = data_min[i, k]
+                self.max[i][k] = data_max[i, k]
+            self.ind[i] = data_ind[i]
+
+    def _build(self, data, pmin, pmax, pind, curr):
         assert curr < self.N_tree, curr
         if not len(pind):
             return
         elif len(pind) <= 1:
-            self.dir[curr] = 0
-            self.ind[curr] = pind[0]
+            data.dir[curr] = 0
+            data.ind[curr] = pind[0]
+            data.min[curr] = pmin[0]
+            data.max[curr] = pmax[0]
             return
         bmax = np.max(pmax, axis=0)
         bmin = np.min(pmin, axis=0)
@@ -174,12 +200,13 @@ class BVHTree:
         lmin, rmin = pmin[lsort], pmin[rsort]
         lmax, rmax = pmax[lsort], pmax[rsort]
         lind, rind = pind[lsort], pind[rsort]
-        self.dir[curr] = 1 + dir
-        self.min[curr] = bmin.tolist()
-        self.max[curr] = bmax.tolist()
+        data.dir[curr] = 1 + dir
+        data.ind[curr] = 0
+        data.min[curr] = bmin
+        data.max[curr] = bmax
         #print(lmax[:, dir].max(), rmin[:, dir].min())
-        self._build(lmin, lmax, lind, curr * 2)
-        self._build(rmin, rmax, rind, curr * 2 + 1)
+        self._build(data, lmin, lmax, lind, curr * 2)
+        self._build(data, rmin, rmax, rind, curr * 2 + 1)
 
     @ti.kernel
     def _active_indices(self, out: ti.ext_arr()):
@@ -198,7 +225,7 @@ class BVHTree:
         ind = self.active_indices()
         bmin, bmax = bmin[ind], bmax[ind]
         delta = bmax - bmin
-        ind = np.all((0.03 <= delta) & (delta <= 2), axis=1)
+        ind = np.all(0.03 <= delta, axis=1)
         bmin, bmax = bmin[ind], bmax[ind]
         bmin = bmin * 0.5 + 0.5
         bmax = bmax * 0.5 + 0.5
