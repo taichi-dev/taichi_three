@@ -21,10 +21,6 @@ ti.GUI.rects = rects
 del rects
 
 
-pos = np.load('assets/fluid.npy') * 2 - 1
-rad = 0.004
-
-
 @ti.func
 def ray_aabb_hit(bmin, bmax, ro, rd):
     near = -inf
@@ -100,8 +96,8 @@ def ray_sphere_hit(pos, rad, ro, rd):
 
 
 @ti.data_oriented
-class Stack:  # consumes 512 MiB by default:
-    def __init__(self, N_mt=512**2, N_len=512, field=None):
+class Stack:  # consumes 64 MiB by default:
+    def __init__(self, N_mt=512**2, N_len=64, field=None):
         self.val = ti.field(int) if field is None else field
         self.blk1 = ti.root.dense(ti.i, N_mt)
         self.blk2 = self.blk1.dense(ti.j, N_len)
@@ -150,7 +146,8 @@ class Stack:  # consumes 512 MiB by default:
 
 @ti.data_oriented
 class BVHTree:
-    def __init__(self, N_tree=2**16, dim=3):
+    def __init__(self, geom, N_tree=2**16, dim=3):
+        self.geom = geom
         self.N_tree = N_tree
         self.dim = dim
 
@@ -245,23 +242,21 @@ class BVHTree:
         gui.rects(bmin, bmax, color=0xff0000)
 
     @ti.func
-    def element_hit(self, ind, ro, rd):
-        raise NotImplementedError
-
-    @ti.func
     def hit(self, stack, ro, rd):
         near = inf
         ntimes = 0
         stack.clear()
         stack.push(1)
+        hitind = -1
         while ntimes < self.N_tree and stack.size() != 0:
             curr = stack.pop()
 
             if self.dir[curr] == 0:
                 ind = self.ind[curr]
-                hit, depth = self.element_hit(ind, ro, rd)
+                hit, depth = self.geom.hit(ind, ro, rd)
                 if hit != 0 and depth < near:
                     near = depth
+                    hitind = ind
                 continue
 
             bmin, bmax = self.min[curr], self.max[curr]
@@ -272,7 +267,7 @@ class BVHTree:
             ntimes += 1
             stack.push(curr * 2)
             stack.push(curr * 2 + 1)
-        return near
+        return near, hitind
 
 
 @ti.data_oriented
@@ -280,7 +275,6 @@ class Camera:
     def __init__(self, scene, res=512):
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)
-        del res
 
         self.ro = ti.Vector.field(3, float)
         self.rd = ti.Vector.field(3, float)
@@ -326,6 +320,17 @@ class Camera:
             self.rd[I] = rd
             self.rc[I] = rc
 
+    @ti.func
+    def transmit(self, near, ind,
+            ro: ti.template(),
+            rd: ti.template(),
+            rc: ti.template()):
+        if ind == -1:
+            rc *= 0
+            rd *= 0
+        else:
+            self.scene.geom.transmit(near, ind, ro, rd, rc)
+
     @ti.kernel
     def _step_rays(self):
         for I in ti.grouped(self.rays):
@@ -335,10 +340,8 @@ class Camera:
             rc = self.rc[I]
             if all(rd == 0):
                 continue
-            near = self.scene.hit(stack, ro, rd)
-            if near >= inf:
-                rc *= 0
-                rd *= 0
+            near, hitind = self.scene.hit(stack, ro, rd)
+            self.transmit(near, hitind, ro, rd, rc)
             self.ro[I] = ro
             self.rd[I] = rd
             self.rc[I] = rc
@@ -355,20 +358,43 @@ class Camera:
             self.cnt[I] += 1
 
 
-tree = BVHTree(dim=3)
-camera = Camera(res=512, scene=tree)
+@ti.data_oriented
+class Particles:
+    def __init__(self, pos, rad=0.01, dim=3):
+        self.pos = ti.Vector.field(dim, float, len(pos))
+        self.rad = rad
 
-pos_ti = ti.Vector.field(tree.dim, float, len(pos))
-ti.materialize_callback(lambda: pos_ti.from_numpy(pos))
-ti.materialize_callback(lambda: tree.build(pos - rad, pos + rad))
+        @ti.materialize_callback
+        def init_pos():
+            self.pos.from_numpy(pos)
 
-@ti.func
-def element_hit(ind, ro, rd):
-    pos = pos_ti[ind]
-    hit, depth = ray_sphere_hit(pos, rad, ro, rd)
-    return hit, depth
+    def build(self, tree):
+        pos = self.pos.to_numpy()
+        tree.build(pos - self.rad, pos + self.rad)
 
-tree.element_hit = element_hit
+    @ti.func
+    def hit(self, ind, ro, rd):
+        pos = self.pos[ind]
+        hit, depth = ray_sphere_hit(pos, self.rad, ro, rd)
+        return hit, depth
+
+    @ti.func
+    def transmit(self, near, ind,
+            ro: ti.template(),
+            rd: ti.template(),
+            rc: ti.template()):
+        pos = ro + near * rd
+        nrm = (pos - self.pos[ind]).normalized()
+
+        rc *= max(0, -nrm.dot(rd))
+        rd *= 0
+
+
+pars = Particles(np.load('assets/fluid.npy') * 2 - 1, 0.01)
+tree = BVHTree(geom=pars)
+camera = Camera(scene=tree)
+
+pars.build(tree)
 
 
 gui = ti.GUI('BVH', tuple(camera.res.entries))
