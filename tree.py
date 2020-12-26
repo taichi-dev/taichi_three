@@ -21,6 +21,11 @@ ti.GUI.rects = rects
 del rects
 
 
+@ti.pyfunc
+def reflect(I, N):
+    return I - 2 * N.dot(I) * N
+
+
 @ti.func
 def ray_aabb_hit(bmin, bmax, ro, rd):
     near = -inf
@@ -321,15 +326,13 @@ class Camera:
             self.rc[I] = rc
 
     @ti.func
-    def transmit(self, near, ind,
-            ro: ti.template(),
-            rd: ti.template(),
-            rc: ti.template()):
+    def transmit(self, near, ind, ro, rd, rc):
         if ind == -1:
-            rc *= 0
+            rc *= ti.Vector([0.4, 0.5, 0.6])
             rd *= 0
         else:
-            self.scene.geom.transmit(near, ind, ro, rd, rc)
+            ro, rd, rc = self.scene.geom.transmit(near, ind, ro, rd, rc)
+        return ro, rd, rc
 
     @ti.kernel
     def _step_rays(self):
@@ -338,10 +341,13 @@ class Camera:
             ro = self.ro[I]
             rd = self.rd[I]
             rc = self.rc[I]
-            if all(rd == 0):
+            if rd.norm_sqr() < 0.5:
                 continue
             near, hitind = self.scene.hit(stack, ro, rd)
-            self.transmit(near, hitind, ro, rd, rc)
+            ro, rd, rc = self.transmit(near, hitind, ro, rd, rc)
+            if ti.random() < 1e-3:
+                if abs(rc.sum() - 1.5) >= 1e-6:
+                    print(rc)
             self.ro[I] = ro
             self.rd[I] = rd
             self.rc[I] = rc
@@ -354,6 +360,7 @@ class Camera:
     def update_image(self):
         for I in ti.grouped(ti.ndrange(*self.res)):
             rc = self.rc[I]
+            rd = self.rd[I]
             self.img[I] += rc
             self.cnt[I] += 1
 
@@ -379,18 +386,22 @@ class Particles:
         return hit, depth
 
     @ti.func
-    def transmit(self, near, ind,
-            ro: ti.template(),
-            rd: ti.template(),
-            rc: ti.template()):
-        pos = ro + near * rd
-        nrm = (pos - self.pos[ind]).normalized()
+    def transmit(self, near, ind, ro, rd, rc):
+        if ind % 2 == 0:
+            rc *= 1
+            rd *= 0
+        else:
+            pos = ro + near * rd
+            nrm = (pos - self.pos[ind]).normalized()
 
-        rc *= max(0, -nrm.dot(rd))
-        rd *= 0
+            rc *= ti.Vector([0.0, 0.0, 1.0])
+            ro = pos + nrm * eps * 2
+            rd = reflect(rd, nrm)
+        return ro, rd, rc
 
 
-pars = Particles(np.load('assets/fluid.npy') * 2 - 1, 0.01)
+#pars = Particles(np.load('assets/fluid.npy') * 2 - 1, 0.01)
+pars = Particles(np.array([[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]], np.float32), 0.2)
 tree = BVHTree(geom=pars)
 camera = Camera(scene=tree)
 
@@ -401,6 +412,7 @@ gui = ti.GUI('BVH', tuple(camera.res.entries))
 while gui.running and not gui.get_event(gui.ESCAPE, gui.SPACE):
     camera.deactivate()
     camera.load_rays()
+    camera.step_rays()
     camera.step_rays()
     camera.update_image()
     gui.set_image(camera.get_image())
