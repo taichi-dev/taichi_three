@@ -363,41 +363,52 @@ class Camera:
             self.cnt[I] += 1
 
 
-
 @ti.data_oriented
 class Material:
-    def __init__(self, ks=0.0, kd=1.0, ke=0.0):
-        self.ks = ks
-        self.kd = kd
-        self.ke = ke
+    def __init__(self, shineness=10):
+        self.shineness = shineness
 
     @ti.func
-    def emittance(self, idir, nrm):
-        return self.ke
+    def brdf(self, idir, odir, nrm):
+        return 1
+
+    @ti.func
+    def f(self, u, v, su, sv):
+        # f(u, v), g(u, v)
+        return u, v
+
+    @ti.func
+    def df(self, u, v, su, sv):
+        # df/du dg/dv - df/dv dg/du
+        return 1.0
 
     @ti.func
     def sample(self, idir, nrm):
         spec = reflect(idir, nrm)
-        diff = tangentspace(nrm) @ spherical(ti.random(), ti.random())
-        odir = spec * self.ks + diff * self.kd
+        u, v = ti.random(), ti.random()
+        axes = tangentspace(nrm)
+        su, sv = unspherical(axes.transpose() @ spec)
+        odir = axes @ spherical(*self.f(u, v, su, sv))
         odir = odir.normalized()
-        return odir, 1.0
+        brdf = self.brdf(idir, odir, nrm)
+        return odir, self.df(u, v, su, sv) * brdf
 
 
 @ti.data_oriented
 class Particles:
     @ti.func
     def transmit(self, near, ind, ro, rd, rc):
-        ro = ro + near * rd
+        ro += near * rd
         nrm = (ro - self.pos[ind]).normalized()
 
         if ind == 0:
-            rc *= 3
+            rc *= 2
             rd *= 0
         else:
             rd, wei = self.matr.sample(rd, nrm)
             rc *= wei
 
+        ro += nrm * eps * 8
         return ro, rd, rc
 
     def __init__(self, matr, pos, rad=0.05, dim=3):

@@ -44,7 +44,7 @@ def spherical(h, p):
 @ti.func
 def unspherical(dir):
     p = ti.atan2(dir.y, dir.x) / ti.tau
-    return dir.z, p
+    return dir.z, p % 1
 
 
 @ti.func
