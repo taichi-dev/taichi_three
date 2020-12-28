@@ -1,6 +1,10 @@
 from .common import *
 
 
+inf = 1e6
+eps = 1e-6
+
+
 def texture_as_field(filename):
     if isinstance(filename, str):
         img_np = np.float32(ti.imread(filename) / 255)
@@ -95,26 +99,3 @@ def inoise(x):
 def noise(x):
     u = inoise(x) >> 1
     return u * (2 / 4294967296)
-
-
-@ti.func
-def ray_aabb_hit(bmin, bmax, ro, rd, inf=1e6, eps=1e-6):
-    near = -inf
-    far = inf
-    hit = 1
-
-    for i in ti.static(range(3)):
-        if abs(rd[i]) < eps:
-            if ro[i] < bmin[i] or ro[i] > bmax[i]:
-                hit = 0
-        else:
-            i1 = (bmin[i] - ro[i]) / rd[i]
-            i2 = (bmax[i] - ro[i]) / rd[i]
-
-            far = min(far, max(i1, i2))
-            near = max(near, min(i1, i2))
-
-    if near > far:
-        hit = 0
-
-    return hit

@@ -163,4 +163,16 @@ class namespace(dict):
             raise AttributeError(name) from None
 
 
+def rects(self, topleft, bottomright, radius=1, color=0xffff):
+    topright = np.stack([topleft[:, 0], bottomright[:, 1]], axis=1)
+    bottomleft = np.stack([bottomright[:, 0], topleft[:, 1]], axis=1)
+    self.lines(topleft, topright, radius, color)
+    self.lines(topright, bottomright, radius, color)
+    self.lines(bottomright, bottomleft, radius, color)
+    self.lines(bottomleft, topleft, radius, color)
+
+ti.GUI.rects = rects
+del rects
+
+
 import tina
