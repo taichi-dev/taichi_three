@@ -3,7 +3,7 @@ from ..util.stack import Stack
 
 
 @ti.data_oriented
-class Camera:
+class PathEngine:
     def __init__(self, scene, res=512):
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)

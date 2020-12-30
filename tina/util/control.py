@@ -81,7 +81,7 @@ class Control:
     def get_camera(self, engine):
         ret = self.process_events()
 
-        from ..core.camera import lookat, orthogonal, perspective
+        from .matrix import lookat, orthogonal, perspective
 
         aspect = self.gui.res[0] / self.gui.res[1]
         if self.fov == 0:
