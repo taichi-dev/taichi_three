@@ -3,7 +3,7 @@ from .base import MeshEditBase
 
 
 class MeshTransform(MeshEditBase):
-    def __init__(self, mesh):
+    def __init__(self, mesh, trans=None):
         super().__init__(mesh)
 
         self.trans = ti.Matrix.field(4, 4, float, ())
@@ -14,6 +14,11 @@ class MeshTransform(MeshEditBase):
         def init_trans():
             self.trans[None] = ti.Matrix.identity(float, 4)
             self.trans_normal[None] = ti.Matrix.identity(float, 3)
+
+        if trans is not None:
+            @ti.materialize_callback
+            def init_trans_arg():
+                self.set_transform(trans)
 
     def set_transform(self, trans):
         trans_normal = np.transpose(np.linalg.inv(trans))

@@ -63,8 +63,22 @@ def perspective(fov=60, aspect=1, near=0.1, far=100):
 
 
 def scale(factor):
-    return affine(np.eye(3) * factor, np.zeros(3))
+    return affine(np.eye(3) * np.array(factor), np.zeros(3))
 
 
 def translate(offset):
-    return affine(np.eye(3), offset)
+    return affine(np.eye(3), np.array(offset))
+
+
+def quaternion(q):
+    rot_matrix = np.array(
+        [[1.0 - 2 * (q[1] * q[1] + q[2] * q[2]),
+            2 * (q[0] * q[1] - q[3] * q[2]),
+            2 * (q[3] * q[1] + q[0] * q[2])],
+         [2 * (q[0] * q[1] + q[3] * q[2]),
+             1.0 - 2 * (q[0] * q[0] + q[2] * q[2]),
+             2 * (q[1] * q[2] - q[3] * q[0])],
+         [2 * (q[0] * q[2] - q[3] * q[1]),
+             2 * (q[1] * q[2] + q[3] * q[0]),
+             1.0 - 2 * (q[0] * q[0] + q[1] * q[1])]])
+    return affine(rot_matrix, np.zeros(3))

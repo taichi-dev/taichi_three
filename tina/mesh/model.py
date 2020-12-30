@@ -19,7 +19,10 @@ class MeshModel:
 
         @ti.materialize_callback
         def init_mesh():
-            self.faces.from_numpy(obj['f'])
+            faces = obj['f']
+            if len(faces.shape) == 2:
+                faces = np.stack([faces, faces, faces], axis=2)
+            self.faces.from_numpy(faces)
             self.verts.from_numpy(obj['v'])
             self.coors.from_numpy(obj['vt'])
             self.norms.from_numpy(obj['vn'])

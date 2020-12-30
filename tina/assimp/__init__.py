@@ -1,1 +1,1 @@
-from .objmesh import *
+from .obj import *

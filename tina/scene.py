@@ -27,7 +27,7 @@ class Scene:
 
         @ti.materialize_callback
         def init_light():
-            self.lighting.add_light(dir=[0, 1, 1], color=[0.9, 0.9, 0.9])
+            self.lighting.add_light(dir=[1, 2, 3], color=[0.9, 0.9, 0.9])
             self.lighting.set_ambient_light([0.1, 0.1, 0.1])
 
     def _ensure_material_shader(self, material):
