@@ -127,3 +127,13 @@ class Scene:
         if changed and self.taa:
             self.accum.clear()
         return changed
+
+    def load_gltf(self, path):
+        '''
+        :param path: (str | readable-stream) path to the gltf file
+
+        Load the scene from a GLTF format file
+        '''
+
+        from .assimp.gltf import readgltf
+        return readgltf(path).extract(self)

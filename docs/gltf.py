@@ -1,8 +1,7 @@
 import tina
-from tina.assimp.gltf import readgltf
 
 scene = tina.Scene()
-readgltf('assets/cornell.gltf').extract(scene)
+scene.load_gltf('assets/cornell.gltf')
 
 gui = tina.ti.GUI('gltf')
 
