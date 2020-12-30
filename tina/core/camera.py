@@ -70,15 +70,28 @@ def translate(offset):
     return affine(np.eye(3), np.array(offset))
 
 
+# https://zhuanlan.zhihu.com/p/259999988
 def quaternion(q):
-    rot_matrix = np.array(
-        [[1.0 - 2 * (q[1] * q[1] + q[2] * q[2]),
+    R = np.array([
+        [1.0 - 2 * (q[1] * q[1] + q[2] * q[2]),
             2 * (q[0] * q[1] - q[3] * q[2]),
             2 * (q[3] * q[1] + q[0] * q[2])],
-         [2 * (q[0] * q[1] + q[3] * q[2]),
-             1.0 - 2 * (q[0] * q[0] + q[2] * q[2]),
-             2 * (q[1] * q[2] - q[3] * q[0])],
-         [2 * (q[0] * q[2] - q[3] * q[1]),
-             2 * (q[1] * q[2] + q[3] * q[0]),
-             1.0 - 2 * (q[0] * q[0] + q[1] * q[1])]])
-    return affine(rot_matrix, np.zeros(3))
+        [2 * (q[0] * q[1] + q[3] * q[2]),
+            1.0 - 2 * (q[0] * q[0] + q[2] * q[2]),
+            2 * (q[1] * q[2] - q[3] * q[0])],
+        [2 * (q[0] * q[2] - q[3] * q[1]),
+            2 * (q[1] * q[2] + q[3] * q[0]),
+            1.0 - 2 * (q[0] * q[0] + q[1] * q[1])]])
+    return affine(R, np.zeros(3))
+
+
+# https://zhuanlan.zhihu.com/p/259999988
+def eularZYX(theta):
+    R_x = np.array([[1, 0, 0],
+        [0, np.cos(theta[0]), -np.sin(theta[0])],
+        [0, np.sin(theta[0]), np.cos(theta[0])]])
+    R_y = np.array([[np.cos(theta[1]), 0, np.sin(theta[1])],
+        [0, 1, 0], [-np.sin(theta[1]), 0, np.cos(theta[1])]])
+    R_z = np.array([[np.cos(theta[2]), -np.sin(theta[2]), 0],
+        [np.sin(theta[2]), np.cos(theta[2]), 0], [0, 0, 1]])
+    return R_z @ R_y @ R_x
