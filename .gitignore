@@ -1,8 +1,7 @@
 /dist/
 /build/
 /*.egg-info/
-.dismiss_screen
-__pycache__
+__pycache__/
 /GNUmakefile
 /.*_localrc
 /.idea
@@ -10,9 +9,6 @@ __pycache__
 /.vscode
 node_modules/
 package-lock.json
-/games
-/t3editor
-/M275
 *.xcf
 *.png
 *.jpg

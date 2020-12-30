@@ -18,15 +18,24 @@ class MeshFlatNormal(MeshEditBase):
 
 
 class MeshSmoothNormal(MeshEditBase):
-    def __init__(self, mesh):
+    def __init__(self, mesh, cached=True):
         super().__init__(mesh)
 
         N = self.mesh.get_max_vert_nindex()
         self.norm = ti.Vector.field(3, float, N)
 
+        self.cached = cached
+        if self.cached:
+            ti.materialize_callback(self.update_normal)
+
     @ti.func
     def pre_compute(self):
         self.mesh.pre_compute()
+        if ti.static(not self.cached):
+            self._update_normal()
+
+    @ti.func
+    def _update_normal(self):
         for i in self.norm:
             self.norm[i] = 0
         for n in range(self.mesh.get_nfaces()):
@@ -38,6 +47,10 @@ class MeshSmoothNormal(MeshEditBase):
             self.norm[k] += nrm
         for i in self.norm:
             self.norm[i] = self.norm[i].normalized()
+
+    @ti.kernel
+    def update_normal(self):
+        self._update_normal()
 
     @ti.func
     def get_face_norms(self, n):
