@@ -10,12 +10,9 @@ ti.init(ti.gpu)
 scene = tina.Scene()
 
 # 5. Material - for describing the material of an object
-material = tina.BlinnPhong()
-# you may also specify some parameters for the Blinn-Phong material:
-#material = tina.BlinnPhong(shineness=10, diffuse=[1, 0, 0])
-# or use the Cook-Torrance material for PBR:
 material = tina.CookTorrance(metallic=0.6, roughness=0.2)
-# or even specify parameter by textures, see docs/texture.py for more details
+# parameters may also be specified by textures (add texturing=True to Scene)
+#material = tina.CookTorrance(basecolor=tina.Texture('assets/cloth.jpg'))
 
 model = tina.MeshModel('assets/monkey.obj')
 # load our model into the scene with material specified:

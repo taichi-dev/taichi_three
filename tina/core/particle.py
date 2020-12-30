@@ -82,7 +82,10 @@ class ParticleRaster:
             Al = self.get_particle_position(f)
             Rl = self.get_particle_radius(f)
             Av = self.engine.to_viewspace(Al)
-            # TODO: implement clipping...
+            if ti.static(self.clipping):
+                if not -1 <= Av.z <= 1:
+                    continue
+
             DXl = mapply_dir(self.engine.V2W[None], V(1., 0., 0.)).normalized()
             DYl = mapply_dir(self.engine.V2W[None], V(0., 1., 0.)).normalized()
             Rv = V(0., 0.)
