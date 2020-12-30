@@ -24,7 +24,7 @@ def require_version(*ver):
 
     msg = f'This program requires Tina version {tos(ver)} to work.\n'
     msg += f'However your installed Tina version is {tos(__version__)}.\n'
-    msg += f'Consider run `pip install tina=={tos(ver)}` to upgrade/downgrade.'
+    msg += f'Try run `pip install taichi-tina=={tos(ver)}` to upgrade/downgrade.'
     if __version__ > ver:
         print(msg)
     elif __version__ < ver:
@@ -48,6 +48,7 @@ from .common import *
 from .advans import *
 from .core import *
 from .util import *
+from .assimp import *
 from .mesh import *
 from .pars import *
 from .voxl import *

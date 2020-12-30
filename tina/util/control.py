@@ -104,24 +104,28 @@ class Control:
                 return True
             elif e.key == self.gui.ESCAPE:
                 self.gui.running = False
+
         if e.key == self.gui.LMB:
             if e.type == self.gui.PRESS:
                 self.lmb = np.array(e.pos)
                 return True
             else:
                 self.lmb = None
+
         elif e.key == self.gui.MMB:
             if e.type == self.gui.PRESS:
                 self.mmb = np.array(e.pos)
                 return True
             else:
                 self.mmb = None
+
         elif e.key == self.gui.RMB:
             if e.type == self.gui.PRESS:
                 self.rmb = np.array(e.pos)
                 return True
             else:
                 self.rmb = None
+
         elif e.key == self.gui.MOVE:
             if self.lmb is not None:
                 new_lmb = np.array(e.pos)
@@ -141,6 +145,7 @@ class Control:
                 self.on_rmb_drag(delta_rmb, self.rmb)
                 self.rmb = new_rmb
                 return True
+
         elif e.key == self.gui.WHEEL:
             delta = e.delta[1] / 120
             self.on_wheel(delta, np.array(e.pos))
