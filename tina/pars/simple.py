@@ -3,7 +3,7 @@ from ..common import *
 
 @ti.data_oriented
 class SimpleParticles:
-    def __init__(self, maxpars=65536):
+    def __init__(self, maxpars=65536, radius=0.02):
         self.verts = ti.Vector.field(3, float, maxpars)
         self.sizes = ti.field(float, maxpars)
         self.colors = ti.Vector.field(3, float, maxpars)
@@ -11,7 +11,7 @@ class SimpleParticles:
 
         @ti.materialize_callback
         def init_pars():
-            self.sizes.fill(0.1)
+            self.sizes.fill(radius)
             self.colors.fill(1)
 
         self.maxpars = maxpars
