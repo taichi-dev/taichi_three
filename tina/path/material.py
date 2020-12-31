@@ -22,9 +22,9 @@ class Material:
 
     @ti.func
     def sample(self, idir, nrm):
-        spec = reflect(idir, nrm)
         u, v = ti.random(), ti.random()
         axes = tangentspace(nrm)
+        spec = reflect(idir, nrm)
         su, sv = unspherical(axes.transpose() @ spec)
         odir = axes @ spherical(*self.f(u, v, su, sv))
         odir = odir.normalized()

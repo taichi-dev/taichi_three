@@ -106,15 +106,17 @@ class BVHTree:
         stack.clear()
         stack.push(1)
         hitind = -1
+        hituv = V(0., 0.)
         while ntimes < self.N_tree and stack.size() != 0:
             curr = stack.pop()
 
             if self.dir[curr] == 0:
                 ind = self.ind[curr]
-                hit, depth = self.geom.hit(ind, ro, rd)
+                hit, depth, uv = self.geom.hit(ind, ro, rd)
                 if hit != 0 and depth < near:
                     near = depth
                     hitind = ind
+                    hituv = uv
                 continue
 
             bmin, bmax = self.min[curr], self.max[curr]
@@ -125,4 +127,4 @@ class BVHTree:
             ntimes += 1
             stack.push(curr * 2)
             stack.push(curr * 2 + 1)
-        return near, hitind
+        return near, hitind, hituv

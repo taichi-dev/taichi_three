@@ -25,7 +25,7 @@ def ray_aabb_hit(bmin, bmax, ro, rd):
 
 
 @ti.func
-def ray_triangle_hit(self, v0, v1, v2, ro, rd):
+def ray_triangle_hit(v0, v1, v2, ro, rd):
     e1 = v1 - v0
     e2 = v2 - v0
     p = rd.cross(e2)
@@ -33,8 +33,6 @@ def ray_triangle_hit(self, v0, v1, v2, ro, rd):
     s = ro - v0
 
     t, u, v = inf, 0.0, 0.0
-    ipos = ti.Vector.zero(float, 3)
-    inrm = ti.Vector.zero(float, 3)
     itex = ti.Vector.zero(float, 2)
 
     if det < 0:
@@ -52,11 +50,8 @@ def ray_triangle_hit(self, v0, v1, v2, ro, rd):
                 t *= det
                 u *= det
                 v *= det
-                inrm = e2.cross(e1).normalized()
-                ipos = ro + t * rd
-                itex = V(u, v)
 
-    return t, ipos, inrm, itex
+    return t, V(u, v)
 
 
 @ti.func

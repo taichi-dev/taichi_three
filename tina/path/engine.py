@@ -26,7 +26,9 @@ class PathEngine:
     @ti.kernel
     def _get_image(self, out: ti.ext_arr()):
         for I in ti.grouped(self.img):
-            val = self.img[I] / self.cnt[I]
+            val = lerp((I // 16).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
+            if self.cnt[I] != 0:
+                val = self.img[I] / self.cnt[I]
             val = aces_tonemap(val)
             for k in ti.static(range(3)):
                 out[I, k] = val[k]
@@ -54,16 +56,16 @@ class PathEngine:
         blue = ti.Vector([0.5, 0.7, 1.0])
         white = ti.Vector([1.0, 1.0, 1.0])
         ret = (1 - t) * white + t * blue
-        ret = 0.1
+        #ret = 0.1
         return ret
 
     @ti.func
-    def transmit(self, near, ind, ro, rd, rc):
+    def transmit(self, near, ind, uv, ro, rd, rc):
         if ind == -1:
             rc *= self.fallback(rd)
             rd *= 0
         else:
-            ro, rd, rc = self.scene.geom.transmit(near, ind, ro, rd, rc)
+            ro, rd, rc = self.scene.geom.transmit(near, ind, uv, ro, rd, rc)
         return ro, rd, rc
 
     @ti.kernel
@@ -75,8 +77,8 @@ class PathEngine:
             rc = self.rc[I]
             if rd.norm_sqr() < 0.5:
                 continue
-            near, hitind = self.scene.hit(stack, ro, rd)
-            ro, rd, rc = self.transmit(near, hitind, ro, rd, rc)
+            near, hitind, hituv = self.scene.hit(stack, ro, rd)
+            ro, rd, rc = self.transmit(near, hitind, hituv, ro, rd, rc)
             self.ro[I] = ro
             self.rd[I] = rd
             self.rc[I] = rc

@@ -5,7 +5,7 @@ from .geom import *
 @ti.data_oriented
 class Particles:
     @ti.func
-    def transmit(self, near, ind, ro, rd, rc):
+    def transmit(self, near, ind, uv, ro, rd, rc):
         ro += near * rd
         nrm = (ro - self.pos[ind]).normalized()
 
@@ -50,4 +50,4 @@ class Particles:
     def hit(self, ind, ro, rd):
         pos = self.pos[ind]
         hit, depth = ray_sphere_hit(pos, self.rad, ro, rd)
-        return hit, depth
+        return hit, depth, V(0., 0.)
