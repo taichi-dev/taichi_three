@@ -8,6 +8,7 @@ class Node:
     defaults = []
 
     def __init__(self, **kwargs):
+        self.params = {}
         for dfl, key in zip(self.defaults, self.arguments):
             value = kwargs.get(key, None)
             if value is None:
@@ -24,36 +25,84 @@ class Node:
                     value = Texture(value)
                 else:
                     value = Input(value)
-            setattr(self, key, value)
+            self.params[key] = value
 
-    def __call__(self, pars):
+    def __call__(self, *args, **kwargs):
         raise NotImplementedError(type(self))
+
+    def param(self, key, *args, **kwargs):
+        return self.params[key](*args, **kwargs)
 
 
 class IMaterial(Node):
-    def brdf(self, pars, idir, odir):
+    @ti.func
+    def brdf(self, nrm, idir, odir):
         raise NotImplementedError(type(self))
 
-    def ambient(self, pars):
-        return V(1., 1., 1.)
+    @ti.func
+    def shade(self, idir, odir):
+        nrm = self.param('normal')
+        return self.brdf(nrm, idir, odir)
+
+    def ambient(self):
+        return 1.
 
 
 class Const(Node):
+    # noinspection PyMissingConstructor
     def __init__(self, value):
         self.value = value
 
     @ti.func
-    def __call__(self, pars):
+    def __call__(self):
         return self.value
 
 
+class Param(Node):
+    # noinspection PyMissingConstructor
+    def __init__(self, dtype=float, dim=None, initial=0):
+        if dim is not None:
+            self.value = ti.Vector.field(dim, dtype, ())
+        else:
+            self.value = ti.field(dtype, ())
+
+        self.initial = initial
+        if initial != 0:
+            @ti.materialize_callback
+            def init_value():
+                self.value[None] = self.initial
+
+    @ti.func
+    def __call__(self):
+        return self.value[None]
+
+    def make_slider(self, gui, title, min=0, max=1, step=0.01):
+        self.slider = gui.slider(title, min, max, step)
+        self.slider.value = self.initial
+
+        @gui.post_show
+        def post_show(gui):
+            self.value[None] = self.slider.value
+
+
 class Input(Node):
+    g_pars = None
+
+    @staticmethod
+    def spec_g_pars(pars):
+        Input.g_pars = pars
+
+    @staticmethod
+    def clear_g_pars():
+        Input.g_pars = None
+
+    # noinspection PyMissingConstructor
     def __init__(self, name):
         self.name = name
 
     @ti.func
-    def __call__(self, pars):
-        return pars[self.name]
+    def __call__(self):
+        return Input.g_pars[self.name]
 
 
 class Texture(Node):
@@ -65,25 +114,24 @@ class Texture(Node):
         super().__init__(**kwargs)
 
     @ti.func
-    def __call__(self, pars):
+    def __call__(self):
         maxcoor = V(*self.texture.shape) - 1
-        coor = self.texcoord(pars) * maxcoor
+        coor = self.param('texcoord') * maxcoor
         return bilerp(self.texture, coor)
 
 
 # http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
 class CookTorrance(IMaterial):
-    arguments = ['normal', 'roughness', 'metallic', 'specular', 'basecolor']
-    defaults = ['normal', 0.4, 0.0, 0.5, 'color']
+    arguments = ['normal', 'basecolor', 'roughness', 'metallic', 'specular']
+    defaults = ['normal', 'color', 0.4, 0.0, 0.5]
 
     @ti.func
-    def brdf(self, pars, idir, odir):
+    def brdf(self, nrm, idir, odir):
         EPS = 1e-10
-        roughness = self.roughness(pars)
-        metallic = self.metallic(pars)
-        specular = self.specular(pars)
-        basecolor = self.basecolor(pars)
-        nrm = self.normal(pars)
+        roughness = self.param('roughness')
+        metallic = self.param('metallic')
+        specular = self.param('specular')
+        basecolor = self.param('basecolor')
 
         half = (idir + odir).normalized()
         NoH = max(EPS, half.dot(nrm))
@@ -113,8 +161,8 @@ class CookTorrance(IMaterial):
 
         return kd * basecolor + ks * fdf * vdf * ndf
 
-    def ambient(self, pars):
-        return self.basecolor(pars)
+    def ambient(self):
+        return self.param('basecolor')
 
 
 class BlinnPhong(IMaterial):
@@ -122,27 +170,26 @@ class BlinnPhong(IMaterial):
     defaults = ['normal', 'color', 0.1, 32.0]
 
     @ti.func
-    def brdf(self, pars, idir, odir):
-        diffuse = self.diffuse(pars)
-        specular = self.specular(pars)
-        shineness = self.shineness(pars)
-        nrm = self.normal(pars)
+    def brdf(self, nrm, idir, odir):
+        diffuse = self.param('diffuse')
+        specular = self.param('specular')
+        shineness = self.param('shineness')
 
         half = (odir + idir).normalized()
         ks = (shineness + 8) / 8 * pow(max(0, half.dot(nrm)), shineness)
         return diffuse + ks * specular
 
-    def ambient(self, pars):
-        return self.diffuse(pars)
+    def ambient(self):
+        return self.param('diffuse')
 
 
 class Lambert(IMaterial):
-    arguments = ['color']
-    defaults = ['color']
+    arguments = ['normal', 'color']
+    defaults = ['normal', 'color']
 
     @ti.func
-    def brdf(self, pars, idir, odir):
-        return self.color(pars)
+    def brdf(self, nrm, idir, odir):
+        return self.param('color')
 
-    def ambient(self, pars):
-        return self.color(pars)
+    def ambient(self):
+        return self.param('color')

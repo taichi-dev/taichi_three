@@ -115,16 +115,16 @@ class Shader:
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         viewdir = calc_viewdir(engine, pos)
-        pars = {
+        tina.Input.spec_g_pars({
             'pos': pos,
             'color': color,
             'normal': normal,
             'texcoord': texcoord,
             'viewdir': viewdir,
-        }
+        })
 
         res = V(0.0, 0.0, 0.0)
-        res += self.lighting.get_ambient_light_color() * self.material.ambient(pars)
+        res += self.lighting.get_ambient_light_color() * self.material.ambient()
         for l in ti.smart(self.lighting.get_lights_range()):
             light, lcolor = self.lighting.get_light_data(l)
             light_dir = light.xyz - pos * light.w
@@ -133,7 +133,9 @@ class Shader:
             cos_i = normal.dot(light_dir)
             if cos_i > 0:
                 lcolor /= light_distance**2
-                mcolor = self.material.brdf(pars, light_dir, viewdir)
+                mcolor = self.material.shade(light_dir, viewdir)
                 res += cos_i * lcolor * mcolor
 
         self.img[P] = res
+
+        tina.Input.clear_g_pars()
