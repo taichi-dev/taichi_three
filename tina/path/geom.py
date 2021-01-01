@@ -23,7 +23,7 @@ def ray_aabb_hit(bmin, bmax, ro, rd):
 
     return hit, near
 
-
+'''
 @ti.func
 def ray_triangle_hit(v0, v1, v2, ro, rd):
     e1 = v1 - v0
@@ -32,8 +32,7 @@ def ray_triangle_hit(v0, v1, v2, ro, rd):
     det = e1.dot(p)
     s = ro - v0
 
-    t, u, v = inf, 0.0, 0.0
-    itex = ti.Vector.zero(float, 2)
+    t, u, v = inf * 2, 0.0, 0.0
 
     if det < 0:
         s = -s
@@ -52,7 +51,37 @@ def ray_triangle_hit(v0, v1, v2, ro, rd):
                 v *= det
 
     return t, V(u, v)
+'''
 
+#'''
+@ti.func
+def ray_triangle_hit(v0, v1, v2, ro, rd):
+    u = v1 - v0
+    v = v2 - v0
+    norm = u.cross(v)
+    depth = inf * 2
+
+    b = norm.dot(rd)
+    if abs(b) >= eps:
+        w0 = ro - v0
+        a = -norm.dot(w0)
+        r = a / b
+        if r > 0:
+            ip = ro + r * rd
+            uu = u.dot(u)
+            uv = u.dot(v)
+            vv = v.dot(v)
+            w = ip - v0
+            wu = w.dot(u)
+            wv = w.dot(v)
+            D = uv * uv - uu * vv
+            s = (uv * wv - vv * wu) / D
+            t = (uv * wu - uu * wv) / D
+            if 0 <= s <= 1:
+                if 0 <= t and s + t <= 1:
+                    depth = r
+    return depth, V(0., 0.)
+#'''
 
 @ti.func
 def ray_sphere_hit(pos, rad, ro, rd):

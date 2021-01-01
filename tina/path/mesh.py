@@ -12,7 +12,7 @@ class Triangles:
         v1 = self.verts[ind, 1]
         v2 = self.verts[ind, 2]
         nrm = (v1 - v0).cross(v2 - v0).normalized()
-        if nrm.dot(rd) < 0:
+        if nrm.dot(rd) > 0:
             nrm = -nrm
 
         rd, wei = self.matr.sample(rd, nrm)
@@ -42,5 +42,5 @@ class Triangles:
         v1 = self.verts[ind, 1]
         v2 = self.verts[ind, 2]
         depth, uv = ray_triangle_hit(v0, v1, v2, ro, rd)
-        hit = 1 if depth < inf / 2 else 0
+        hit = 1 if depth < inf else 0
         return hit, depth, uv
