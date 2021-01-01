@@ -1,4 +1,3 @@
-from ..common import *
 from ..advans import *
 
 
@@ -38,6 +37,13 @@ class IMaterial(Node):
     @ti.func
     def brdf(self, nrm, idir, odir):
         raise NotImplementedError(type(self))
+
+    @ti.func
+    def safe_brdf(self, nrm, idir, odir):
+        ret = V(0., 0., 0.)
+        if nrm.dot(idir) < 0 < nrm.dot(odir):
+            ret = self.brdf(nrm, idir, odir)
+        return ret
 
     @ti.func
     def shade(self, idir, odir):

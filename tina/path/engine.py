@@ -102,8 +102,17 @@ class PathEngine:
         else:
             # hit object
             ro += near * rd
-            nrm = self.scene.geom.get_normal(near, ind, uv, ro, rd)
+            nrm, tex = self.scene.geom.calc_geometry(near, ind, uv, ro, rd)
+            if nrm.dot(rd) > 0:
+                nrm = -nrm
             ro += nrm * eps * 8
+
+            tina.Input.spec_g_pars({
+                'pos': ro,
+                'color': V(1., 1., 1.),
+                'normal': nrm,
+                'texcoord': tex,
+            })
 
             li_clr = V(0., 0., 0.)
             for li_ind in range(self.lighting.get_nlights()):
@@ -112,11 +121,13 @@ class PathEngine:
                 occ_near, _1, _2 = self.scene.hit(stack, ro, new_rd)
                 if occ_near < li_dis:  # shadow occulsion
                     continue
-                li_wei *= self.scene.geom.matr.brdf(rd, new_rd, nrm)
+                li_wei *= self.scene.geom.matr.brdf(nrm, rd, new_rd)
                 li_clr += li_wei
 
             # sample indirect light
             rd, ir_wei = self.scene.geom.matr.sample(rd, nrm)
+
+            tina.Input.clear_g_pars()
 
             rl += rc * li_clr
             rc *= ir_wei

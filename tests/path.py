@@ -5,17 +5,14 @@ import tina.path
 
 ti.init(ti.cpu)
 
-verts, faces = tina.readobj('assets/shadow.obj', simple=True)
-verts = verts[faces]
-
-matr = tina.path.Material()
-#geometry = tina.path.Particles(matr, np.load('assets/fluid.npy') * 2 - 1, 0.02)
-#geometry = tina.path.Particles(matr, np.array([[0, -.5, 0], [0, +.5, 0]], dtype=np.float32), 0.3)
-geometry = tina.path.Triangles(matr, verts)
+mesh = tina.MeshModel('assets/sphere.obj')
+geometry = tina.path.TriangleTracer(smoothing=True, texturing=True)
+#geometry.matr = tina.path.CookTorrance(basecolor=tina.Texture('assets/uv.png'), metallic=0.8, roughness=0.3)
 lighting = tina.path.Lighting()
 tree = tina.path.BVHTree(geometry)
 engine = tina.path.PathEngine(tree, lighting)
 
+geometry.set_object(mesh)
 geometry.build(tree)
 lighting.set_lights(np.array([
     [0, 1.38457, -1.44325],

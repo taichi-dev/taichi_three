@@ -120,7 +120,6 @@ class Shader:
             'color': color,
             'normal': normal,
             'texcoord': texcoord,
-            'viewdir': viewdir,
         })
 
         res = V(0.0, 0.0, 0.0)

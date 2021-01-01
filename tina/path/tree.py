@@ -25,10 +25,10 @@ class BVHTree:
         data.min = self.min.to_numpy()
         data.max = self.max.to_numpy()
         data.ind = self.ind.to_numpy()
-        print('building tree...')
+        print('[Tina] building tree...')
         self._build(data, pmin, pmax, np.arange(len(pmin)), 1)
         self._build_from_data(data.dir, data.min, data.max, data.ind)
-        print('building tree done')
+        print('[Tina] building tree done')
 
     @ti.kernel
     def _build_from_data(self,

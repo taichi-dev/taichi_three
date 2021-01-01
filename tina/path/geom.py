@@ -60,6 +60,8 @@ def ray_triangle_hit(v0, v1, v2, ro, rd):
     v = v2 - v0
     norm = u.cross(v)
     depth = inf * 2
+    s, t = 0., 0.
+    hit = 0
 
     b = norm.dot(rd)
     if abs(b) >= eps:
@@ -80,7 +82,8 @@ def ray_triangle_hit(v0, v1, v2, ro, rd):
             if 0 <= s <= 1:
                 if 0 <= t and s + t <= 1:
                     depth = r
-    return depth, V(0., 0.)
+                    hit = 1
+    return hit, depth, V(s, t)
 #'''
 
 @ti.func
