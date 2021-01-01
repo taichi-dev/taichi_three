@@ -3,14 +3,14 @@ from ..common import *
 
 @ti.data_oriented
 class WireframeRaster:
-    def __init__(self, engine, maxwires=65536, linewidth=2, clipping=True, **extra_options):
+    def __init__(self, engine, maxwires=65536*3, linewidth=1.5, linecolor=(.9, .6, 0),
+                 clipping=True, **extra_options):
         self.engine = engine
         self.res = self.engine.res
         self.maxfaces = maxwires
         self.linewidth = linewidth
+        self.linecolor = tovector(linecolor)
         self.clipping = clipping
-
-        self.occup = ti.field(int, self.res)
 
         self.nwires = ti.field(int, ())
         self.verts = ti.Vector.field(3, float, (maxwires, 2))
@@ -44,8 +44,6 @@ class WireframeRaster:
 
     @ti.kernel
     def render(self, shader: ti.template()):
-        for P in ti.grouped(self.occup):
-            self.occup[P] = -1
         for f in ti.smart(self.get_wires_range()):
             Al, Bl = self.get_wire_vertices(f)
             Av, Bv = [self.engine.to_viewspace(p) for p in [Al, Bl]]
@@ -57,14 +55,15 @@ class WireframeRaster:
 
             a, b = [self.engine.to_viewport(p) for p in [Av, Bv]]
 
-            bot, top = ifloor(min(a, b)) - self.linewidth, iceil(max(a, b)) + self.linewidth
+            bot, top = ifloor(min(a, b) - self.linewidth), iceil(max(a, b) + self.linewidth)
             bot, top = max(bot, 0), min(top, self.res - 1)
             ban = (b - a).normalized()
             bann = (b - a).norm()
+            wscale = 1 / ti.Vector([mapply(self.engine.W2V[None], p, 1)[1] for p in [Al, Bl]])
             for P in ti.grouped(ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1))):
                 pos = float(P) + self.engine.bias[None]
                 cor = (pos - a).dot(ban)
-                if -self.linewidth <= cor <= bann + self.linewidth:
+                if -self.linewidth / 2 <= cor <= bann + self.linewidth / 2:
                     udf = abs((pos - a).cross(ban))
                     cor /= bann
                     if cor < 0:
@@ -73,12 +72,11 @@ class WireframeRaster:
                     elif cor > 1:
                         udf = (pos - b).norm()
                         cor = 1
-                    if udf < self.linewidth:
-                        wei = V(cor, 1 - cor)
-                        wei /= V(*[mapply(self.engine.W2V[None], p, 1)[1] for p in [Al, Bl]])
+                    if udf < self.linewidth / 2:
+                        wei = V(1 - cor, cor) * wscale
                         wei /= wei.x + wei.y
                         depth_f = wei.x * Av.z + wei.y * Bv.z
                         depth = int(depth_f * self.engine.maxdepth)
                         if ti.atomic_min(self.engine.depth[P], depth) > depth:
                             if self.engine.depth[P] >= depth:
-                                shader.img[P] = 1
+                                shader.img[P] = self.linecolor

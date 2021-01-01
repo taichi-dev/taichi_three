@@ -26,6 +26,7 @@ class TriangleRaster:
         self.can = ti.Vector.field(2, float, maxfaces)
         self.boo = ti.Vector.field(2, float, maxfaces)
         self.coo = ti.Vector.field(2, float, maxfaces)
+        self.wsc = ti.Vector.field(3, float, maxfaces)
 
     @ti.func
     def interpolate(self, shader: ti.template(), P, f, wei, A, B, C):
@@ -133,11 +134,13 @@ class TriangleRaster:
             n = (b - a).cross(c - a)
             bcn = (b - c) / n
             can = (c - a) / n
+            wscale = ti.Vector([mapply(self.engine.W2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
             for P in ti.grouped(ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1))):
                 pos = float(P) + self.engine.bias[None]
                 w_bc = (pos - b).cross(bcn)
                 w_ca = (pos - c).cross(can)
-                wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
+                wei = V(w_bc, w_ca, 1 - w_bc - w_ca) * wscale
+                wei /= wei.x + wei.y + wei.z
                 if all(wei >= 0):
                     depth_f = wei.x * Av.z + wei.y * Bv.z + wei.z * Cv.z
                     depth = int(depth_f * self.engine.maxdepth)
@@ -149,6 +152,7 @@ class TriangleRaster:
             self.can[f] = can
             self.boo[f] = b
             self.coo[f] = c
+            self.wsc[f] = wscale
 
     @ti.kernel
     def render_color(self, shader: ti.template()):
@@ -163,11 +167,11 @@ class TriangleRaster:
             can = self.can[f]
             b = self.boo[f]
             c = self.coo[f]
+            wscale = self.wsc[f]
             pos = float(P) + self.engine.bias[None]
             w_bc = (pos - b).cross(bcn)
             w_ca = (pos - c).cross(can)
-            wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
-            wei /= V(*[mapply(self.engine.W2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
+            wei = V(w_bc, w_ca, 1 - w_bc - w_ca) * wscale
             wei /= wei.x + wei.y + wei.z
 
             self.interpolate(shader, P, f, wei, Al, Bl, Cl)

@@ -8,14 +8,51 @@ hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
         and f(x, y, z))(ti.Matrix.element_wise_writeback_binary)) or setattr(
         ti.Matrix, 'is_global', (lambda f: lambda x: len(x) and f(x))(
         ti.Matrix.is_global)) or setattr(ti, 'pi', __import__('math').pi
-        ) or setattr(ti, 'tau', __import__('math').tau) or setattr(ti, 'GUI',
-        (lambda f: __import__('functools').wraps(f)(lambda name='Tina',
-        res=512, *z, **w: f(name, tuple(res) if isinstance(res, ti.Matrix)
-        else res, *z, **w)))(ti.GUI)) or setattr(ti, 'expr_init', (lambda f:
-        lambda x: x if isinstance(x, dict) else f(x))(ti.expr_init)
-        ) or setattr(ti, 'expr_init_func', (lambda f: lambda x: x if
-        isinstance(x, dict) else f(x))(ti.expr_init_func)) or print(
-        '[Tina] Taichi properties hacked')
+        ) or setattr(ti, 'tau', __import__('math').tau) or setattr(ti,
+        'expr_init', (lambda f: lambda x: x if isinstance(x, dict) else
+        f(x))(ti.expr_init)) or setattr(ti, 'expr_init_func', (lambda f:
+        lambda x: x if isinstance(x, dict) else f(x))(ti.expr_init_func)
+        ) or print('[Tina] Taichi properties hacked')
+
+
+@eval('lambda x: x()')
+def _():
+    class GUI(ti.GUI):
+        def __init__(self, name='Tina', res=512, **kwargs):
+            if isinstance(res, ti.Matrix):
+                res = res.entries
+            if isinstance(res, list):
+                res = tuple(res)
+            super().__init__(name=name, res=res, **kwargs)
+            self._last_mpos = (0, 0)
+
+        def get_events(self, *args):
+            events = super().get_events(*args)
+            if ti.get_os_name() == 'linux':
+                return events
+            for e in events:
+                if e.key != GUI.MOVE:
+                    yield e
+            curr_mpos = tuple(self.get_cursor_pos())
+            if curr_mpos != self._last_mpos:
+                self._last_mpos = curr_mpos
+                e = GUI.Event()
+                e.type = GUI.MOTION
+                e.key = GUI.MOVE
+                e.pos = curr_mpos
+                e.modifier = []
+                yield e
+
+        def rects(self, topleft, bottomright, radius=1, color=0xffffff):
+            import numpy as np
+            topright = np.stack([topleft[:, 0], bottomright[:, 1]], axis=1)
+            bottomleft = np.stack([bottomright[:, 0], topleft[:, 1]], axis=1)
+            self.lines(topleft, topright, radius, color)
+            self.lines(topright, bottomright, radius, color)
+            self.lines(bottomright, bottomleft, radius, color)
+            self.lines(bottomleft, topleft, radius, color)
+
+    ti.GUI = GUI
 
 
 @eval('lambda x: x()')
