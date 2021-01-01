@@ -12,6 +12,7 @@ package-lock.json
 *.xcf
 *.png
 *.jpg
+*.blend
 tags
 /a.py
 /b.py

@@ -2,10 +2,11 @@
 
 A real-time soft renderer based on the [Taichi](https://github.com/taichi-dev/taichi) programming language.
 
-See [`docs/`](https://github.com/taichi-dev/taichi_three/tree/master/docs) to getting started.
-See [`examples/`](https://github.com/taichi-dev/taichi_three/tree/master/examples) for usage examples.
+Checkout [`docs/`](https://github.com/taichi-dev/taichi_three/tree/master/docs) to getting started.
 
-NOTE: the renderer has been previously named Taichi THREE, see below.
+Checkout [`examples/`](https://github.com/taichi-dev/taichi_three/tree/master/examples) for mixed examples.
+
+NOTE: the renderer has been previously named Taichi THREE, see bottom.
 
 ## Installation
 
@@ -22,6 +23,26 @@ python3 -m pip install wheel
 python3 setup.py bdist_wheel
 python3 -m pip install dist/*.whl
 ```
+
+## Features
+
+Here's a list of important features currently Tina have:
+
+* triangles - `docs/triangle.py`
+* particles - `docs/particles.py`
+* construct surface from particles - `examples/mciso_mpm3d.py`
+* smooth shading - `docs/smooth.py`
+* mesh wireframe - `docs/wireframe.py`
+* mesh grid - `examples/meshgrid_wave.py`
+* lighting & materials - `docs/lighting.py`
+* loading GLTF scene (WIP) - `docs/gltf.py`
+* transforming models - `docs/transform.py`
+* real-time rendering volume - `docs/volume.py`
+* loading OBJ models - `docs/monkey.py`
+* path tracing (WIP) - `tests/path.py`
+* Blender addon (WIP) - [`Taichi-Blend`](https://github.com/taichi-dev/taichi_blend)
+
+If you didn't find your feature of interest, feel free to [open an issue](https://github.com/taichi-dev/taichi_three/issues/new/choose) for requesting a cool feature :)
 
 ## Legacy
 

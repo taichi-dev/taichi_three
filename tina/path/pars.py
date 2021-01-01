@@ -5,28 +5,8 @@ from .geom import *
 @ti.data_oriented
 class Particles:
     @ti.func
-    def transmit(self, near, ind, uv, ro, rd, rc):
-        ro += near * rd
-        nrm = (ro - self.pos[ind]).normalized()
-
-        rd, wei = self.matr.sample(rd, nrm)
-        rc *= wei
-
-        '''
-        if ti.random() < 0.5:
-            lirad = 0.2
-            lipos = spherical(ti.random() * 2 - 1, ti.random()) * lirad
-            liarea = ti.pi * lirad**2 / 2
-            toli = lipos - ro
-            dis2 = toli.norm_sqr()
-            toli = toli.normalized()
-            if toli.dot(nrm) >= 0:
-                rc *= liarea / dis2
-                rd = toli
-        '''
-
-        ro += nrm * eps * 8
-        return ro, rd, rc
+    def get_normal(self, near, ind, uv, ro, rd):
+        return (ro - self.pos[ind]).normalized()
 
     def __init__(self, matr, pos, rad=0.05, dim=3):
         self.pos = ti.Vector.field(dim, float, len(pos))

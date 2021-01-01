@@ -4,13 +4,14 @@ from ..util.stack import Stack
 
 @ti.data_oriented
 class PathEngine:
-    def __init__(self, scene, res=512):
+    def __init__(self, scene, lighting, res=512):
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)
 
         self.ro = ti.Vector.field(3, float, self.res)
         self.rd = ti.Vector.field(3, float, self.res)
         self.rc = ti.Vector.field(3, float, self.res)
+        self.rl = ti.Vector.field(3, float, self.res)
 
         #self.rays = ti.root.dense(ti.ij, self.res)
         #self.rays.place(self.ro)
@@ -21,12 +22,13 @@ class PathEngine:
         self.cnt = ti.field(int, self.res)
 
         self.scene = scene
+        self.lighting = lighting
         self.stack = Stack()
 
     @ti.kernel
     def _get_image(self, out: ti.ext_arr()):
         for I in ti.grouped(self.img):
-            val = lerp((I // 16).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
+            val = lerp((I // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
             if self.cnt[I] != 0:
                 val = self.img[I] / self.cnt[I]
             val = aces_tonemap(val)
@@ -46,27 +48,20 @@ class PathEngine:
             ro = ti.Vector([0.0, 0.0, -3.0])
             rd = ti.Vector([uv.x, uv.y, 2.0]).normalized()
             rc = ti.Vector([1.0, 1.0, 1.0])
+            rl = ti.Vector([0.0, 0.0, 0.0])
             self.ro[I] = ro
             self.rd[I] = rd
             self.rc[I] = rc
+            self.rl[I] = rl
 
     @ti.func
-    def fallback(self, rd):
+    def background(self, rd):
         t = 0.5 + rd.y + 0.5
         blue = ti.Vector([0.5, 0.7, 1.0])
         white = ti.Vector([1.0, 1.0, 1.0])
         ret = (1 - t) * white + t * blue
-        #ret = 0.1
+        ret = 0.25
         return ret
-
-    @ti.func
-    def transmit(self, near, ind, uv, ro, rd, rc):
-        if ind == -1:
-            rc *= self.fallback(rd)
-            rd *= 0
-        else:
-            ro, rd, rc = self.scene.geom.transmit(near, ind, uv, ro, rd, rc)
-        return ro, rd, rc
 
     @ti.kernel
     def step_rays(self):
@@ -75,21 +70,55 @@ class PathEngine:
             ro = self.ro[I]
             rd = self.rd[I]
             rc = self.rc[I]
-            if rd.norm_sqr() < 0.5:
+            rl = self.rl[I]
+            if (rc < eps).all():
                 continue
-            near, hitind, hituv = self.scene.hit(stack, ro, rd)
-            ro, rd, rc = self.transmit(near, hitind, hituv, ro, rd, rc)
+            ro, rd, rc, rl = self.transmit(stack, ro, rd, rc, rl)
             self.ro[I] = ro
             self.rd[I] = rd
             self.rc[I] = rc
+            self.rl[I] = rl
 
     @ti.kernel
     def update_image(self):
         for I in ti.grouped(ti.ndrange(*self.res)):
             rc = self.rc[I]
-            ro = self.ro[I]
-            rd = self.rd[I]
-            if rd.norm_sqr() > 0.5:
+            rl = self.rl[I]
+            if not (rc < eps).all():
                 continue
-            self.img[I] += rc
+            self.img[I] += rl
             self.cnt[I] += 1
+
+    @ti.func
+    def transmit(self, stack, ro, rd, rc, rl):
+        near, ind, uv = self.scene.hit(stack, ro, rd)
+        if ind == -1:
+            # no hit
+            near, ind, uv = self.lighting.hit(ro, rd)
+            if ind == -1:
+                # background
+                rl += rc * self.background(rd)
+            rc *= 0
+        else:
+            # hit object
+            ro += near * rd
+            nrm = self.scene.geom.get_normal(near, ind, uv, ro, rd)
+            ro += nrm * eps * 8
+
+            li_clr = V(0., 0., 0.)
+            for li_ind in range(self.lighting.get_nlights()):
+                # cast shadow ray to lights
+                new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
+                occ_near, _1, _2 = self.scene.hit(stack, ro, new_rd)
+                if occ_near < li_dis:  # shadow occulsion
+                    continue
+                li_wei *= self.scene.geom.matr.brdf(rd, new_rd, nrm)
+                li_clr += li_wei
+
+            # sample indirect light
+            rd, ir_wei = self.scene.geom.matr.sample(rd, nrm)
+
+            rl += rc * li_clr
+            rc *= ir_wei
+
+        return ro, rd, rc, rl
