@@ -18,6 +18,9 @@ class SimpleMesh:
         self.maxfaces = maxfaces
         self.npolygon = npolygon
 
+    def get_npolygon(self):
+        return self.npolygon
+
     @ti.func
     def pre_compute(self):
         pass
@@ -54,7 +57,7 @@ class SimpleMesh:
 
         self.nfaces[None] = min(verts.shape[0], self.verts.shape[0])
         for i in range(self.nfaces[None]):
-            for k in ti.static(range(3)):
+            for k in ti.static(range(self.npolygon)):
                 for l in ti.static(range(3)):
                     self.verts[i, k][l] = verts[i, k, l]
 
@@ -70,7 +73,7 @@ class SimpleMesh:
         '''
 
         for i in range(self.nfaces[None]):
-            for k in ti.static(range(3)):
+            for k in ti.static(range(self.npolygon)):
                 for l in ti.static(range(3)):
                     self.norms[i, k][l] = norms[i, k, l]
 
@@ -85,6 +88,6 @@ class SimpleMesh:
         '''
 
         for i in range(self.nfaces[None]):
-            for k in ti.static(range(3)):
+            for k in ti.static(range(self.npolygon)):
                 for l in ti.static(range(2)):
                     self.coors[i, k][l] = coors[i, k, l]

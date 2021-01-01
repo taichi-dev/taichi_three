@@ -20,36 +20,6 @@ class Engine:
             pos = src + k * i
             yield pos, i / siz
 
-    @ti.func
-    def draw_trip(self, a, b, c):
-        bot, top = ifloor(min(a, b, c)), iceil(max(a, b, c))
-        bot, top = max(bot, 0), min(top, self.res - 1)
-        n = (b - a).cross(c - a)
-        bcn = (b - c) / n
-        can = (c - a) / n
-        for i, j in ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1)):
-            pos = float(V(i, j)) + 0.5
-            w_bc = (pos - b).cross(bcn)
-            w_ca = (pos - c).cross(can)
-            wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
-            if all(wei >= 0):
-                yield pos, wei
-
-    @ti.func
-    def draw_ball(self, a, r):
-        bot, top = ifloor(a - r), iceil(a + r)
-        bot, top = max(bot, 0), min(top, self.res - 1)
-        for i, j in ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1)):
-            dpos = float(V(i, j, a.z)) - a
-            dp2 = dpos.norm_sqr()
-            if dp2 > r**2:
-                continue
-
-            dz = ti.sqrt(r**2 - dp2)
-            n = V23(dpos.xy, -dz)
-            nrm = ts.normalize(n)
-            yield a + nrm * r, nrm
-
     def __init__(self, res=512):
         self.res = tovector((res, res) if isinstance(res, int) else res)
 

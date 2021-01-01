@@ -9,25 +9,21 @@ class Particles:
         ro += near * rd
         nrm = (ro - self.pos[ind]).normalized()
 
-        if ind == 0:
-            rc *= 2
-            rd *= 0
-        else:
-            rd, wei = self.matr.sample(rd, nrm)
-            rc *= wei
+        rd, wei = self.matr.sample(rd, nrm)
+        rc *= wei
 
-            '''
-            if ti.random() < 0.5:
-                lirad = 0.2
-                lipos = spherical(ti.random() * 2 - 1, ti.random()) * lirad
-                liarea = ti.pi * lirad**2 / 2
-                toli = lipos - ro
-                dis2 = toli.norm_sqr()
-                toli = toli.normalized()
-                if toli.dot(nrm) >= 0:
-                    rc *= liarea / dis2
-                    rd = toli
-            '''
+        '''
+        if ti.random() < 0.5:
+            lirad = 0.2
+            lipos = spherical(ti.random() * 2 - 1, ti.random()) * lirad
+            liarea = ti.pi * lirad**2 / 2
+            toli = lipos - ro
+            dis2 = toli.norm_sqr()
+            toli = toli.normalized()
+            if toli.dot(nrm) >= 0:
+                rc *= liarea / dis2
+                rd = toli
+        '''
 
         ro += nrm * eps * 8
         return ro, rd, rc

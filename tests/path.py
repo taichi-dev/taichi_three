@@ -3,7 +3,7 @@ import numpy as np
 import taichi_inject
 import tina.path
 
-ti.init()
+ti.init(ti.gpu)
 
 verts, faces = tina.readobj('assets/monkey.obj', simple=True)
 verts = verts[faces]

@@ -48,9 +48,14 @@ class Scene:
 
         if raster is None:
             if hasattr(object, 'get_nfaces'):
-                if not hasattr(self, 'triangle_raster'):
-                    self.triangle_raster = tina.TriangleRaster(self.engine, **self.options)
-                raster = self.triangle_raster
+                if hasattr(object, 'get_npolygon') and object.get_npolygon() == 2:
+                    if not hasattr(self, 'wireframe_raster'):
+                        self.wireframe_raster = tina.WireframeRaster(self.engine, **self.options)
+                    raster = self.wireframe_raster
+                else:
+                    if not hasattr(self, 'triangle_raster'):
+                        self.triangle_raster = tina.TriangleRaster(self.engine, **self.options)
+                    raster = self.triangle_raster
             elif hasattr(object, 'get_npars'):
                 if not hasattr(self, 'particle_raster'):
                     self.particle_raster = tina.ParticleRaster(self.engine, **self.options)
