@@ -25,6 +25,11 @@ def _():
                 res = tuple(res)
             super().__init__(name=name, res=res, **kwargs)
             self._last_mpos = (0, 0)
+            self._post_show_cbs = []
+
+        def post_show(self, cb):
+            self._post_show_cbs.append(cb)
+            return cb
 
         def get_events(self, *args):
             events = super().get_events(*args)
@@ -51,6 +56,11 @@ def _():
             self.lines(topright, bottomright, radius, color)
             self.lines(bottomright, bottomleft, radius, color)
             self.lines(bottomleft, topleft, radius, color)
+
+        def show(self):
+            super().show()
+            for cb in self._post_show_cbs:
+                cb(self)
 
     ti.GUI = GUI
 
