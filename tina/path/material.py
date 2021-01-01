@@ -8,7 +8,7 @@ class Material:
 
     @ti.func
     def brdf(self, idir, odir, nrm):
-        return 1
+        return 1. if idir.dot(nrm) <= 0 and odir.dot(nrm) >= 0 else 0.
 
     @ti.func
     def f(self, u, v, su, sv):

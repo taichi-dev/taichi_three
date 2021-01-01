@@ -5,21 +5,14 @@ from .geom import *
 @ti.data_oriented
 class Triangles:
     @ti.func
-    def transmit(self, near, ind, uv, ro, rd, rc):
-        ro += near * rd
-
+    def get_normal(self, near, ind, uv, ro, rd):
         v0 = self.verts[ind, 0]
         v1 = self.verts[ind, 1]
         v2 = self.verts[ind, 2]
         nrm = (v1 - v0).cross(v2 - v0).normalized()
         if nrm.dot(rd) > 0:
             nrm = -nrm
-
-        rd, wei = self.matr.sample(rd, nrm)
-        rc *= wei
-
-        ro += nrm * eps * 8
-        return ro, rd, rc
+        return nrm
 
     def __init__(self, matr, verts):
         self.verts = ti.Vector.field(3, float, (len(verts), 3))
