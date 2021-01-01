@@ -5,8 +5,9 @@ from .geom import *
 @ti.data_oriented
 class Particles:
     @ti.func
-    def get_normal(self, near, ind, uv, ro, rd):
-        return (ro - self.pos[ind]).normalized()
+    def calc_geometry(self, near, ind, uv, ro, rd):
+        nrm = (ro - self.pos[ind]).normalized()
+        return nrm, V(0., 0.)
 
     def __init__(self, matr, pos, rad=0.05, dim=3):
         self.pos = ti.Vector.field(dim, float, len(pos))
