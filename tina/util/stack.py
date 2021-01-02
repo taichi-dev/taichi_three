@@ -2,22 +2,31 @@ from ..common import *
 
 
 @ti.data_oriented
-class Stack:  # consumes 64 MiB by default:
-    def __init__(self, N_mt=512**2, N_len=64, field=None):
+class Stack:
+    def __init__(self, N_mt=(128, 128), N_len=32, field=None):
         if ti.cfg.arch == ti.cpu and ti.cfg.cpu_max_num_threads == 1 or ti.cfg.arch == ti.cc:
-            print('[Tina] Single thread mode detected')
-            N_mt = 1
+            N_mt = 1, 1
+        print('[Tina] Using', 'x'.join(map(str, N_mt)), 'threads')
         self.N_mt = N_mt
         self.N_len = N_len
         self.val = ti.field(int) if field is None else field
-        self.blk1 = ti.root.dense(ti.i, N_mt)
-        self.blk2 = self.blk1.dense(ti.j, N_len)
+        self.blk1 = ti.root.dense(ti.ij, N_mt)
+        self.blk2 = self.blk1.dense(ti.k, N_len)
         self.blk2.place(self.val)
         self.len = ti.field(int, N_mt)
 
     @ti.func
-    def get(self, mtid):
-        return self.Proxy(self, mtid % self.N_mt)
+    def ndrange(self, shape):
+        for i, j in ti.ndrange(*self.N_mt):
+            stack = self.Proxy(self, V(i, j))
+            x = i
+            while x < shape[0]:
+                y = j
+                while y < shape[1]:
+                    I = V(x, y)
+                    yield I, stack
+                    y += self.N_mt[1]
+                x += self.N_mt[0]
 
     @ti.data_oriented
     class Proxy:
