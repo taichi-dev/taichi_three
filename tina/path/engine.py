@@ -4,7 +4,7 @@ from ..util.stack import Stack
 
 @ti.data_oriented
 class PathEngine:
-    def __init__(self, scene, lighting, res=512):
+    def __init__(self, scene, lighting, mtltab, res=512):
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)
 
@@ -23,6 +23,7 @@ class PathEngine:
 
         self.scene = scene
         self.lighting = lighting
+        self.mtltab = mtltab
         self.stack = Stack()
 
     @ti.kernel
@@ -114,18 +115,21 @@ class PathEngine:
                 'texcoord': tex,
             })
 
+            mtlid = self.scene.geom.get_material_id(ind)
+            material = self.mtltab.get(mtlid)
+
             li_clr = V(0., 0., 0.)
             for li_ind in range(self.lighting.get_nlights()):
                 # cast shadow ray to lights
                 new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
-                occ_near, _1, _2 = self.scene.hit(stack, ro, new_rd)
+                occ_near, occ_ind, occ_uv = self.scene.hit(stack, ro, new_rd)
                 if occ_near < li_dis:  # shadow occulsion
                     continue
-                li_wei *= self.scene.geom.matr.brdf(nrm, rd, new_rd)
+                li_wei *= material.brdf(nrm, rd, new_rd)
                 li_clr += li_wei
 
             # sample indirect light
-            rd, ir_wei = self.scene.geom.matr.sample(rd, nrm)
+            rd, ir_wei = material.sample(rd, nrm)
 
             tina.Input.clear_g_pars()
 

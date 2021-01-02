@@ -5,15 +5,25 @@ import tina.path
 
 ti.init(ti.cpu)
 
-mesh = tina.MeshModel('assets/sphere.obj')
-geometry = tina.path.TriangleTracer(smoothing=True, texturing=True)
-#geometry.matr = tina.path.CookTorrance(basecolor=tina.Texture('assets/uv.png'), metallic=0.8, roughness=0.3)
-lighting = tina.path.Lighting()
-tree = tina.path.BVHTree(geometry)
-engine = tina.path.PathEngine(tree, lighting)
+tracer = tina.path.TriangleTracer(smoothing=True, texturing=True)
+mtltab = tina.path.MaterialTable()
 
-geometry.set_object(mesh)
-geometry.build(tree)
+lighting = tina.path.Lighting()
+tree = tina.path.BVHTree(tracer)
+engine = tina.path.PathEngine(tree, lighting, mtltab)
+
+mesh = tina.MeshTransform(tina.MeshModel('assets/monkey.obj'), tina.translate([0, -0.5, 0]))
+material = tina.path.Lambert()
+
+mesh2 = tina.MeshTransform(tina.MeshModel('assets/sphere.obj'), tina.translate([0, +0.5, 0]))
+material2 = tina.path.Lambert(color=tina.Texture('assets/uv.png'))
+
+mtltab.add_material(material)
+tracer.add_object(mesh, 0)
+mtltab.add_material(material2)
+tracer.add_object(mesh2, 1)
+tracer.build(tree)
+
 lighting.set_lights(np.array([
     [0, 1.38457, -1.44325],
 ], dtype=np.float32))
