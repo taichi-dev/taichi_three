@@ -78,7 +78,7 @@ class TriangleTracer:
                     verts[i, k, l] = self.verts[i, k][l]
 
     def build(self, tree):
-        verts = np.empty((self.nfaces[None], 3, 3))
+        verts = np.empty((self.nfaces[None], 3, 3), dtype=np.float32)
         self._export_vertices(verts)
         bmax = np.max(verts, axis=1)
         bmin = np.min(verts, axis=1)
