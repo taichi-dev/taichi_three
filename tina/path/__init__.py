@@ -1,9 +1,10 @@
-print('[Tina] Loading path tracer...')
+print('[Tina] Loading ray traceing module...')
 
 from .engine import *
-from .material import *
 from .lighting import *
-from .geom import *
+from .geometry import *
 from .particles import *
 from .triangle import *
 from .tree import *
+
+print('[Tina] Loading ray traceing module done')
