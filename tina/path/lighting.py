@@ -3,7 +3,7 @@ from .geometry import *
 
 
 @ti.data_oriented
-class Lighting:
+class PointLighting:
     def __init__(self, maxlights=16):
         self.maxlights = maxlights
         self.pos = ti.Vector.field(3, float, maxlights)
@@ -14,7 +14,7 @@ class Lighting:
         @ti.materialize_callback
         def init_lights():
             self.nlights[None] = 1
-            self.color.fill(16)
+            self.color.fill(1)
             self.rad.fill(0.1)
 
     @ti.kernel
@@ -55,10 +55,9 @@ class Lighting:
     def redirect(self, ro, ind):
         lirad = self.rad[ind]
         lipos = self.pos[ind]
-        lipos = spherical(ti.random() * 2 - 1, ti.random()) * lirad + lipos
-        toli = lipos - ro
+        lirip = spherical(ti.random() * 2 - 1, ti.random()) * lirad + lipos
+        toli = lirip - ro
         dis2 = toli.norm_sqr()
         toli = toli.normalized()
-        liarea = ti.pi * lirad ** 2  # TODO: should be larger when close
-        wei = liarea / dis2 * self.color[ind]
+        wei = self.color[ind] / dis2
         return toli, wei, ti.sqrt(dis2)

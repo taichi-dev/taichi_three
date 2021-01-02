@@ -1,4 +1,4 @@
-print('[Tina] Loading ray traceing module...')
+print('[Tina] Loading ray tracing module...')
 
 from .engine import *
 from .lighting import *
@@ -7,4 +7,4 @@ from .particles import *
 from .triangle import *
 from .tree import *
 
-print('[Tina] Loading ray traceing module done')
+print('[Tina] Loading ray tracing module done')

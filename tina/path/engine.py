@@ -26,6 +26,10 @@ class PathEngine:
         self.mtltab = mtltab
         self.stack = Stack()
 
+    def clear_image(self):
+        self.img.fill(0)
+        self.cnt.fill(0)
+
     @ti.kernel
     def _get_image(self, out: ti.ext_arr()):
         for I in ti.grouped(self.img):
@@ -46,8 +50,8 @@ class PathEngine:
         for I in ti.grouped(ti.ndrange(*self.res)):
             bias = ti.Vector([ti.random(), ti.random()])
             uv = (I + bias) / self.res * 2 - 1
-            ro = ti.Vector([0.0, 0.0, -3.0])
-            rd = ti.Vector([uv.x, uv.y, 2.0]).normalized()
+            ro = ti.Vector([0.0, 0.0, 3.0])
+            rd = ti.Vector([uv.x, uv.y, -2.0]).normalized()
             rc = ti.Vector([1.0, 1.0, 1.0])
             rl = ti.Vector([0.0, 0.0, 0.0])
             self.ro[I] = ro
@@ -61,7 +65,7 @@ class PathEngine:
         blue = ti.Vector([0.5, 0.7, 1.0])
         white = ti.Vector([1.0, 1.0, 1.0])
         ret = (1 - t) * white + t * blue
-        ret = 0.25
+        ret = 0.0
         return ret
 
     @ti.kernel
@@ -89,6 +93,9 @@ class PathEngine:
                 continue
             self.img[I] += rl
             self.cnt[I] += 1
+
+    def set_camera(self, view, proj):
+        pass
 
     @ti.func
     def transmit(self, stack, ro, rd, rc, rl):
@@ -122,10 +129,11 @@ class PathEngine:
             for li_ind in range(self.lighting.get_nlights()):
                 # cast shadow ray to lights
                 new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
+                li_wei *= max(0, new_rd.dot(nrm))
                 occ_near, occ_ind, occ_uv = self.scene.hit(stack, ro, new_rd)
                 if occ_near < li_dis:  # shadow occulsion
                     continue
-                li_wei *= material.brdf(nrm, rd, new_rd)
+                li_wei *= material.safe_brdf(nrm, rd, new_rd)
                 li_clr += li_wei
 
             # sample indirect light

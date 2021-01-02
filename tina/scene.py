@@ -132,7 +132,7 @@ class Scene:
         if not hasattr(self, 'control'):
             self.control = tina.Control(gui)
         changed = self.control.get_camera(self.engine)
-        if changed and self.taa:
+        if hasattr(self, 'accum') and changed:
             self.accum.clear()
         return changed
 
@@ -152,9 +152,9 @@ class PTScene(Scene):
     def __init__(self, res=512, **options):
         self.tracer = tina.TriangleTracer(**options)
         self.mtltab = tina.MaterialTable()
-        self.lighting = tina.path.Lighting()
-        self.tree = tina.path.BVHTree(self.tracer)
-        self.engine = tina.path.PathEngine(self.tree, self.lighting, self.mtltab, res=res)
+        self.lighting = tina.PointLighting()
+        self.tree = tina.BVHTree(self.tracer)
+        self.engine = tina.PathEngine(self.tree, self.lighting, self.mtltab, res=res)
         self.res = self.engine.res
         self.options = options
 
@@ -172,14 +172,17 @@ class PTScene(Scene):
         mtlid = self.materials.index(material)
         self.objects.append((object, mtlid))
 
-    def build(self):
+    def update(self):
+        self.engine.clear_image()
+        self.mtltab.clear_materials()
+        self.tracer.clear_objects()
         for material in self.materials:
             self.mtltab.add_material(material)
         for object, mtlid in self.objects:
             self.tracer.add_object(object, mtlid)
         self.tracer.build(self.tree)
 
-    def render(self, nsteps=5):
+    def render(self, nsteps=4):
         self.engine.load_rays()
         for step in range(nsteps):
             self.engine.step_rays()
