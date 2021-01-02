@@ -126,11 +126,11 @@ class VirtualMaterial:
         self.mid = mid
 
     @ti.func
-    def brdf(self, nrm, idir, odir):
+    def safe_brdf(self, nrm, idir, odir):
         wei = V(0., 0., 0.)
         for i, mat in ti.static(enumerate(self.materials)):
             if i == self.mid:
-                wei = mat.brdf(nrm, idir, odir)
+                wei = mat.safe_brdf(nrm, idir, odir)
         return wei
 
     @ti.func
