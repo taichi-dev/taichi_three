@@ -41,7 +41,7 @@ class PathEngine:
                 out[I, k] = val[k]
 
     def get_image(self):
-        img = np.zeros((*self.res, 3))
+        img = np.zeros((*self.res, 3), dtype=np.float32)
         self._get_image(img)
         return img
 
