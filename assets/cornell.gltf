@@ -62,7 +62,6 @@
             ]
         },
         {
-            "mesh" : 3,
             "name" : "Plane",
             "rotation" : [
                 0,

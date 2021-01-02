@@ -51,7 +51,7 @@ class PathEngine:
             bias = ti.Vector([ti.random(), ti.random()])
             uv = (I + bias) / self.res * 2 - 1
             # TODO: support customizing camera
-            ro = ti.Vector([0.0, 0.0, 3.0])
+            ro = ti.Vector([0.0, 2.0, 6.0])
             rd = ti.Vector([uv.x, uv.y, -2.0]).normalized()
             rc = ti.Vector([1.0, 1.0, 1.0])
             rl = ti.Vector([0.0, 0.0, 0.0])

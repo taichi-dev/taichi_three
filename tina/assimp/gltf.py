@@ -18,15 +18,19 @@ def readgltf(path):
     elif isinstance(path, dict):
         root = path
     else:
-        root = json.load(f)
+        root = json.load(path)
 
     class Primitive:
         def __init__(self):
             self.attrs = {}
             self.indices = None
+            self.material = None
 
         def set_indices(self, array):
             self.indices = array
+
+        def set_material(self, material):
+            self.material = material
 
         def add_attribute(self, name, array):
             self.attrs[name] = array
@@ -51,22 +55,25 @@ def readgltf(path):
             obj = self.to_obj_mesh()
             mesh = tina.MeshModel(obj)
             mesh = tina.MeshTransform(mesh, trans)
-            scene.add_object(mesh)
+            material = None
+            if self.material is not None:
+                material = self.material.extract()
+            scene.add_object(mesh, material)
 
     class Node:
         def __init__(self, name):
             self.name = name
-            self.mesh = None
+            self.primitives = None
             self.trans = None
 
-        def set_mesh(self, mesh):
-            self.mesh = mesh
+        def set_primitives(self, primitives):
+            self.primitives = primitives
 
         def set_transform(self, *trans):
             self.trans = trans
 
         def __repr__(self):
-            return 'Node(' + repr(self.name) + ', ' + repr(self.mesh) + ', ' + repr(self.trans) + ')'
+            return 'Node(' + repr(self.name) + ', ' + repr(self.primitives) + ', ' + repr(self.trans) + ')'
 
         def extract(self, scene):
             trans = tina.identity()
@@ -79,10 +86,9 @@ def readgltf(path):
                 if offset is not None:
                     trans = tina.translate(offset) @ trans
 
-            if self.mesh is None:
-                return
-            for primitive in self.mesh:
-                primitive.extract(scene, trans)
+            if self.primitives is not None:
+                for primitive in self.primitives:
+                    primitive.extract(scene, trans)
 
     class Scene:
         def __init__(self, name):
@@ -100,6 +106,31 @@ def readgltf(path):
                 node.extract(scene)
             return scene
 
+    class Material:
+        def __init__(self, name):
+            self.name = name
+            self.pbr = None
+
+        def set_pbr(self, pbr):
+            self.pbr = pbr
+
+        def extract(self):
+            if self.pbr is None:
+                return tina.Lambert()
+            kwargs = {}
+            for key, value in self.pbr.items():
+                if key == 'baseColorFactor':
+                    kwargs['basecolor'] = value[:3]
+                elif key == 'baseColorTexture':
+                    #assert value.get('texCoord', 0) == 0
+                    img = images[value['index']]
+                    kwargs['basecolor'] = tina.Texture(img)
+                elif key == 'metallicFactor':
+                    kwargs['metallic'] = value
+                elif key == 'roughnessFactor':
+                    kwargs['roughness'] = value
+            return tina.CookTorrance(**kwargs)
+
     def load_uri(uri):
         if uri.startswith('data:'):
             magic_string = 'data:application/octet-stream;base64,'
@@ -116,15 +147,19 @@ def readgltf(path):
         data = load_uri(buffer['uri'])
         buffers.append(data)
 
-    def get_accessor_buffer(accessor_id):
-        accessor = root['accessors'][accessor_id]
-
-        buffer_view_id = accessor['bufferView']
+    def get_buffer_view_bytes(buffer_view_id):
         buffer_view = root['bufferViews'][buffer_view_id]
         byte_offset = buffer_view['byteOffset']
         byte_length = buffer_view['byteLength']
         buffer = buffers[buffer_view['buffer']]
         buffer = buffer[byte_offset:byte_offset + byte_length]
+        return buffer
+
+    def get_accessor_buffer(accessor_id):
+        accessor = root['accessors'][accessor_id]
+
+        buffer_view_id = accessor['bufferView']
+        buffer = get_buffer_view_bytes(buffer_view_id)
 
         dtype = component_types[accessor['componentType'] - 0x1400]
         dtype = vector_types[accessor['type']] + dtype
@@ -132,6 +167,27 @@ def readgltf(path):
 
         array = np.frombuffer(buffer, dtype=dtype, count=count)
         return array
+
+    images = []
+    if 'images' in root:
+        for image in root['images']:
+            #res_imag = Image(image.get('name', 'Untitled'))
+            buffer_view_id = image['bufferView']
+            buffer = get_buffer_view_bytes(buffer_view_id)
+            from PIL import Image
+            from io import BytesIO
+            with BytesIO(buffer) as f:
+                im = np.array(Image.open(f))
+            im = np.swapaxes(im, 0, 1)
+            images.append(im)
+
+    materials = []
+    if 'materials' in root:
+        for material in root['materials']:
+            res_matr = Material(material.get('name', 'Untitled'))
+            if 'pbrMetallicRoughness' in material:
+                res_matr.set_pbr(material['pbrMetallicRoughness'])
+            materials.append(res_matr)
 
     def parse_scene(scene):
         res_scene = Scene(scene.get('name', 'Untitled'))
@@ -145,7 +201,7 @@ def readgltf(path):
             if 'mesh' in node:
                 mesh_id = node['mesh']
                 mesh = root['meshes'][mesh_id]
-                res_mesh = []
+                res_prims = []
                 for primitive in mesh['primitives']:
                     res_prim = Primitive()
                     if 'indices' in primitive:
@@ -155,8 +211,11 @@ def readgltf(path):
                     for attr_name, accessor_id in primitive['attributes'].items():
                         array = get_accessor_buffer(accessor_id)
                         res_prim.add_attribute(attr_name, array)
-                    res_mesh.append(res_prim)
-                res_node.set_mesh(res_mesh)
+                    if 'material' in primitive:
+                        material_id = primitive['material']
+                        res_prim.set_material(materials[material_id])
+                    res_prims.append(res_prim)
+                res_node.set_primitives(res_prims)
             res_scene.add_node(res_node)
         return res_scene
 

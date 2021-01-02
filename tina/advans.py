@@ -7,9 +7,12 @@ eps = 1e-6
 
 def texture_as_field(filename):
     if isinstance(filename, str):
-        img_np = np.float32(ti.imread(filename) / 255)
+        img_np = ti.imread(filename)
     else:
         img_np = np.array(filename)
+    if img_np.dtype == np.uint8:
+        img_np = np.float32(img_np / 255)
+
     img = ti.Vector.field(3, float, img_np.shape[:2])
 
     @ti.materialize_callback
