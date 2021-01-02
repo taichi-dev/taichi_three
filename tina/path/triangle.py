@@ -5,9 +5,10 @@ from .geom import *
 @ti.data_oriented
 class TriangleTracer:
 
-    def __init__(self, maxfaces=65536, smoothing=False, texturing=False):
+    def __init__(self, maxfaces=65536*16, smoothing=False, texturing=False, multimtl=True):
         self.smoothing = smoothing
         self.texturing = texturing
+        self.multimtl = multimtl
         self.maxfaces = maxfaces
 
         self.verts = ti.Vector.field(3, float, (maxfaces, 3))
@@ -15,24 +16,34 @@ class TriangleTracer:
             self.norms = ti.Vector.field(3, float, (maxfaces, 3))
         if self.texturing:
             self.coors = ti.Vector.field(2, float, (maxfaces, 3))
+        if self.multimtl:
+            self.mtlids = ti.field(int, maxfaces)
         self.nfaces = ti.field(int, ())
 
+    def clear_objects(self):
+        self.nfaces[None] = 0
+
     @ti.kernel
-    def set_object(self, mesh: ti.template()):
+    def add_object(self, mesh: ti.template(), mtlid: ti.template()):
         mesh.pre_compute()
-        self.nfaces[None] = mesh.get_nfaces()
-        for i in range(self.nfaces[None]):
+        nfaces = mesh.get_nfaces()
+        base = self.nfaces[None]
+        self.nfaces[None] += nfaces
+        for i in range(nfaces):
+            j = base + i
             verts = mesh.get_face_verts(i)
+            if ti.static(self.multimtl):
+                self.mtlids[j] = mtlid
             for k in ti.static(range(3)):
-                self.verts[i, k] = verts[k]
+                self.verts[j, k] = verts[k]
             if ti.static(self.smoothing):
                 norms = mesh.get_face_norms(i)
                 for k in ti.static(range(3)):
-                    self.norms[i, k] = norms[k]
+                    self.norms[j, k] = norms[k]
             if ti.static(self.texturing):
                 coors = mesh.get_face_coors(i)
                 for k in ti.static(range(3)):
-                    self.coors[i, k] = coors[k]
+                    self.coors[j, k] = coors[k]
 
     @ti.kernel
     def set_face_verts(self, verts: ti.ext_arr()):
@@ -71,6 +82,12 @@ class TriangleTracer:
         bmax = np.max(verts, axis=1)
         bmin = np.min(verts, axis=1)
         tree.build(bmin, bmax)
+
+    @ti.func
+    def get_material_id(self, ind):
+        if ti.static(not self.multimtl):
+            return 0
+        return self.mtlids[ind]
 
     @ti.func
     def calc_geometry(self, near, ind, uv, ro, rd):

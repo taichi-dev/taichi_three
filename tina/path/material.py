@@ -36,3 +36,42 @@ class CookTorrance(tina.CookTorrance, _PTMaterial):
 
 class Lambert(tina.Lambert, _PTMaterial):
     pass
+
+
+@ti.data_oriented
+class VirtualMaterial:
+    def __init__(self, materials, mid):
+        self.materials = materials
+        self.mid = mid
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        wei = V(0., 0., 0.)
+        for i, mat in ti.static(enumerate(self.materials)):
+            if i == self.mid:
+                wei = mat.brdf(nrm, idir, odir)
+        return wei
+
+    @ti.func
+    def sample(self, rd, nrm):
+        odir, wei = V(0., 0., 0.), V(0., 0., 0.)
+        for i, mat in ti.static(enumerate(self.materials)):
+            if i == self.mid:
+                odir, wei = mat.sample(rd, nrm)
+        return odir, wei
+
+@ti.data_oriented
+class MaterialTable:
+    def __init__(self):
+        self.materials = []
+
+    def clear_materials(self):
+        self.materials.clear()
+
+    @ti.func
+    def get(self, mtlid):
+        ti.static_assert(len(self.materials))
+        return tina.path.VirtualMaterial(self.materials, mtlid)
+
+    def add_material(self, matr):
+        self.materials.append(matr)
