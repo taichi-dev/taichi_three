@@ -36,7 +36,7 @@ class PathEngine:
             val = lerp((I // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
             if self.cnt[I] != 0:
                 val = self.img[I] / self.cnt[I]
-            val = aces_tonemap(val)
+            val = film_tonemap(val)
             for k in ti.static(range(3)):
                 out[I, k] = val[k]
 
@@ -70,19 +70,17 @@ class PathEngine:
 
     @ti.kernel
     def step_rays(self):
-        for I in ti.grouped(self.ro):
-            stack = self.stack.get(I.y * self.res.x + I.x)
+        for I, stack in ti.smart(self.stack.ndrange(self.res)):
             ro = self.ro[I]
             rd = self.rd[I]
             rc = self.rc[I]
             rl = self.rl[I]
-            if (rc < eps).all():
-                continue
-            ro, rd, rc, rl = self.transmit(stack, ro, rd, rc, rl)
-            self.ro[I] = ro
-            self.rd[I] = rd
-            self.rc[I] = rc
-            self.rl[I] = rl
+            if not (rc < eps).all():
+                ro, rd, rc, rl = self.transmit(stack, ro, rd, rc, rl)
+                self.ro[I] = ro
+                self.rd[I] = rd
+                self.rc[I] = rc
+                self.rl[I] = rl
 
     @ti.kernel
     def update_image(self):
@@ -129,7 +127,10 @@ class PathEngine:
             for li_ind in range(self.lighting.get_nlights()):
                 # cast shadow ray to lights
                 new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
-                li_wei *= max(0, new_rd.dot(nrm))
+                NoD = new_rd.dot(nrm)
+                if NoD <= 0:
+                    continue
+                li_wei *= NoD
                 occ_near, occ_ind, occ_uv = self.scene.hit(stack, ro, new_rd)
                 if occ_near < li_dis:  # shadow occulsion
                     continue
