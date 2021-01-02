@@ -5,12 +5,7 @@ import tina
 
 ti.init(ti.cpu)
 
-tracer = tina.TriangleTracer(smoothing=True, texturing=True)
-mtltab = tina.MaterialTable()
-
-lighting = tina.path.Lighting()
-tree = tina.path.BVHTree(tracer)
-engine = tina.path.PathEngine(tree, lighting, mtltab)
+scene = tina.PTScene(smoothing=True, texturing=True)
 
 mesh = tina.MeshTransform(tina.MeshModel('assets/monkey.obj'), tina.translate([0, -0.5, 0]))
 material = tina.Lambert()
@@ -18,26 +13,21 @@ material = tina.Lambert()
 mesh2 = tina.MeshTransform(tina.MeshModel('assets/sphere.obj'), tina.translate([0, +0.5, 0]))
 material2 = tina.Lambert(color=tina.Texture('assets/uv.png'))
 
-mtltab.add_material(material)
-tracer.add_object(mesh, 0)
-mtltab.add_material(material2)
-tracer.add_object(mesh2, 1)
-tracer.build(tree)
+scene.add_object(mesh, material)
+scene.add_object(mesh2, material2)
+scene.build()
 
-lighting.set_lights(np.array([
+scene.lighting.set_lights(np.array([
     [0, 1.38457, -1.44325],
 ], dtype=np.float32))
-lighting.set_light_radii(np.array([
+scene.lighting.set_light_radii(np.array([
     0.2,
 ], dtype=np.float32))
 
 
-gui = ti.GUI('BVH', engine.res)
+gui = ti.GUI('BVH', scene.res)
 while gui.running and not gui.get_event(gui.ESCAPE, gui.SPACE):
-    engine.load_rays()
-    for step in range(3):
-        engine.step_rays()
-    engine.update_image()
+    scene.render(nsteps=3)
     print(gui.frame + 1, 'samples')
-    gui.set_image(engine.get_image())
+    gui.set_image(scene.img)
     gui.show()

@@ -145,3 +145,46 @@ class Scene:
 
         from .assimp.gltf import readgltf
         return readgltf(path).extract(self)
+
+
+# noinspection PyMissingConstructor
+class PTScene(Scene):
+    def __init__(self, res=512, **options):
+        self.tracer = tina.TriangleTracer(**options)
+        self.mtltab = tina.MaterialTable()
+        self.lighting = tina.path.Lighting()
+        self.tree = tina.path.BVHTree(self.tracer)
+        self.engine = tina.path.PathEngine(self.tree, self.lighting, self.mtltab, res=res)
+        self.res = self.engine.res
+        self.options = options
+
+        self.default_material = tina.Lambert()
+        self.materials = []
+        self.objects = []
+
+    def add_object(self, object, material=None, tracer=None):
+        if material is None:
+            material = self.default_material
+        # TODO: multiple tracer
+
+        if material not in self.materials:
+            self.materials.append(material)
+        mtlid = self.materials.index(material)
+        self.objects.append((object, mtlid))
+
+    def build(self):
+        for material in self.materials:
+            self.mtltab.add_material(material)
+        for object, mtlid in self.objects:
+            self.tracer.add_object(object, mtlid)
+        self.tracer.build(self.tree)
+
+    def render(self, nsteps=5):
+        self.engine.load_rays()
+        for step in range(nsteps):
+            self.engine.step_rays()
+        self.engine.update_image()
+
+    @property
+    def img(self):
+        return self.engine.get_image()
