@@ -1,7 +1,7 @@
 bl_info = {
         'name': 'Tina',
         'description': 'A real-time soft renderer based on Taichi programming language',
-        'author': '彭于斌 <1931127624@qq.com>',
+        'author': 'archibate <1931127624@qq.com>',
         'version': (0, 0, 1),
         'blender': (2, 81, 0),
         'location': 'Render -> Tina',
@@ -10,6 +10,8 @@ bl_info = {
         'tracker_url': 'https://github.com/taichi-dev/taichi_three/issues',
         'category': 'Render',
 }
+
+# An artwork presented by github.com/archibate
 
 __version__ = bl_info['version']
 __author__ = bl_info['author']
@@ -46,12 +48,14 @@ def unregister():
 from .hacker import *
 from .common import *
 from .advans import *
-from .matr import *
-from .core import *
-from .path import *
-from .util import *
-from .assimp import *
-from .mesh import *
-from .pars import *
-from .voxl import *
-from .scene import *
+
+if __import__('lazyimp').mock(globals()):
+    from .util import *
+    from .matr import *
+    from .core import *
+    from .path import *
+    from .assimp import *
+    from .mesh import *
+    from .pars import *
+    from .voxl import *
+    from .scene import *

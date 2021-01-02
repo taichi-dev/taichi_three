@@ -1,6 +1,3 @@
-print('[Tina] Loading material module...')
-
-from .nodes import *
-from .material import *
-
-print('[Tina] Loading material module done')
+if __import__('lazyimp').mock(globals()):
+    from .nodes import *
+    from .material import *
