@@ -1,5 +1,5 @@
 from ..advans import *
-from .geom import *
+from .geometry import *
 
 
 @ti.data_oriented

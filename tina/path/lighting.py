@@ -1,5 +1,5 @@
 from ..advans import *
-from .geom import *
+from .geometry import *
 
 
 @ti.data_oriented
@@ -59,6 +59,6 @@ class Lighting:
         toli = lipos - ro
         dis2 = toli.norm_sqr()
         toli = toli.normalized()
-        liarea = ti.pi * lirad ** 2  # wip: should be larger when close
+        liarea = ti.pi * lirad ** 2  # TODO: should be larger when close
         wei = liarea / dis2 * self.color[ind]
         return toli, wei, ti.sqrt(dis2)

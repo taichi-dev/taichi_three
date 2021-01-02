@@ -46,7 +46,9 @@ def unregister():
 from .hacker import *
 from .common import *
 from .advans import *
+from .matr import *
 from .core import *
+from .path import *
 from .util import *
 from .assimp import *
 from .mesh import *

@@ -26,7 +26,7 @@ class Lighting:
     def clear_lights(self):
         self.nlights[None] = 0
 
-    def add_light(self, dir=[0, 0, 1], pos=None, color=[1, 1, 1]):
+    def add_light(self, dir=(0, 0, 1), pos=None, color=(1, 1, 1)):
         i = self.nlights[None]
         self.nlights[None] = i + 1
         if pos is not None:

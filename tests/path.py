@@ -1,22 +1,22 @@
 import taichi as ti
 import numpy as np
 import taichi_inject
-import tina.path
+import tina
 
 ti.init(ti.cpu)
 
-tracer = tina.path.TriangleTracer(smoothing=True, texturing=True)
-mtltab = tina.path.MaterialTable()
+tracer = tina.TriangleTracer(smoothing=True, texturing=True)
+mtltab = tina.MaterialTable()
 
 lighting = tina.path.Lighting()
 tree = tina.path.BVHTree(tracer)
 engine = tina.path.PathEngine(tree, lighting, mtltab)
 
 mesh = tina.MeshTransform(tina.MeshModel('assets/monkey.obj'), tina.translate([0, -0.5, 0]))
-material = tina.path.Lambert()
+material = tina.Lambert()
 
 mesh2 = tina.MeshTransform(tina.MeshModel('assets/sphere.obj'), tina.translate([0, +0.5, 0]))
-material2 = tina.path.Lambert(color=tina.Texture('assets/uv.png'))
+material2 = tina.Lambert(color=tina.Texture('assets/uv.png'))
 
 mtltab.add_material(material)
 tracer.add_object(mesh, 0)

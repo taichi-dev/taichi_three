@@ -2,3 +2,4 @@ bunny.*
 *.npy
 *.vdb
 *.blend*
+hp_*
