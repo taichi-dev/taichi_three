@@ -22,6 +22,7 @@ class IMaterial(Node):
     def ambient(self):
         return 1.
 
+    # TODO: implement importance sampling for CookTorrance
     @ti.func
     def cdf(self, u, v, su, sv):
         # f(u, v), g(u, v)

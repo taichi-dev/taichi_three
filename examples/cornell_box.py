@@ -8,6 +8,7 @@ ti.init(ti.cpu)
 
 scene = tina.PTScene(texturing=True)
 
+# TODO: support materials in load_gltf...
 mesh = tina.MeshTransform(tina.MeshModel('assets/cornell.obj'), tina.scale(0.5) @ tina.translate([0, -2, 0]))
 material = tina.CookTorrance()
 

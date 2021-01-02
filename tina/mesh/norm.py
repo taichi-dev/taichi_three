@@ -14,9 +14,6 @@ class MeshFlatNormal(MeshEditBase):
         return [norm for vert in verts]
 
 
-# TODO: SmoothNormal requires getting f2v connections from mesh prototype
-
-
 class MeshSmoothNormal(MeshEditBase):
     def __init__(self, mesh, cached=True):
         super().__init__(mesh)
