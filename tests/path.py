@@ -1,33 +1,40 @@
 import taichi as ti
 import numpy as np
 import taichi_inject
+import ezprof
 import tina
 
 ti.init(ti.cpu)
 
 scene = tina.PTScene(smoothing=True, texturing=True)
+scene.load_gltf('assets/sphere.gltf')
 
-mesh = tina.MeshTransform(tina.MeshModel('assets/monkey.obj'), tina.translate([0, -0.5, 0]))
-material = tina.Lambert()
+if isinstance(scene, tina.PTScene):
+    scene.lighting.set_lights(np.array([
+        [0, 3, 0],
+    ], dtype=np.float32))
+    scene.lighting.set_light_radii(np.array([
+        0.25,
+    ], dtype=np.float32))
+    scene.lighting.set_light_colors(np.array([
+        [12.0, 12.0, 12.0],
+    ], dtype=np.float32))
 
-mesh2 = tina.MeshTransform(tina.MeshModel('assets/sphere.obj'), tina.translate([0, +0.5, 0]))
-material2 = tina.Lambert(color=tina.Texture('assets/uv.png'))
+if isinstance(scene, tina.PTScene):
+    scene.update()
 
-scene.add_object(mesh, material)
-scene.add_object(mesh2, material2)
-scene.build()
+gui = ti.GUI('cornell_box', scene.res)
+scene.init_control(gui, center=(0, 2, 0), radius=6)
 
-scene.lighting.set_lights(np.array([
-    [0, 1.38457, -1.44325],
-], dtype=np.float32))
-scene.lighting.set_light_radii(np.array([
-    0.2,
-], dtype=np.float32))
-
-
-gui = ti.GUI('BVH', scene.res)
-while gui.running and not gui.get_event(gui.ESCAPE, gui.SPACE):
-    scene.render(nsteps=3)
-    print(gui.frame + 1, 'samples')
+while gui.running:
+    scene.input(gui)
+    if isinstance(scene, tina.PTScene):
+        with ezprof.scope('render'):
+            scene.render(nsteps=5)
+        print(gui.frame + 1, 'samples')
+    else:
+        scene.render()
     gui.set_image(scene.img)
     gui.show()
+
+ezprof.show()

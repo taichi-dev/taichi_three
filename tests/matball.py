@@ -19,5 +19,5 @@ scene.init_control(gui, blendish=True)
 while gui.running:
     scene.input(gui)
     scene.render()
-    gui.set_image(scene.img)
+    gui.set_image(tina.aces_tonemap(scene.img.to_numpy()))
     gui.show()

@@ -51,7 +51,8 @@ class PathEngine:
             bias = ti.Vector([ti.random(), ti.random()])
             uv = (I + bias) / self.res * 2 - 1
             # TODO: support customizing camera
-            ro = ti.Vector([0.0, 2.0, 6.0])
+            #ro = ti.Vector([0.0, 2.0, 6.0])
+            ro = ti.Vector([0.0, 0.0, 5.0])
             rd = ti.Vector([uv.x, uv.y, -2.0]).normalized()
             rc = ti.Vector([1.0, 1.0, 1.0])
             rl = ti.Vector([0.0, 0.0, 0.0])
@@ -101,10 +102,7 @@ class PathEngine:
         near, ind, uv = self.scene.hit(stack, ro, rd)
         if ind == -1:
             # no hit
-            near, ind, uv = self.lighting.hit(ro, rd)
-            if ind == -1:
-                # background
-                rl += rc * self.background(rd)
+            rl += rc * self.background(rd)
             rc *= 0
         else:
             # hit object
@@ -135,7 +133,7 @@ class PathEngine:
                 occ_near, occ_ind, occ_uv = self.scene.hit(stack, ro, new_rd)
                 if occ_near < li_dis:  # shadow occulsion
                     continue
-                li_wei *= material.safe_brdf(nrm, rd, new_rd)
+                li_wei *= material.brdf(nrm, rd, new_rd)
                 li_clr += li_wei
 
             # sample indirect light

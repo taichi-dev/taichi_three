@@ -22,7 +22,6 @@ class IMaterial(Node):
     def ambient(self):
         return 1.
 
-    # TODO: implement importance sampling for CookTorrance
     @ti.func
     def cdf(self, u, v, su, sv):
         # f(u, v), g(u, v)
@@ -46,6 +45,7 @@ class IMaterial(Node):
 
 
 # http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
+# https://blog.csdn.net/cui6864520fei000/article/details/90033863
 class CookTorrance(IMaterial):
     arguments = ['normal', 'basecolor', 'roughness', 'metallic', 'specular']
     defaults = ['normal', 'color', 0.4, 0.0, 0.5]
@@ -70,12 +70,13 @@ class CookTorrance(IMaterial):
         ndf = roughness**2 / (ti.pi * den**2)
 
         # Smith's method with Schlick-GGX
-        #k = (roughness + 1)**2 / 8
-        #vdf = 1 / ((NoV * (1 - k) + k) * (NoL * (1 - k) + k))
+        k = (roughness + 1)**2 / 8
+        vdf = 1 / ((NoV * (1 - k) + k))
+        vdf *= 1 / ((NoL * (1 - k) + k))
 
         # GGX partial geometry term
-        tan2 = (1 - VoH**2) / VoH**2
-        vdf = 1 / (1 + ti.sqrt(1 + roughness**2 * tan2))
+        #tan2 = (1 - VoH**2) / VoH**2
+        #vdf = 1 / (1 + ti.sqrt(1 + roughness**2 * tan2))
 
         # Fresnel-Schlick approximation
         f0 = metallic * basecolor + (1 - metallic) * 0.16 * specular**2
@@ -120,18 +121,19 @@ class Lambert(IMaterial):
         return self.param('color')
 
 
+# noinspection PyMissingConstructor
 @ti.data_oriented
-class VirtualMaterial:
+class VirtualMaterial(IMaterial):
     def __init__(self, materials, mid):
         self.materials = materials
         self.mid = mid
 
     @ti.func
-    def safe_brdf(self, nrm, idir, odir):
+    def brdf(self, nrm, idir, odir):
         wei = V(0., 0., 0.)
         for i, mat in ti.static(enumerate(self.materials)):
             if i == self.mid:
-                wei = mat.safe_brdf(nrm, idir, odir)
+                wei = mat.brdf(nrm, idir, odir)
         return wei
 
     @ti.func
