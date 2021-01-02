@@ -1,3 +1,3 @@
-if __import__('lazyimp').mock(globals()):
+if __import__('lazyimp').lazyguard:
     from .nodes import *
     from .material import *

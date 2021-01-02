@@ -49,7 +49,7 @@ from .hacker import *
 from .common import *
 from .advans import *
 
-if __import__('lazyimp').mock(globals()):
+if __import__('lazyimp').lazyguard:
     from .util import *
     from .matr import *
     from .core import *

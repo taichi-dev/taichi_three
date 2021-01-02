@@ -1,4 +1,4 @@
-if __import__('lazyimp').mock(globals()):
+if __import__('lazyimp').lazyguard:
     from .engine import *
     from .lighting import *
     from .geometry import *
