@@ -19,8 +19,9 @@ class IMaterial(Node):
         nrm = self.param('normal')
         return self.brdf(nrm, idir, odir)
 
+    @ti.func
     def ambient(self):
-        return 1.
+        return 1.0
 
     @ti.func
     def dist(self, u, v, su, sv):
@@ -46,6 +47,7 @@ class IMaterial(Node):
 # http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
 # https://blog.csdn.net/cui6864520fei000/article/details/90033863
 # https://neil3d.blog.csdn.net/article/details/83783638
+# TODO: support importance sampling for PBR
 class CookTorrance(IMaterial):
     arguments = ['normal', 'basecolor', 'roughness', 'metallic', 'specular']
     defaults = ['normal', 'color', 0.4, 0.0, 0.5]
@@ -123,8 +125,10 @@ class Mirror(IMaterial):
         return 0.0
 
     @ti.func
-    def dist(self, u, v, su, sv):
-        return su, sv, 1.0 / eps
+    def sample(self, idir, nrm):
+        axes = tangentspace(idir)
+        u, v = ti.random(), ti.random()
+        return axes @ spherical(2 * u - 1, v)
 
 
 class Lambert(IMaterial):
@@ -155,11 +159,11 @@ class VirtualMaterial(IMaterial):
         return wei
 
     @ti.func
-    def sample(self, rd, nrm):
+    def sample(self, idir, nrm):
         odir, wei = V(0., 0., 0.), V(0., 0., 0.)
         for i, mat in ti.static(enumerate(self.materials)):
             if i == self.mid:
-                odir, wei = mat.sample(rd, nrm)
+                odir, wei = mat.sample(idir, nrm)
         return odir, wei
 
 

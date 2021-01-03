@@ -3,7 +3,7 @@ from .geometry import *
 
 
 @ti.data_oriented
-class Particles:
+class ParticleTracer:  # TODO: realize me
     @ti.func
     def calc_geometry(self, near, ind, uv, ro, rd):
         nrm = (ro - self.pos[ind]).normalized()

@@ -4,7 +4,6 @@ from .geometry import *
 
 @ti.data_oriented
 class TriangleTracer:
-
     def __init__(self, maxfaces=65536*16, smoothing=False, texturing=False,
                  multimtl=True, **extra_options):
         self.smoothing = smoothing

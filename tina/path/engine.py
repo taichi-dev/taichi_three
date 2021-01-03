@@ -129,7 +129,7 @@ class PathEngine:
                 occ_near, occ_ind, occ_uv = self.scene.hit(stack, ro, new_rd)
                 if occ_near < li_dis:  # shadow occulsion
                     continue
-                li_wei *= material.brdf(nrm, rd, new_rd)
+                li_wei *= material.brdf(nrm, -rd, new_rd)
                 li_clr += li_wei
 
             # sample indirect light

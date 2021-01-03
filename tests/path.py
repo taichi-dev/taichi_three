@@ -26,7 +26,7 @@ gui = ti.GUI('path', scene.res)
 
 while gui.running:
     scene.input(gui)
-    if gui.frame <= 1000:
-        scene.render(nsteps=5)
+    #if gui.frame <= 1000:
+    scene.render(nsteps=5)
     gui.set_image(scene.img)
     gui.show()
