@@ -23,25 +23,24 @@ class IMaterial(Node):
         return 1.
 
     @ti.func
-    def cdf(self, u, v, su, sv):
-        # f(u, v), g(u, v)
-        return u, v
-
-    @ti.func
-    def pdf(self, u, v, su, sv):
-        # df/du dg/dv - df/dv dg/du
-        return 1.0
+    def dist(self, u, v, su, sv):
+        # cu = f(u, v), cv = g(u, v)
+        # pdf = df/du dg/dv - df/dv dg/du
+        pdf = 1.0
+        cu, cv = u, v
+        return cu, cv, pdf
 
     @ti.func
     def sample(self, idir, nrm):
         u, v = ti.random(), ti.random()
         axes = tangentspace(nrm)
-        spec = reflect(idir, nrm)
+        spec = reflect(-idir, nrm)
         su, sv = unspherical(axes.transpose() @ spec)
-        odir = axes @ spherical(*self.cdf(u, v, su, sv))
+        cu, cv, pdf = self.dist(u, v, su, sv)
+        odir = axes @ spherical(cu, cv)
         odir = odir.normalized()
         brdf = self.brdf(nrm, idir, odir)
-        return odir, self.pdf(u, v, su, sv) * brdf
+        return odir, pdf * brdf
 
 
 # http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
@@ -110,6 +109,22 @@ class Phong(IMaterial):
 
     def ambient(self):
         return self.param('diffuse')
+
+
+class Mirror(IMaterial):
+    arguments = ['normal', 'color']
+    defaults = ['normal', 'color']
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        return eps
+
+    def ambient(self):
+        return 0.0
+
+    @ti.func
+    def dist(self, u, v, su, sv):
+        return su, sv, 1.0 / eps
 
 
 class Lambert(IMaterial):

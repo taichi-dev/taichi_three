@@ -3,7 +3,7 @@ from ..common import *
 
 @ti.data_oriented
 class Stack:
-    def __init__(self, N_mt=(128, 128), N_len=32, field=None):
+    def __init__(self, N_mt=(256, 256), N_len=32, field=None):
         if ti.cfg.arch == ti.cpu and ti.cfg.cpu_max_num_threads == 1 or ti.cfg.arch == ti.cc:
             N_mt = 1, 1
         print('[Tina] Using', 'x'.join(map(str, N_mt)), 'threads')

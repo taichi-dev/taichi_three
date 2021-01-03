@@ -129,8 +129,6 @@ def readgltf(path):
                     kwargs['metallic'] = value
                 elif key == 'roughnessFactor':
                     kwargs['roughness'] = value
-            #if kwargs['metallic'] >= 0.3:###TODO
-            #    return tina.Phong(shineness=80)
             return tina.CookTorrance(**kwargs)
 
     def load_uri(uri):

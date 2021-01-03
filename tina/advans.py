@@ -46,9 +46,21 @@ def film_tonemap(color):
     return _film(1.6 * color) / _film(11.2)
 
 
-@ti.func
+@ti.pyfunc
 def ce_tonemap(color):
-    return 1 - ti.exp(-color)
+    if ti.static(ti.inside_kernel()):
+        return 1 - ti.exp(-color)
+    else:
+        return 1 - np.exp(-color)
+
+
+@ti.pyfunc
+def ce_untonemap(color):
+    if ti.static(ti.inside_kernel()):
+        # 255 / 256 ~= 0.996
+        return -ti.log(1 - clamp(color * 0.996, 0, 1))
+    else:
+        return -np.log(1 - np.clip(color * 0.996, 0, 1))
 
 
 @ti.func
@@ -84,7 +96,7 @@ def sample_cube(tex: ti.template(), dir):
     I = V(0., 0.)
     eps = 1e-5
     dps = 1 - 12 / tex.shape[0]
-    dir.y, dir.z = dir.z, -dir.y
+    #dir.y, dir.z = dir.z, -dir.y
     if dir.z >= 0 and dir.z >= abs(dir.y) - eps and dir.z >= abs(dir.x) - eps:
         I = V(3 / 8, 3 / 8) + V(dir.x, dir.y) / dir.z / 8 * dps
     if dir.z <= 0 and -dir.z >= abs(dir.y) - eps and -dir.z >= abs(dir.x) - eps:

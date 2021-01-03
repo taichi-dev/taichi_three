@@ -7,6 +7,7 @@ class PathEngine:
     def __init__(self, scene, lighting, mtltab, res=512):
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)
+        self.skybox = texture_as_field('assets/skybox.jpg')
 
         self.ro = ti.Vector.field(3, float, self.res)
         self.rd = ti.Vector.field(3, float, self.res)
@@ -63,12 +64,7 @@ class PathEngine:
 
     @ti.func
     def background(self, rd):
-        t = 0.5 + rd.y + 0.5
-        blue = ti.Vector([0.5, 0.7, 1.0])
-        white = ti.Vector([1.0, 1.0, 1.0])
-        ret = (1 - t) * white + t * blue
-        ret = 0.0
-        return ret
+        return ce_untonemap(sample_cube(self.skybox, rd))
 
     @ti.kernel
     def step_rays(self):
@@ -137,7 +133,7 @@ class PathEngine:
                 li_clr += li_wei
 
             # sample indirect light
-            rd, ir_wei = material.sample(rd, nrm)
+            rd, ir_wei = material.sample(-rd, nrm)
 
             tina.Input.clear_g_pars()
 
