@@ -6,9 +6,13 @@ import tina
 ti.init(ti.gpu)
 
 scene = tina.PTScene(smoothing=True, texturing=True)
-scene.load_gltf('assets/sphere.gltf')
+#scene.load_gltf('assets/sphere.gltf')
 
-if isinstance(scene, tina.PTScene):
+material = tina.Phong(shineness=32.0, diffuse=[1, 0, 0])
+mesh = tina.MeshModel('assets/sphere.obj')
+scene.add_object(mesh, material)
+
+if 0 and isinstance(scene, tina.PTScene):
     scene.lighting.set_lights(np.array([
         [0, 3, 0],
     ], dtype=np.float32))
@@ -26,7 +30,7 @@ gui = ti.GUI('path', scene.res)
 
 while gui.running:
     scene.input(gui)
-    #if gui.frame <= 1000:
-    scene.render(nsteps=5)
+    if gui.frame <= 4000:
+        scene.render(nsteps=5)
     gui.set_image(scene.img)
     gui.show()

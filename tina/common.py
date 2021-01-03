@@ -16,6 +16,21 @@ def V34(xyz, w):
     return V(xyz.x, xyz.y, xyz.z, w)
 
 
+def Vx2(x):
+    return V(x, x)
+
+
+def Vx3(x):
+    return V(x, x, x)
+
+
+def Vavg(u):
+    if isinstance(u, ti.Matrix):
+        return u.sum() / len(u.entries)
+    else:
+        return u
+
+
 def U3(i):
     return ti.Vector.unit(3, i)
 

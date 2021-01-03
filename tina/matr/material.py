@@ -26,7 +26,7 @@ class IMaterial(Node):
     @ti.func
     def dist(self, u, v, su, sv):
         # cu = f(u, v), cv = g(u, v)
-        # pdf = df/du dg/dv - df/dv dg/du
+        # pdf = |df/du dg/dv - df/dv dg/du|
         pdf = 1.0
         cu, cv = u, v
         return cu, cv, pdf
@@ -112,6 +112,30 @@ class Phong(IMaterial):
     def ambient(self):
         return self.param('diffuse')
 
+    @ti.func
+    def sample(self, idir, nrm):
+        m = self.param('shineness')
+        diffuse = self.param('diffuse')
+        specular = self.param('specular')
+        u, v = ti.random(), ti.random()
+        pdf = V(0., 0., 0.)
+        odir = V(0., 0., 0.)
+        factor = Vavg(specular) / Vavg(diffuse + specular)
+        if ti.random() < factor:
+            pdf = specular / factor
+            u = u**(1 / (m + 1))
+            rdir = reflect(-idir, nrm)
+            axes = tangentspace(rdir)
+            odir = axes @ spherical(u, v)
+            if odir.dot(nrm) < 0:
+                odir = -odir
+                pdf = 0.0
+        else:
+            pdf = diffuse / (1 - factor)
+            axes = tangentspace(nrm)
+            odir = axes @ spherical(u, v)
+        return odir, pdf
+
 
 class Mirror(IMaterial):
     arguments = ['normal', 'color']
@@ -126,9 +150,8 @@ class Mirror(IMaterial):
 
     @ti.func
     def sample(self, idir, nrm):
-        axes = tangentspace(idir)
-        u, v = ti.random(), ti.random()
-        return axes @ spherical(2 * u - 1, v)
+        odir = reflect(-idir, nrm)
+        return odir, 1 / eps
 
 
 class Lambert(IMaterial):

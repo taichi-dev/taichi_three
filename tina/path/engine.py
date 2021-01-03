@@ -127,7 +127,7 @@ class PathEngine:
                     continue
                 li_wei *= NoL
                 occ_near, occ_ind, occ_uv = self.scene.hit(stack, ro, new_rd)
-                if occ_near < li_dis:  # shadow occulsion
+                if occ_near < li_dis:  # shadow occlusion
                     continue
                 li_wei *= material.brdf(nrm, -rd, new_rd)
                 li_clr += li_wei
