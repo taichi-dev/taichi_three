@@ -126,10 +126,10 @@ class PathEngine:
             for li_ind in range(self.lighting.get_nlights()):
                 # cast shadow ray to lights
                 new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
-                NoD = new_rd.dot(nrm)
-                if NoD <= 0:
+                NoL = new_rd.dot(nrm)
+                if NoL <= 0:
                     continue
-                li_wei *= NoD
+                li_wei *= NoL
                 occ_near, occ_ind, occ_uv = self.scene.hit(stack, ro, new_rd)
                 if occ_near < li_dis:  # shadow occulsion
                     continue

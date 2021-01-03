@@ -46,12 +46,13 @@ class IMaterial(Node):
 
 # http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
 # https://blog.csdn.net/cui6864520fei000/article/details/90033863
+# https://neil3d.blog.csdn.net/article/details/83783638
 class CookTorrance(IMaterial):
     arguments = ['normal', 'basecolor', 'roughness', 'metallic', 'specular']
     defaults = ['normal', 'color', 0.4, 0.0, 0.5]
 
     @ti.func
-    def brdf(self, nrm, idir, odir):
+    def brdf(self, nrm, idir, odir):  # idir = L, odir = V
         EPS = 1e-10
         roughness = self.param('roughness')
         metallic = self.param('metallic')
@@ -60,14 +61,15 @@ class CookTorrance(IMaterial):
 
         half = (idir + odir).normalized()
         NoH = max(EPS, half.dot(nrm))
-        VoH = max(EPS, idir.dot(half))
         NoL = max(EPS, idir.dot(nrm))
         NoV = max(EPS, odir.dot(nrm))
-        HoV = min(1 - EPS, max(EPS, half.dot(odir)))
+        VoH = min(1 - EPS, max(EPS, half.dot(odir)))
+        LoH = min(1 - EPS, max(EPS, half.dot(idir)))
 
         # Trowbridge-Reitz GGX microfacet distribution
-        den = NoH**2 * (roughness**2 - 1) + 1
-        ndf = roughness**2 / (ti.pi * den**2)
+        alpha2 = roughness**2
+        denom = NoH**2 * (alpha2 - 1) + 1
+        ndf = alpha2 / denom**2
 
         # Smith's method with Schlick-GGX
         k = (roughness + 1)**2 / 8
@@ -83,15 +85,15 @@ class CookTorrance(IMaterial):
         #kf = abs((1 - ior) / (1 + ior))**2
         #f0 = kf * basecolor + (1 - kf) * metallic
         ks, kd = f0, (1 - f0)# * (1 - metallic)
-        fdf = f0 + (1 - f0) * (1 - HoV)**5
+        fdf = f0 + (1 - f0) * (1 - VoH)**5
 
-        return kd * basecolor + ks * fdf * vdf * ndf
+        return kd * basecolor + ks * fdf * vdf * ndf / 4
 
     def ambient(self):
         return self.param('basecolor')
 
 
-class BlinnPhong(IMaterial):
+class Phong(IMaterial):
     arguments = ['normal', 'diffuse', 'specular', 'shineness']
     defaults = ['normal', 'color', 0.1, 32.0]
 
@@ -101,9 +103,10 @@ class BlinnPhong(IMaterial):
         specular = self.param('specular')
         shineness = self.param('shineness')
 
-        half = (odir + idir).normalized()
-        ks = (shineness + 8) / 8 * pow(max(0, half.dot(nrm)), shineness)
-        return diffuse + ks * specular
+        rdir = reflect(-odir, nrm)
+        VoR = max(0, idir.dot(rdir))
+        ks = VoR**shineness * (shineness + 2) / 2
+        return diffuse + specular * ks
 
     def ambient(self):
         return self.param('diffuse')

@@ -1,10 +1,9 @@
 import taichi as ti
 import numpy as np
 import taichi_inject
-import ezprof
 import tina
 
-ti.init(ti.cpu)
+ti.init(ti.gpu)
 
 scene = tina.PTScene(smoothing=True, texturing=True)
 scene.load_gltf('assets/cornell.gltf')
@@ -29,12 +28,8 @@ scene.init_control(gui, center=(0, 2, 0), radius=6)
 while gui.running:
     scene.input(gui)
     if isinstance(scene, tina.PTScene):
-        with ezprof.scope('render'):
-            scene.render(nsteps=5)
-        print(gui.frame + 1, 'samples')
+        scene.render(nsteps=5)
     else:
         scene.render()
     gui.set_image(scene.img)
     gui.show()
-
-ezprof.show()
