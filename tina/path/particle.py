@@ -60,7 +60,7 @@ class ParticleTracer:  # TODO: realize me
                 self.colors[j] = color
 
     @ti.func
-    def hit(self, ind, ro, rd):
+    def element_hit(self, ind, ro, rd):
         pos = self.verts[ind]
         rad = self.sizes[ind]
         hit, depth = ray_sphere_hit(pos, rad, ro, rd)

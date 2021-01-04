@@ -113,7 +113,7 @@ class BVHTree:
 
             if self.dir[curr] == 0:
                 ind = self.ind[curr]
-                hit, depth, uv = self.geom.hit(ind, ro, rd)
+                hit, depth, uv = self.geom.element_hit(ind, ro, rd)
                 if hit != 0 and depth < near:
                     near = depth
                     hitind = ind

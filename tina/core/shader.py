@@ -149,11 +149,6 @@ class RTXShader:
         self.tree = tree
 
     @ti.func
-    def shade_background(self, P, dir):
-        res = self.lighting.background(dir)
-        self.img[P] = res
-
-    @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord, color):
         viewdir = calc_viewdir(engine, pos)
         tina.Input.spec_g_pars({
@@ -191,3 +186,15 @@ class RTXShader:
         self.img[P] = res
 
         tina.Input.clear_g_pars()
+
+
+@ti.data_oriented
+class BackgroundShader:
+    def __init__(self, img, lighting):
+        self.img = img
+        self.lighting = lighting
+
+    @ti.func
+    def shade_background(self, P, dir):
+        res = self.lighting.background(dir)
+        self.img[P] = res

@@ -56,11 +56,12 @@ class Engine:
     @ti.kernel
     def render_background(self, shader: ti.template()):
         for P in ti.grouped(ti.ndrange(*self.res)):
-            uv = (float(P) + self.engine.bias[None]) / self.res * 2 - 1
-            ro = mapply_pos(self.engine.V2W[None], V(uv.x, uv.y, -1.0))
-            ro1 = mapply_pos(self.engine.V2W[None], V(uv.x, uv.y, +1.0))
-            rd = (ro1 - ro).normalized()
-            shader.shade_background(P, rd)
+            if self.depth[P] >= self.maxdepth:
+                uv = (float(P) + self.engine.bias[None]) / self.res * 2 - 1
+                ro = mapply_pos(self.engine.V2W[None], V(uv.x, uv.y, -1.0))
+                ro1 = mapply_pos(self.engine.V2W[None], V(uv.x, uv.y, +1.0))
+                rd = (ro1 - ro).normalized()
+                shader.shade_background(P, rd)
 
     @ti.func
     def to_viewspace(self, p):

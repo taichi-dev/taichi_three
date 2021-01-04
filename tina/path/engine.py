@@ -3,7 +3,7 @@ from ..advans import *
 
 @ti.data_oriented
 class PathEngine:
-    def __init__(self, scene, lighting, mtltab, res=512):
+    def __init__(self, geom, lighting, mtltab, res=512):
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)
 
@@ -20,7 +20,7 @@ class PathEngine:
         self.img = ti.Vector.field(3, float, self.res)
         self.cnt = ti.field(int, self.res)
 
-        self.scene = scene
+        self.geom = geom
         self.lighting = lighting
         self.mtltab = mtltab
         self.stack = tina.Stack()
@@ -116,7 +116,7 @@ class PathEngine:
 
     @ti.func
     def transmit(self, ro, rd, rc, rl):
-        near, ind, uv = self.scene.hit(ro, rd)
+        near, ind, uv = self.geom.hit(ro, rd)
         if ind == -1:
             # no hit
             rl += rc * self.lighting.background(rd)
@@ -124,7 +124,7 @@ class PathEngine:
         else:
             # hit object
             ro += near * rd
-            nrm, tex = self.scene.geom.calc_geometry(near, ind, uv, ro, rd)
+            nrm, tex = self.geom.calc_geometry(near, ind, uv, ro, rd)
             if nrm.dot(rd) > 0:
                 nrm = -nrm
             ro += nrm * eps * 8
@@ -136,7 +136,7 @@ class PathEngine:
                 'texcoord': tex,
             })
 
-            mtlid = self.scene.geom.get_material_id(ind)
+            mtlid = self.geom.get_material_id(ind)
             material = self.mtltab.get(mtlid)
 
             li_clr = V(0., 0., 0.)
@@ -146,7 +146,7 @@ class PathEngine:
                 li_wei *= max(0, new_rd.dot(nrm))
                 if Vall(li_wei <= 0):
                     continue
-                occ_near, occ_ind, occ_uv = self.scene.hit(ro, new_rd)
+                occ_near, occ_ind, occ_uv = self.geom.hit(ro, new_rd)
                 if occ_near < li_dis:  # shadow occlusion
                     continue
                 li_wei *= material.brdf(nrm, -rd, new_rd)

@@ -186,8 +186,7 @@ class PTScene(Scene):
         self.tracer = tina.TriangleTracer(**options)
         self.mtltab = tina.MaterialTable()
         self.lighting = tina.RTXLighting()
-        self.tree = tina.BVHTree(self.tracer)
-        self.engine = tina.PathEngine(self.tree, self.lighting, self.mtltab, res=res)
+        self.engine = tina.PathEngine(self.tracer, self.lighting, self.mtltab, res=res)
         self.res = self.engine.res
         self.options = options
 
@@ -216,7 +215,7 @@ class PTScene(Scene):
             self.mtltab.add_material(material)
         for object, mtlid in self.objects:
             self.tracer.add_object(object, mtlid)
-        self.tracer.build(self.tree)
+        self.tracer.update()
 
     def render(self, nsteps=4, strict=True):
         self.engine.load_rays()

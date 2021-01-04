@@ -20,6 +20,8 @@ class TriangleTracer:
             self.mtlids = ti.field(int, maxfaces)
         self.nfaces = ti.field(int, ())
 
+        self.tree = tina.BVHTree(self)
+
     def clear_objects(self):
         self.nfaces[None] = 0
 
@@ -76,12 +78,16 @@ class TriangleTracer:
                 for l in ti.static(range(3)):
                     verts[i, k, l] = self.verts[i, k][l]
 
-    def build(self, tree):
+    def update(self):
         verts = np.empty((self.nfaces[None], 3, 3), dtype=np.float32)
         self._export_vertices(verts)
         bmax = np.max(verts, axis=1)
         bmin = np.min(verts, axis=1)
-        tree.build(bmin, bmax)
+        self.tree.build(bmin, bmax)
+
+    @ti.func
+    def hit(self, ro, rd):
+        return self.tree.hit(ro, rd)
 
     @ti.func
     def get_material_id(self, ind):
@@ -115,7 +121,7 @@ class TriangleTracer:
         return nrm, tex
 
     @ti.func
-    def hit(self, ind, ro, rd):
+    def element_hit(self, ind, ro, rd):
         v0 = self.verts[ind, 0]
         v1 = self.verts[ind, 1]
         v2 = self.verts[ind, 2]
