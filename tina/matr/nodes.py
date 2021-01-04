@@ -103,3 +103,16 @@ class Texture(Node):
         maxcoor = V(*self.texture.shape) - 1
         coor = self.param('texcoord') * maxcoor
         return bilerp(self.texture, coor)
+
+
+class ChessboardTexture(Node):
+    arguments = ['texcoord', 'size', 'color0', 'color1']
+    defaults = ['texcoord', 0.1, 0.4, 0.9]
+
+    @ti.func
+    def __call__(self):
+        size = self.param('size')
+        color0 = self.param('color0')
+        color1 = self.param('color1')
+        texcoord = self.param('texcoord')
+        return lerp((texcoord // size).sum() % 2, color0, color1)

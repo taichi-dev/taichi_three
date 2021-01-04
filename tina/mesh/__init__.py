@@ -6,3 +6,4 @@ if __import__('lazyimp').lazyguard:
     from .trans import *
     from .model import *
     from .simple import *
+    from .prim import *

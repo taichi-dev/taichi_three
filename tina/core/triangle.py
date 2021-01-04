@@ -143,15 +143,7 @@ class TriangleRaster:
     def render_color(self, shader: ti.template()):
         for P in ti.smart(self.screen_range()):
             f = self.occup[P]
-            if f == -1:
-                if ti.static(hasattr(shader, 'shade_background')):
-                    uv = (float(P) + self.engine.bias[None]) / self.res * 2 - 1
-                    ro = mapply_pos(self.engine.V2W[None], V(uv.x, uv.y, -1.0))
-                    ro1 = mapply_pos(self.engine.V2W[None], V(uv.x, uv.y, +1.0))
-                    rd = (ro1 - ro).normalized()
-                    shader.shade_background(P, rd)
-
-            else:
+            if f != -1:
                 Al, Bl, Cl = self.get_face_vertices(f)
 
                 bcn = self.bcn[f]

@@ -31,9 +31,7 @@ class Stack:
                     I = V(x, y)
                     yield I
                     y += self.N_mt[1]
-                    break
                 x += self.N_mt[0]
-                break
             delattr(Stack, 'g_stack')
 
     @ti.data_oriented
