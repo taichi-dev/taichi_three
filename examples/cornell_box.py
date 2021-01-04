@@ -23,7 +23,7 @@ if isinstance(scene, tina.PTScene):
     scene.update()
 
 gui = ti.GUI('cornell_box', scene.res)
-scene.init_control(gui, center=(0, 2, 0), radius=6)
+scene.init_control(gui, center=(0, 2, 0), radius=5)
 
 while gui.running:
     if scene.input(gui):
@@ -35,3 +35,5 @@ while gui.running:
         scene.render()
     gui.set_image(scene.img)
     gui.show()
+
+ti.imwrite(scene.img, 'outputs/cornell.png')

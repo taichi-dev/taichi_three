@@ -132,9 +132,13 @@ class Scene:
         if not hasattr(self, 'control'):
             self.control = tina.Control(gui)
         changed = self.control.get_camera(self.engine)
-        if hasattr(self, 'accum') and changed:
-            self.accum.clear()
+        if changed:
+            self.clear()
         return changed
+
+    def clear(self):
+        if hasattr(self, 'accum'):
+            self.accum.clear()
 
     def load_gltf(self, path):
         '''
@@ -185,11 +189,11 @@ class PTScene(Scene):
             self.tracer.add_object(object, mtlid)
         self.tracer.build(self.tree)
 
-    def render(self, nsteps=4):
+    def render(self, nsteps=4, strict=True):
         self.engine.load_rays()
         for step in range(nsteps):
             self.engine.step_rays()
-        self.engine.update_image()
+        self.engine.update_image(strict)
 
     @property
     def img(self):

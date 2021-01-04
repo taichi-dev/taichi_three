@@ -14,8 +14,7 @@ gui = ti.GUI('pathtrace', scene.res)
 
 scene.update()
 while gui.running:
-    if scene.input(gui):
-        scene.clear()
+    scene.input(gui)
     scene.render(nsteps=5)
     gui.set_image(scene.img)
     gui.show()

@@ -42,20 +42,35 @@ class PathEngine:
         self.img.fill(0)
         self.cnt.fill(0)
 
-    @ti.kernel
-    def _get_image(self, out: ti.ext_arr()):
+    @ti.func
+    def _f_get_image(self, out: ti.template(),
+                     tonemap: ti.template(), is_ext: ti.template()):
         for I in ti.grouped(self.img):
             val = lerp((I // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
             if self.cnt[I] != 0:
                 val = self.img[I] / self.cnt[I]
-            val = film_tonemap(val)
-            for k in ti.static(range(3)):
-                out[I, k] = val[k]
+            val = tonemap(val)
+            if ti.static(is_ext):
+                for k in ti.static(range(3)):
+                    out[I, k] = val[k]
+            else:
+                out[I] = val
 
-    def get_image(self):
-        img = np.zeros((*self.res, 3), dtype=np.float32)
-        self._get_image(img)
-        return img
+    @ti.kernel
+    def _get_image_e(self, out: ti.ext_arr()):
+        self._f_get_image(out, aces_tonemap, True)
+
+    @ti.kernel
+    def _get_image_f(self, out: ti.template()):
+        self._f_get_image(out, lambda x: x, False)
+
+    def get_image(self, out=None):
+        if out is None:
+            out = np.zeros((*self.res, 3), dtype=np.float32)
+            self._get_image_e(out)
+        else:
+            self._get_image_f(out)
+        return out
 
     @ti.kernel
     def load_rays(self):
@@ -66,12 +81,10 @@ class PathEngine:
             ro = mapply_pos(self.V2W[None], V(uv.x, uv.y, -1.0))
             ro1 = mapply_pos(self.V2W[None], V(uv.x, uv.y, +1.0))
             rd = (ro1 - ro).normalized()
-            rc = ti.Vector([1.0, 1.0, 1.0])
-            rl = ti.Vector([0.0, 0.0, 0.0])
             self.ro[I] = ro
             self.rd[I] = rd
-            self.rc[I] = rc
-            self.rl[I] = rl
+            self.rc[I] = 1.0
+            self.rl[I] = 0.0
 
     @ti.func
     def background(self, rd):
@@ -95,11 +108,11 @@ class PathEngine:
                 self.rl[I] = rl
 
     @ti.kernel
-    def update_image(self):
+    def update_image(self, strict: ti.template()):
         for I in ti.grouped(ti.ndrange(*self.res)):
             rc = self.rc[I]
             rl = self.rl[I]
-            if not Vall(rc < eps):
+            if strict and not Vall(rc < eps):
                 continue
             self.img[I] += rl
             self.cnt[I] += 1
