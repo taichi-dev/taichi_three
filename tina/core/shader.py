@@ -163,26 +163,30 @@ class RTXShader:
             'texcoord': texcoord,
         })
 
+        N_li, N_sky = 8, 8
+
         res = V(0.0, 0.0, 0.0)
         ro = pos + normal * eps * 8
         for lind in range(self.lighting.get_nlights()):
-            # cast shadow ray to lights
-            ldir, lwei, ldis = self.lighting.redirect(pos, lind)
-            lwei *= max(0, ldir.dot(normal))
-            if Vall(lwei <= 0):
-                continue
-            occdis, occind, occuv = self.tree.hit(ro, ldir)
-            if occdis < ldis:  # shadow occlusion
-                continue
-            lwei *= self.material.brdf(normal, ldir, viewdir)
-            res += lwei
+            for s in range(N_li):
+                # cast shadow ray to lights
+                ldir, lwei, ldis = self.lighting.redirect(pos, lind)
+                lwei *= max(0, ldir.dot(normal))
+                if Vall(lwei <= 0):
+                    continue
+                occdis, occind, occuv = self.tree.hit(ro, ldir)
+                if occdis < ldis:  # shadow occlusion
+                    continue
+                lwei *= self.material.brdf(normal, ldir, viewdir)
+                res += lwei / N_li
 
         if ti.static(hasattr(self.lighting, 'skybox')):
-            ldir, lwei = self.material.sample(viewdir, normal)
-            occdis, occind, occuv = self.tree.hit(ro, ldir)
-            if occdis >= inf:
-                lwei *= self.lighting.background(ldir)
-                res += lwei
+            for s in range(N_sky):
+                ldir, lwei = self.material.sample(viewdir, normal)
+                occdis, occind, occuv = self.tree.hit(ro, ldir)
+                if occdis >= inf:
+                    lwei *= self.lighting.background(ldir)
+                    res += lwei / N_sky
 
         self.img[P] = res
 

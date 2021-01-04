@@ -138,6 +138,15 @@ def sample_cube(tex: ti.template(), dir):
 
 
 @ti.func
+def sample_spherical(tex: ti.template(), dir):
+    I = V(0., 0.)
+    dir.z, dir.y = dir.y, -dir.z
+    u, v = unspherical(dir)
+    I = (V(*tex.shape) - 1) * V(v, u * 0.5 + 0.5)
+    return bilerp(tex, I)
+
+
+@ti.func
 def _inoise(x):
     value = ti.cast(x, ti.u32)
     value = (value ^ 61) ^ (value >> 16)

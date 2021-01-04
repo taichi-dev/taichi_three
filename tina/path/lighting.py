@@ -10,7 +10,7 @@ class RTXLighting:
         self.color = ti.Vector.field(3, float, maxlights)
         self.rad = ti.field(float, maxlights)
         self.nlights = ti.field(int, ())
-        self.skybox = texture_as_field('assets/skybox.jpg')
+        self.skybox = texture_as_field('assets/market.jpg')
 
         @ti.materialize_callback
         def init_lights():
@@ -54,6 +54,7 @@ class RTXLighting:
     @ti.func
     def background(self, rd):
         if ti.static(hasattr(self, 'skybox')):
-            return ce_untonemap(sample_cube(self.skybox, rd))
+            #return ce_untonemap(sample_cube(self.skybox, rd))
+            return ce_untonemap(sample_spherical(self.skybox, rd))
         else:
             return 0.0
