@@ -63,6 +63,30 @@ def ce_untonemap(color):
         return -np.log(1 - np.clip(color * 0.996, 0, 1))
 
 
+@eval('lambda x: x()')
+def get_image():
+    @ti.kernel
+    def _get_image(out: ti.ext_arr(), img: ti.template(), tonemap: ti.template()):
+        for I in ti.grouped(img):
+            val = tonemap(img[I])
+            if ti.static(isinstance(val, ti.Matrix)):
+                for k in ti.static(range(val.n)):
+                    out[I, k] = val[k]
+            else:
+                out[I] = val
+
+
+    def get_image(img, tonemap=lambda x: x):
+        shape = img.shape
+        if isinstance(img, ti.Matrix):
+            shape = shape + (img.n,)
+        out = np.empty(shape)
+        _get_image(out, img, tonemap)
+        return out
+
+    return get_image
+
+
 @ti.func
 def tangentspace(nrm):
     #up = V(0., 1., 0.)

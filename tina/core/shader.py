@@ -1,4 +1,4 @@
-from ..common import *
+from ..advans import *
 
 
 @ti.data_oriented
@@ -134,6 +134,55 @@ class Shader:
                 lcolor /= light_distance**2
                 mcolor = self.material.shade(light_dir, viewdir)
                 res += cos_i * lcolor * mcolor
+
+        self.img[P] = res
+
+        tina.Input.clear_g_pars()
+
+
+@ti.data_oriented
+class RTXShader:
+    def __init__(self, img, lighting, tree, material):
+        self.img = img
+        self.lighting = lighting
+        self.material = material
+        self.tree = tree
+
+    @ti.func
+    def shade_background(self, P, dir):
+        res = self.lighting.background(dir)
+        self.img[P] = res
+
+    @ti.func
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
+        viewdir = calc_viewdir(engine, pos)
+        tina.Input.spec_g_pars({
+            'pos': pos,
+            'color': color,
+            'normal': normal,
+            'texcoord': texcoord,
+        })
+
+        res = V(0.0, 0.0, 0.0)
+        ro = pos + normal * eps * 8
+        for lind in range(self.lighting.get_nlights()):
+            # cast shadow ray to lights
+            ldir, lwei, ldis = self.lighting.redirect(pos, lind)
+            lwei *= max(0, ldir.dot(normal))
+            if Vall(lwei <= 0):
+                continue
+            occdis, occind, occuv = self.tree.hit(ro, ldir)
+            if occdis < ldis:  # shadow occlusion
+                continue
+            lwei *= self.material.brdf(normal, ldir, viewdir)
+            res += lwei
+
+        if ti.static(hasattr(self.lighting, 'skybox')):
+            ldir, lwei = self.material.sample(viewdir, normal)
+            occdis, occind, occuv = self.tree.hit(ro, ldir)
+            if occdis >= inf:
+                lwei *= self.lighting.background(ldir)
+                res += lwei
 
         self.img[P] = res
 

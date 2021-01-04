@@ -1,5 +1,4 @@
 from ..advans import *
-from ..util.stack import Stack
 
 
 @ti.data_oriented
@@ -7,7 +6,6 @@ class PathEngine:
     def __init__(self, scene, lighting, mtltab, res=512):
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)
-        self.skybox = texture_as_field('assets/skybox.jpg')
 
         self.ro = ti.Vector.field(3, float, self.res)
         self.rd = ti.Vector.field(3, float, self.res)
@@ -25,7 +23,7 @@ class PathEngine:
         self.scene = scene
         self.lighting = lighting
         self.mtltab = mtltab
-        self.stack = Stack()
+        self.stack = tina.Stack()
 
         self.W2V = ti.Matrix.field(4, 4, float, ())
         self.V2W = ti.Matrix.field(4, 4, float, ())
@@ -86,22 +84,15 @@ class PathEngine:
             self.rc[I] = 1.0
             self.rl[I] = 0.0
 
-    @ti.func
-    def background(self, rd):
-        if ti.static(hasattr(self, 'skybox')):
-            return ce_untonemap(sample_cube(self.skybox, rd))
-        else:
-            return 0.0
-
     @ti.kernel
     def step_rays(self):
-        for I, stack in ti.smart(self.stack.ndrange(self.res)):
+        for I in ti.smart(self.stack.ndrange(self.res)):
             ro = self.ro[I]
             rd = self.rd[I]
             rc = self.rc[I]
             rl = self.rl[I]
             if not Vall(rc < eps):
-                ro, rd, rc, rl = self.transmit(stack, ro, rd, rc, rl)
+                ro, rd, rc, rl = self.transmit(ro, rd, rc, rl)
                 self.ro[I] = ro
                 self.rd[I] = rd
                 self.rc[I] = rc
@@ -124,11 +115,11 @@ class PathEngine:
         self.V2W.from_numpy(np.array(V2W, dtype=np.float32))
 
     @ti.func
-    def transmit(self, stack, ro, rd, rc, rl):
-        near, ind, uv = self.scene.hit(stack, ro, rd)
+    def transmit(self, ro, rd, rc, rl):
+        near, ind, uv = self.scene.hit(ro, rd)
         if ind == -1:
             # no hit
-            rl += rc * self.background(rd)
+            rl += rc * self.lighting.background(rd)
             rc *= 0
         else:
             # hit object
@@ -155,7 +146,7 @@ class PathEngine:
                 li_wei *= max(0, new_rd.dot(nrm))
                 if Vall(li_wei <= 0):
                     continue
-                occ_near, occ_ind, occ_uv = self.scene.hit(stack, ro, new_rd)
+                occ_near, occ_ind, occ_uv = self.scene.hit(ro, new_rd)
                 if occ_near < li_dis:  # shadow occlusion
                     continue
                 li_wei *= material.brdf(nrm, -rd, new_rd)

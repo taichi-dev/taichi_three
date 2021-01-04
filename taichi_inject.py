@@ -79,6 +79,7 @@ def _(self, *args, **kwargs):
     if not hasattr(self, '_kname'):
         self._kname = {}
 
+    #ti.trace('calling [' + self.func.__qualname__ + ']')
     t0 = time.time()
     return callback
 

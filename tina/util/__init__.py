@@ -3,3 +3,4 @@ if __import__('lazyimp').lazyguard:
     from .control import *
     from .matrix import *
     from .mciso import *
+    from .stack import *

@@ -15,18 +15,26 @@ class Stack:
         self.blk2.place(self.val)
         self.len = ti.field(int, N_mt)
 
+    @staticmethod
+    def instance():
+        return Stack.g_stack
+
     @ti.func
     def ndrange(self, shape):
         for i, j in ti.ndrange(*self.N_mt):
             stack = self.Proxy(self, V(i, j))
+            setattr(Stack, 'g_stack', stack)
             x = i
             while x < shape[0]:
                 y = j
                 while y < shape[1]:
                     I = V(x, y)
-                    yield I, stack
+                    yield I
                     y += self.N_mt[1]
+                    break
                 x += self.N_mt[0]
+                break
+            delattr(Stack, 'g_stack')
 
     @ti.data_oriented
     class Proxy:

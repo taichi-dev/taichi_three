@@ -100,7 +100,8 @@ class BVHTree:
         gui.rects(bmin, bmax, color=0xff0000)
 
     @ti.func
-    def hit(self, stack, ro, rd):
+    def hit(self, ro, rd):
+        stack = tina.Stack.instance()
         near = inf
         ntimes = 0
         stack.clear()

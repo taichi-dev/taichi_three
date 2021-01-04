@@ -14,25 +14,49 @@ class Scene:
         self.engine = tina.Engine(res)
         self.res = self.engine.res
         self.options = options
+        self.rtx = options.get('rtx', False)
+        self.taa = options.get('taa', False)
+        self.pp = options.get('pp', True)
 
         self.image = ti.Vector.field(3, float, self.res)
-        self.lighting = tina.Lighting()
+        self.lighting = tina.Lighting() if not self.rtx else tina.RTXLighting()
         self.default_material = tina.Lambert()
         self.shaders = {}
         self.objects = {}
 
-        self.taa = options.get('taa', False)
         if self.taa:
             self.accum = tina.Accumator(self.res)
 
+        if self.rtx:
+            self.stack = tina.Stack()
+            self.tracer = tina.TriangleTracer(**options, multimtl=False)
+            self.tree = tina.BVHTree(self.tracer)
+
+        if self.pp:
+            self.postp = tina.PostProcessor(self.raw_image, self.res)
+
         @ti.materialize_callback
         def init_light():
-            self.lighting.add_light(dir=[1, 2, 3], color=[0.9, 0.9, 0.9])
-            self.lighting.set_ambient_light([0.1, 0.1, 0.1])
+            if not self.rtx:
+                self.lighting.add_light(dir=[1, 2, 3], color=[0.9, 0.9, 0.9])
+                self.lighting.set_ambient_light([0.1, 0.1, 0.1])
+            else:
+                pass
+                #self.lighting.set_lights(np.array([[0, 0, 2]]))
+
+    def update(self):
+        if self.rtx:
+            self.tracer.clear_objects()
+            for object in self.objects:
+                self.tracer.add_object(object, 0)
+            self.tracer.build(self.tree)
 
     def _ensure_material_shader(self, material):
         if material not in self.shaders:
-            shader = tina.Shader(self.image, self.lighting, material)
+            if not self.rtx:
+                shader = tina.Shader(self.image, self.lighting, material)
+            else:
+                shader = tina.RTXShader(self.image, self.lighting, self.tree, material)
             self.shaders[material] = shader
 
     def add_object(self, object, material=None, raster=None):
@@ -66,6 +90,8 @@ class Scene:
                 raster = self.volume_raster
             else:
                 raise ValueError(f'cannot determine raster type of object: {object}')
+            if self.rtx:
+                raster.stack = self.stack
 
         self._ensure_material_shader(material)
 
@@ -111,16 +137,19 @@ class Scene:
 
         if self.taa:
             self.accum.update(self.image)
+        if self.pp:
+            self.postp.process()
+
+    @property
+    def raw_image(self):
+        return self.accum.img if self.taa else self.image
 
     @property
     def img(self):
         '''
         The image to be displayed in GUI
         '''
-
-        if self.taa:
-            return self.accum.img
-        return self.image
+        return self.postp.out if self.pp else self.raw_image
 
     def input(self, gui):
         '''
@@ -156,7 +185,7 @@ class PTScene(Scene):
     def __init__(self, res=512, **options):
         self.tracer = tina.TriangleTracer(**options)
         self.mtltab = tina.MaterialTable()
-        self.lighting = tina.PointLighting()
+        self.lighting = tina.RTXLighting()
         self.tree = tina.BVHTree(self.tracer)
         self.engine = tina.PathEngine(self.tree, self.lighting, self.mtltab, res=res)
         self.res = self.engine.res
@@ -196,5 +225,9 @@ class PTScene(Scene):
         self.engine.update_image(strict)
 
     @property
-    def img(self):
+    def img(self):  # TODO: use postp for this too
         return self.engine.get_image()
+
+    @property
+    def raw_image(self):
+        return self.engine.get_image(lambda x: x)

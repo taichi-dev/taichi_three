@@ -3,18 +3,19 @@ from .geometry import *
 
 
 @ti.data_oriented
-class PointLighting:
+class RTXLighting:
     def __init__(self, maxlights=16):
         self.maxlights = maxlights
         self.pos = ti.Vector.field(3, float, maxlights)
         self.color = ti.Vector.field(3, float, maxlights)
         self.rad = ti.field(float, maxlights)
         self.nlights = ti.field(int, ())
+        self.skybox = texture_as_field('assets/skybox.jpg')
 
         @ti.materialize_callback
         def init_lights():
             self.nlights[None] = 1
-            self.color.fill(1)
+            self.color.fill(2.0)
             self.rad.fill(0.1)
 
     @ti.kernel
@@ -36,18 +37,6 @@ class PointLighting:
                 self.color[i][k] = color[i, k]
 
     @ti.func
-    def hit(self, ro, rd):
-        ind = -1
-        near = inf
-        for i in range(self.nlights[None]):
-            hit, depth = ray_sphere_hit(self.pos[i], self.rad[i], ro, rd)
-            if hit != 0 and depth < near:
-                ind = i
-                near = depth
-                break
-        return near, ind, V(0., 0.)
-
-    @ti.func
     def get_nlights(self):
         return self.nlights[None]
 
@@ -61,3 +50,10 @@ class PointLighting:
         toli = toli.normalized()
         wei = self.color[ind] / dis2
         return toli, wei, ti.sqrt(dis2)
+
+    @ti.func
+    def background(self, rd):
+        if ti.static(hasattr(self, 'skybox')):
+            return ce_untonemap(sample_cube(self.skybox, rd))
+        else:
+            return 0.0

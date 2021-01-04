@@ -130,27 +130,42 @@ class TriangleRaster:
             self.coo[f] = c
             self.wsc[f] = wscale
 
+    @ti.func
+    def screen_range(self):
+        if ti.static(hasattr(self, 'stack')):
+            for I in ti.smart(self.stack.ndrange(self.res)):
+                yield I
+        else:
+            for I in ti.grouped(self.occup):
+                yield I
+
     @ti.kernel
     def render_color(self, shader: ti.template()):
-        for P in ti.grouped(self.occup):
+        for P in ti.smart(self.screen_range()):
             f = self.occup[P]
             if f == -1:
-                continue
+                if ti.static(hasattr(shader, 'shade_background')):
+                    uv = (float(P) + self.engine.bias[None]) / self.res * 2 - 1
+                    ro = mapply_pos(self.engine.V2W[None], V(uv.x, uv.y, -1.0))
+                    ro1 = mapply_pos(self.engine.V2W[None], V(uv.x, uv.y, +1.0))
+                    rd = (ro1 - ro).normalized()
+                    shader.shade_background(P, rd)
 
-            Al, Bl, Cl = self.get_face_vertices(f)
+            else:
+                Al, Bl, Cl = self.get_face_vertices(f)
 
-            bcn = self.bcn[f]
-            can = self.can[f]
-            b = self.boo[f]
-            c = self.coo[f]
-            wscale = self.wsc[f]
-            pos = float(P) + self.engine.bias[None]
-            w_bc = (pos - b).cross(bcn)
-            w_ca = (pos - c).cross(can)
-            wei = V(w_bc, w_ca, 1 - w_bc - w_ca) * wscale
-            wei /= wei.x + wei.y + wei.z
+                bcn = self.bcn[f]
+                can = self.can[f]
+                b = self.boo[f]
+                c = self.coo[f]
+                wscale = self.wsc[f]
+                pos = float(P) + self.engine.bias[None]
+                w_bc = (pos - b).cross(bcn)
+                w_ca = (pos - c).cross(can)
+                wei = V(w_bc, w_ca, 1 - w_bc - w_ca) * wscale
+                wei /= wei.x + wei.y + wei.z
 
-            self.interpolate(shader, P, f, wei, Al, Bl, Cl)
+                self.interpolate(shader, P, f, wei, Al, Bl, Cl)
 
     def render(self, shader):
         self.render_occup()
