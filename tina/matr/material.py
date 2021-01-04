@@ -23,25 +23,16 @@ class IMaterial(Node):
     def ambient(self):
         return 1.0
 
-    @ti.func
-    def dist(self, u, v, su, sv):
-        # cu = f(u, v), cv = g(u, v)
-        # pdf = |df/du dg/dv - df/dv dg/du|
-        pdf = 1.0
-        cu, cv = u, v
-        return cu, cv, pdf
-
+    # cu = f(u, v), cv = g(u, v)
+    # pdf = |df/du dg/dv - df/dv dg/du|
     @ti.func
     def sample(self, idir, nrm):
         u, v = ti.random(), ti.random()
         axes = tangentspace(nrm)
-        spec = reflect(-idir, nrm)
-        su, sv = unspherical(axes.transpose() @ spec)
-        cu, cv, pdf = self.dist(u, v, su, sv)
-        odir = axes @ spherical(cu, cv)
+        odir = axes @ spherical(u, v)
         odir = odir.normalized()
         brdf = self.brdf(nrm, idir, odir)
-        return odir, pdf * brdf
+        return odir, brdf
 
 
 # http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
@@ -54,11 +45,11 @@ class CookTorrance(IMaterial):
 
     @ti.func
     def brdf(self, nrm, idir, odir):  # idir = L, odir = V
-        EPS = 1e-10
         roughness = self.param('roughness')
         metallic = self.param('metallic')
         specular = self.param('specular')
         basecolor = self.param('basecolor')
+        EPS = 1e-10
 
         half = (idir + odir).normalized()
         NoH = max(EPS, half.dot(nrm))
@@ -68,12 +59,13 @@ class CookTorrance(IMaterial):
         LoH = min(1 - EPS, max(EPS, half.dot(idir)))
 
         # Trowbridge-Reitz GGX microfacet distribution
-        alpha2 = roughness**2
-        denom = NoH**2 * (alpha2 - 1) + 1
+        alpha2 = max(eps, roughness**2)
+        denom = 1 - NoH**2 * (1 - alpha2)
         ndf = alpha2 / denom**2
 
         # Smith's method with Schlick-GGX
         k = (roughness + 1)**2 / 8
+        #k = roughness**2 / 2
         vdf = 1 / ((NoV * (1 - k) + k))
         vdf *= 1 / ((NoL * (1 - k) + k))
 
@@ -90,33 +82,70 @@ class CookTorrance(IMaterial):
 
         return kd * basecolor + ks * fdf * vdf * ndf / 4
 
+    @ti.func
+    def sample(self, idir, nrm):
+        roughness = self.param('roughness')
+        metallic = self.param('metallic')
+        specular = self.param('specular')
+        basecolor = self.param('basecolor')
+        f0 = metallic * basecolor + (1 - metallic) * 0.16 * specular**2
+        # https://computergraphics.stackexchange.com/questions/1515/what-is-the-accepted-method-of-converting-shininess-to-roughness-and-vice-versa
+        shine = 2 / max(eps * 10, roughness**1.4) - 2
+        odir = V(0., 0., 0.)
+        ipdf = V(0., 0., 0.)
+        factor = lerp(Vavg(f0), eps * 3, 0.9)
+        if ti.random() < factor:
+            u, v = ti.random(), ti.random()
+            u = lerp(u, eps * 314, 1 - eps * 1428.57)
+            rdir = reflect(-idir, nrm)
+            u = u ** (1 / (shine + 1))
+            axes = tangentspace(rdir)
+            odir = axes @ spherical(u, v)
+            VoR = clamp(odir.dot(rdir), eps, inf)
+            phong_brdf = clamp(VoR ** shine * (shine + 1), eps, inf)
+            ipdf = f0 / (factor * phong_brdf)
+            if odir.dot(nrm) < 0:
+                odir = -odir
+                ipdf = 0.0  # TODO: fix energy loss for low shineness
+        else:
+            u, v = ti.random(), ti.random()
+            axes = tangentspace(nrm)
+            odir = axes @ spherical(u, v)
+            ipdf = (1 - f0) / (1 - factor)
+        brdf = self.brdf(nrm, idir, odir)
+        brdf = clamp(brdf, eps, inf)
+        return odir, brdf * ipdf
+
     def ambient(self):
         return self.param('basecolor')
 
 
 class Phong(IMaterial):
-    arguments = ['normal', 'diffuse', 'specular', 'shineness']
-    defaults = ['normal', 'color', 0.1, 32.0]
+    arguments = ['normal', 'color', 'specular', 'shineness']
+    defaults = ['normal', 'color', 0.2, 32.0]
 
     @ti.func
     def brdf(self, nrm, idir, odir):
-        diffuse = self.param('diffuse')
+        color = self.param('color')
         specular = self.param('specular')
+        diffuse = color * (1 - specular)
         shineness = self.param('shineness')
 
-        rdir = reflect(-odir, nrm)
-        VoR = max(0, idir.dot(rdir))
+        rdir = reflect(-idir, nrm)
+        VoR = max(0, odir.dot(rdir))
         ks = VoR**shineness * (shineness + 2) / 2
         return diffuse + specular * ks
 
     def ambient(self):
-        return self.param('diffuse')
+        return self.param('color')
 
     @ti.func
     def sample(self, idir, nrm):
+        # https://developer.nvidia.com/gpugems/gpugems3/part-iii-rendering/chapter-20-gpu-based-importance-sampling
         m = self.param('shineness')
-        diffuse = self.param('diffuse')
+        color = self.param('color')
         specular = self.param('specular')
+        diffuse = color * (1 - specular)
         u, v = ti.random(), ti.random()
         pdf = V(0., 0., 0.)
         odir = V(0., 0., 0.)
@@ -129,7 +158,7 @@ class Phong(IMaterial):
             odir = axes @ spherical(u, v)
             if odir.dot(nrm) < 0:
                 odir = -odir
-                pdf = 0.0
+                pdf = 0.0  # TODO
         else:
             pdf = diffuse / (1 - factor)
             axes = tangentspace(nrm)

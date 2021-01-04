@@ -73,7 +73,7 @@ class PathEngine:
             rd = self.rd[I]
             rc = self.rc[I]
             rl = self.rl[I]
-            if not (rc < eps).all():
+            if not Vall(rc < eps):
                 ro, rd, rc, rl = self.transmit(stack, ro, rd, rc, rl)
                 self.ro[I] = ro
                 self.rd[I] = rd
@@ -85,7 +85,7 @@ class PathEngine:
         for I in ti.grouped(ti.ndrange(*self.res)):
             rc = self.rc[I]
             rl = self.rl[I]
-            if not (rc < eps).all():
+            if not Vall(rc < eps):
                 continue
             self.img[I] += rl
             self.cnt[I] += 1
@@ -122,10 +122,9 @@ class PathEngine:
             for li_ind in range(self.lighting.get_nlights()):
                 # cast shadow ray to lights
                 new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
-                NoL = new_rd.dot(nrm)
-                if NoL <= 0:
+                li_wei *= max(0, new_rd.dot(nrm))
+                if Vall(li_wei <= 0):
                     continue
-                li_wei *= NoL
                 occ_near, occ_ind, occ_uv = self.scene.hit(stack, ro, new_rd)
                 if occ_near < li_dis:  # shadow occlusion
                     continue

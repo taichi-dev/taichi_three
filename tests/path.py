@@ -6,11 +6,14 @@ import tina
 ti.init(ti.gpu)
 
 scene = tina.PTScene(smoothing=True, texturing=True)
-#scene.load_gltf('assets/sphere.gltf')
-
-material = tina.Phong(shineness=32.0, diffuse=[1, 0, 0])
-mesh = tina.MeshModel('assets/sphere.obj')
-scene.add_object(mesh, material)
+if 0:
+    scene.load_gltf('assets/sphere.gltf')
+else:
+    roughness = tina.Param(float)
+    #material = tina.CookTorrance(metallic=1.0, roughness=roughness)
+    material = tina.Phong(color=[1, 0, 0])
+    mesh = tina.MeshModel('assets/sphere.obj')
+    scene.add_object(mesh, material)
 
 if 0 and isinstance(scene, tina.PTScene):
     scene.lighting.set_lights(np.array([
@@ -27,9 +30,12 @@ if isinstance(scene, tina.PTScene):
     scene.update()
 
 gui = ti.GUI('path', scene.res)
+if 'roughness' in globals():
+    roughness.make_slider(gui, 'roughness')
 
 while gui.running:
-    scene.input(gui)
+    if scene.input(gui):
+        scene.clear()
     if gui.frame <= 4000:
         scene.render(nsteps=5)
     gui.set_image(scene.img)

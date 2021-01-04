@@ -172,6 +172,9 @@ class PTScene(Scene):
         mtlid = self.materials.index(material)
         self.objects.append((object, mtlid))
 
+    def clear(self):
+        self.engine.clear_image()
+
     def update(self):
         self.engine.clear_image()
         self.mtltab.clear_materials()

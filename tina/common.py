@@ -31,6 +31,20 @@ def Vavg(u):
         return u
 
 
+def Vall(u):
+    if isinstance(u, ti.Matrix):
+        return u.all()
+    else:
+        return u
+
+
+def Vany(u):
+    if isinstance(u, ti.Matrix):
+        return u.any()
+    else:
+        return u
+
+
 def U3(i):
     return ti.Vector.unit(3, i)
 
