@@ -26,9 +26,11 @@ gui = ti.GUI('cornell_box', scene.res)
 scene.init_control(gui, center=(0, 2, 0), radius=6)
 
 while gui.running:
-    scene.input(gui)
+    if scene.input(gui):
+        if isinstance(scene, tina.PTScene):
+            scene.clear()
     if isinstance(scene, tina.PTScene):
-        scene.render(nsteps=5)
+        scene.render(nsteps=9)
     else:
         scene.render()
     gui.set_image(scene.img)

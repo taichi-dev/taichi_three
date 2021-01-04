@@ -150,6 +150,7 @@ class Phong(IMaterial):
         pdf = V(0., 0., 0.)
         odir = V(0., 0., 0.)
         factor = Vavg(specular) / Vavg(diffuse + specular)
+        factor = lerp(factor, 0.003, 0.996)
         if ti.random() < factor:
             pdf = specular / factor
             u = u**(1 / (m + 1))
@@ -158,7 +159,7 @@ class Phong(IMaterial):
             odir = axes @ spherical(u, v)
             if odir.dot(nrm) < 0:
                 odir = -odir
-                pdf = 0.0  # TODO
+                pdf = 0.0
         else:
             pdf = diffuse / (1 - factor)
             axes = tangentspace(nrm)

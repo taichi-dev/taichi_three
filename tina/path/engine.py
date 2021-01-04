@@ -27,6 +27,17 @@ class PathEngine:
         self.mtltab = mtltab
         self.stack = Stack()
 
+        self.W2V = ti.Matrix.field(4, 4, float, ())
+        self.V2W = ti.Matrix.field(4, 4, float, ())
+
+        @ti.materialize_callback
+        @ti.kernel
+        def init_engine():
+            self.W2V[None] = ti.Matrix.identity(float, 4)
+            self.W2V[None][2, 2] = -1
+            self.V2W[None] = ti.Matrix.identity(float, 4)
+            self.V2W[None][2, 2] = -1
+
     def clear_image(self):
         self.img.fill(0)
         self.cnt.fill(0)
@@ -52,9 +63,9 @@ class PathEngine:
             bias = ti.Vector([ti.random(), ti.random()])
             uv = (I + bias) / self.res * 2 - 1
             # TODO: support customizing camera
-            #ro = ti.Vector([0.0, 2.0, 6.0])
-            ro = ti.Vector([0.0, 0.0, 5.0])
-            rd = ti.Vector([uv.x, uv.y, -2.0]).normalized()
+            ro = mapply_pos(self.V2W[None], V(uv.x, uv.y, -1.0))
+            ro1 = mapply_pos(self.V2W[None], V(uv.x, uv.y, +1.0))
+            rd = (ro1 - ro).normalized()
             rc = ti.Vector([1.0, 1.0, 1.0])
             rl = ti.Vector([0.0, 0.0, 0.0])
             self.ro[I] = ro
@@ -64,7 +75,10 @@ class PathEngine:
 
     @ti.func
     def background(self, rd):
-        return ce_untonemap(sample_cube(self.skybox, rd))
+        if ti.static(hasattr(self, 'skybox')):
+            return ce_untonemap(sample_cube(self.skybox, rd))
+        else:
+            return 0.0
 
     @ti.kernel
     def step_rays(self):
@@ -91,7 +105,10 @@ class PathEngine:
             self.cnt[I] += 1
 
     def set_camera(self, view, proj):
-        pass
+        W2V = proj @ view
+        V2W = np.linalg.inv(W2V)
+        self.W2V.from_numpy(np.array(W2V, dtype=np.float32))
+        self.V2W.from_numpy(np.array(V2W, dtype=np.float32))
 
     @ti.func
     def transmit(self, stack, ro, rd, rc, rl):

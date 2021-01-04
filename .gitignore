@@ -13,6 +13,7 @@ package-lock.json
 *.png
 *.jpg
 *.blend
+/outputs
 tags
 /a.py
 /b.py
