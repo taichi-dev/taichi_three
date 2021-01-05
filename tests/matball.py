@@ -3,13 +3,16 @@ import tina
 
 ti.init(ti.gpu)
 
-scene = tina.Scene(smoothing=True, taa=True)
+scene = tina.Scene(smoothing=True, taa=True, rtx=True)
 
 #roughness = tina.Param(float)
 #material = tina.CookTorrance(roughness=roughness)
 
 shineness = tina.Param(float, initial=32)
-material = tina.Phong(shineness=shineness)
+specular = tina.Param(float, initial=0.5)
+mat_diff = tina.Lambert()
+mat_spec = tina.Phong(shineness=shineness)
+material = tina.MixMaterial(mat_diff, mat_spec, specular)
 
 model = tina.PrimitiveMesh.sphere()
 scene.add_object(model, material)
@@ -20,7 +23,9 @@ if 'roughness' in globals():
 if 'metallic' in globals():
     metallic.make_slider(gui, 'metallic')
 if 'shineness' in globals():
-    shineness.make_slider(gui, 'shineness', 1, 400, 1)
+    shineness.make_slider(gui, 'shineness', 1, 500, 1)
+if 'specular' in globals():
+    specular.make_slider(gui, 'specular')
 
 scene.init_control(gui, blendish=True)
 while gui.running:

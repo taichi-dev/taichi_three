@@ -7,7 +7,7 @@ class MagentaShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = V(1.0, 0.0, 1.0)
 
 
@@ -17,7 +17,7 @@ class PositionShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = pos
 
 
@@ -27,7 +27,7 @@ class DepthShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = engine.depth[P]
 
 
@@ -37,7 +37,7 @@ class NormalShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = normal * 0.5 + 0.5
 
 
@@ -47,7 +47,7 @@ class TexcoordShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = V23(texcoord, 0.0)
 
 
@@ -57,7 +57,7 @@ class ColorShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = color
 
 
@@ -68,17 +68,16 @@ class ChessboardShader:
         self.size = size
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = lerp((texcoord // self.size).sum() % 2, 0.4, 0.9)
 
 
 @ti.func
-def calc_viewdir(engine, pos):
-    fwd = mapply_dir(engine.V2W[None], V(0., 0., -1.))
-    camera, camera_w = mapply(engine.V2W[None], V(0., 0., 0.), 1)
-    dir = (camera - pos * camera_w).normalized()
-    if dir.dot(fwd) < 0:
-        dir = -dir
+def calc_viewdir(engine, p):
+    p = p / engine.res * 2 - 1
+    ro = mapply_pos(engine.V2W[None], V23(p, -1.))
+    ro1 = mapply_pos(engine.V2W[None], V23(p, 1.))
+    dir = (ro - ro1).normalized()
     return dir
 
 
@@ -88,8 +87,8 @@ class ViewdirShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
-        viewdir = calc_viewdir(engine, pos)
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
+        viewdir = calc_viewdir(engine, p)
         self.img[P] = viewdir * 0.5 + 0.5
 
 
@@ -99,9 +98,8 @@ class SimpleShader:
         self.img = img
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
-        viewdir = calc_viewdir(engine, pos)
-
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
+        viewdir = calc_viewdir(engine, p)
         self.img[P] = abs(normal.dot(viewdir))
 
 
@@ -113,8 +111,8 @@ class Shader:
         self.material = material
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
-        viewdir = calc_viewdir(engine, pos)
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
+        viewdir = calc_viewdir(engine, p)
         tina.Input.spec_g_pars({
             'pos': pos,
             'color': color,
@@ -137,8 +135,8 @@ class RTXShader:
         self.tree = tree
 
     @ti.func
-    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
-        viewdir = calc_viewdir(engine, pos)
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
+        viewdir = calc_viewdir(engine, p)
         tina.Input.spec_g_pars({
             'pos': pos,
             'color': color,

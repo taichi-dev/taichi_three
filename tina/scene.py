@@ -106,18 +106,19 @@ class Scene:
         self.objects[object] = namespace(material=material, raster=raster)
 
     def init_control(self, gui, center=None, theta=None, phi=None, radius=None,
-                     fov=60, blendish=False):
+                     fov=60, is_ortho=False, blendish=False):
         '''
         :param gui: (GUI) the GUI to bind with
         :param center: (3 * [float]) the target (lookat) position
         :param theta: (float) the altitude of camera
         :param phi: (float) the longitude of camera
         :param radius: (float) the distance from camera to target
+        :param is_ortho: (bool) whether to use orthogonal mode for camera
         :param blendish: (bool) whether to use blender key bindings
         :param fov: (bool) the initial field of view of the camera
         '''
 
-        self.control = tina.Control(gui, fov, blendish)
+        self.control = tina.Control(gui, fov=fov, is_ortho=is_ortho, blendish=blendish)
         if center is not None:
             self.control.center[:] = center
         if theta is not None:

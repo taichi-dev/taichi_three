@@ -68,16 +68,16 @@ class MixMaterial(IMaterial):
         return (1 - fac) * f1 + fac * f2
 
     @ti.func
-    def sample(self, idir, nrm):
+    def sample(self, idir, nrm, sign):
         fac = self.param('factor')
         odir = V(0., 0., 0.)
         wei = V(0., 0., 0.)
         factor = lerp(Vavg(fac), eps * 3, 1 - eps * 3)
         if ti.random() < factor:
-            odir, wei = self.mat1.sample(idir, nrm)
-            wei *= fac / (1 - factor)
+            odir, wei = self.mat2.sample(idir, nrm, sign)
+            wei *= fac / factor
         else:
-            odir, wei = self.mat1.sample(idir, nrm)
+            odir, wei = self.mat1.sample(idir, nrm, sign)
             wei *= (1 - fac) / (1 - factor)
         return odir, wei
 
@@ -261,8 +261,8 @@ class Lambert(IMaterial):
 
 
 class Mirror(IMaterial):
-    arguments = ['normal', 'color']
-    defaults = ['normal', 'color']
+    arguments = ['color']
+    defaults = ['color']
 
     @ti.func
     def brdf(self, nrm, idir, odir):
@@ -325,3 +325,10 @@ class MaterialTable:
 
     def add_material(self, matr):
         self.materials.append(matr)
+
+
+def Classic(shineness=32, specular=0.4):
+    mat_diff = tina.Lambert()
+    mat_spec = tina.Phong(shineness=shineness)
+    material = tina.MixMaterial(mat_diff, mat_spec, specular)
+    return material
