@@ -3,12 +3,12 @@ import tina
 
 ti.init(ti.cpu)
 
-scene = tina.Scene(smoothing=True, taa=True)#, ibl=True)
+scene = tina.Scene(smoothing=True, taa=True, ibl=True)
 
 #metallic = tina.Param(float)
 #roughness = tina.Param(float)
 #material = tina.CookTorrance(metallic=metallic, roughness=roughness)
-material = tina.Lambert()
+material = tina.Mirror()
 model = tina.PrimitiveMesh.sphere()
 scene.add_object(model, material)
 

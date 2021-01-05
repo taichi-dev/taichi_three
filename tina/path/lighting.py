@@ -3,17 +3,6 @@ from .geometry import *
 
 
 @ti.data_oriented
-class SkyboxLighting:
-    def __init__(self):
-        self.skybox = texture_as_field('assets/bridge.jpg')
-        self.skybox_lambert = texture_as_field('assets/bridge_lambert.jpg')
-
-    @ti.func
-    def background(self, rd):
-        return ce_untonemap(sample_cube(self.skybox, rd))
-
-
-@ti.data_oriented
 class RTXLighting:
     def __init__(self, maxlights=16):
         self.maxlights = maxlights

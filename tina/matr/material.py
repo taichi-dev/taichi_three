@@ -167,23 +167,6 @@ class Phong(IMaterial):
         return odir, pdf
 
 
-class Mirror(IMaterial):
-    arguments = ['normal', 'color']
-    defaults = ['normal', 'color']
-
-    @ti.func
-    def brdf(self, nrm, idir, odir):
-        return eps
-
-    def ambient(self):
-        return 0.0
-
-    @ti.func
-    def sample(self, idir, nrm, sign):
-        odir = reflect(-idir, nrm)
-        return odir, 1.0
-
-
 class Glass(IMaterial):
     arguments = ['normal', 'color', 'ior']
     defaults = ['normal', 'color', 1.45]
@@ -217,6 +200,40 @@ class Lambert(IMaterial):
 
     def ambient(self):
         return self.param('color')
+
+    @staticmethod
+    def cook_for_ibl(skybox):
+        return texture_as_field('assets/bridge_lambert.jpg')
+
+    @ti.func
+    def sample_ibl(self, ibl, idir, nrm):
+        return ce_untonemap(sample_cube(ibl, nrm))
+
+
+class Mirror(IMaterial):
+    arguments = ['normal', 'color']
+    defaults = ['normal', 'color']
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        return 0.0
+
+    def ambient(self):
+        return 0.0
+
+    @staticmethod
+    def cook_for_ibl(skybox):
+        return skybox
+
+    @ti.func
+    def sample_ibl(self, ibl, idir, nrm):
+        odir = reflect(-idir, nrm)
+        return ce_untonemap(sample_cube(ibl, odir))
+
+    @ti.func
+    def sample(self, idir, nrm, sign):
+        odir = reflect(-idir, nrm)
+        return odir, 1.0
 
 
 # noinspection PyMissingConstructor

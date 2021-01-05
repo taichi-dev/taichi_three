@@ -43,6 +43,9 @@ class Scene:
         if self.taa:
             self.accum = tina.Accumator(self.res)
 
+        if self.rtx or self.ibl:
+            self.background_shader = tina.BackgroundShader(self.image, self.lighting)
+
         @ti.materialize_callback
         def init_light():
             if not self.rtx and not self.ibl:
@@ -135,10 +138,13 @@ class Scene:
         self.image.fill(0)
         self.engine.clear_depth()
 
-        for object, o in self.objects.items():
-            shader = self.shaders[o.material]
-            o.raster.set_object(object)
-            o.raster.render(shader)
+        for object, oinfo in self.objects.items():
+            shader = self.shaders[oinfo.material]
+            oinfo.raster.set_object(object)
+            oinfo.raster.render(shader)
+
+        if hasattr(self, 'background_shader'):
+            self.engine.render_background(self.background_shader)
 
         if self.pp:
             self.postp.process()

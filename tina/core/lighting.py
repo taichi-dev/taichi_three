@@ -1,4 +1,22 @@
-from ..common import *
+from ..advans import *
+
+
+@ti.data_oriented
+class SkyboxLighting:
+    def __init__(self):
+        self.skybox = texture_as_field('assets/bridge.jpg')
+        self.ibl_skybox = {}
+        for mattype in [tina.Mirror, tina.Lambert]:
+            self.ibl_skybox[mattype] = mattype.cook_for_ibl(self.skybox)
+
+    @ti.func
+    def background(self, rd):
+        return ce_untonemap(sample_cube(self.skybox, rd))
+
+    @ti.func
+    def shade_color(self, material, pos, normal, viewdir):
+        skybox = ti.static(self.ibl_skybox[type(material)])
+        return material.sample_ibl(skybox, viewdir, normal)
 
 
 @ti.data_oriented
