@@ -125,9 +125,11 @@ class PathEngine:
             # hit object
             ro += near * rd
             nrm, tex = self.geom.calc_geometry(near, ind, uv, ro, rd)
+
+            sign = 1
             if nrm.dot(rd) > 0:
+                sign = -1
                 nrm = -nrm
-            ro += nrm * eps * 8
 
             tina.Input.spec_g_pars({
                 'pos': ro,
@@ -139,6 +141,7 @@ class PathEngine:
             mtlid = self.geom.get_material_id(ind)
             material = self.mtltab.get(mtlid)
 
+            ro += nrm * eps * 8
             li_clr = V(0., 0., 0.)
             for li_ind in range(self.lighting.get_nlights()):
                 # cast shadow ray to lights
@@ -153,7 +156,10 @@ class PathEngine:
                 li_clr += li_wei
 
             # sample indirect light
-            rd, ir_wei = material.sample(-rd, nrm)
+            rd, ir_wei = material.sample(-rd, nrm, sign)
+            if rd.dot(nrm) < 0:
+                # refract into / outof
+                ro -= nrm * eps * 16
 
             tina.Input.clear_g_pars()
 

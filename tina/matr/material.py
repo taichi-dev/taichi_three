@@ -26,7 +26,7 @@ class IMaterial(Node):
     # cu = f(u, v), cv = g(u, v)
     # pdf = |df/du dg/dv - df/dv dg/du|
     @ti.func
-    def sample(self, idir, nrm):
+    def sample(self, idir, nrm, sign):
         u, v = ti.random(), ti.random()
         axes = tangentspace(nrm)
         odir = axes @ spherical(u, v)
@@ -83,7 +83,7 @@ class CookTorrance(IMaterial):
         return kd * basecolor + ks * fdf * vdf * ndf / 4
 
     @ti.func
-    def sample(self, idir, nrm):
+    def sample(self, idir, nrm, sign):
         roughness = self.param('roughness')
         metallic = self.param('metallic')
         specular = self.param('specular')
@@ -140,7 +140,7 @@ class Phong(IMaterial):
         return self.param('color')
 
     @ti.func
-    def sample(self, idir, nrm):
+    def sample(self, idir, nrm, sign):
         # https://developer.nvidia.com/gpugems/gpugems3/part-iii-rendering/chapter-20-gpu-based-importance-sampling
         m = self.param('shineness')
         color = self.param('color')
@@ -179,9 +179,32 @@ class Mirror(IMaterial):
         return 0.0
 
     @ti.func
-    def sample(self, idir, nrm):
+    def sample(self, idir, nrm, sign):
         odir = reflect(-idir, nrm)
-        return odir, 1 / eps
+        return odir, 1.0
+
+
+class Glass(IMaterial):
+    arguments = ['normal', 'color', 'ior']
+    defaults = ['normal', 'color', 1.45]
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        return eps
+
+    def ambient(self):
+        return 0.0
+
+    @ti.func
+    def sample(self, idir, nrm, sign):
+        ior = self.param('ior')
+        color = self.param('color')
+        if sign >= 0:
+            ior = 1 / ior
+        has_r, odir = refract(-idir, nrm, ior)
+        if has_r == 0:
+            odir = reflect(-idir, nrm)
+        return odir, color
 
 
 class Lambert(IMaterial):
@@ -212,11 +235,11 @@ class VirtualMaterial(IMaterial):
         return wei
 
     @ti.func
-    def sample(self, idir, nrm):
+    def sample(self, idir, nrm, sign):
         odir, wei = V(0., 0., 0.), V(0., 0., 0.)
         for i, mat in ti.static(enumerate(self.materials)):
             if i == self.mid:
-                odir, wei = mat.sample(idir, nrm)
+                odir, wei = mat.sample(idir, nrm, sign)
         return odir, wei
 
 

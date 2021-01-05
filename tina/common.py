@@ -162,6 +162,19 @@ def reflect(I, N):
 
 
 @ti.pyfunc
+def refract(I, N, ior):
+    has_r, T = 0, I
+    NoI = N.dot(I)
+    discr = 1 - ior**2 * (1 - NoI**2)
+    if discr > 0:
+        has_r = 1
+        T = (ior * (I - N * NoI) - N * ti.sqrt(discr)).normalized()
+    else:
+        T *= 0
+    return has_r, T
+
+
+@ti.pyfunc
 def lerp(fac, src, dst):
     return src * (1 - fac) + dst * fac
 

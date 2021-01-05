@@ -11,6 +11,7 @@ class RTXLighting:
         self.rad = ti.field(float, maxlights)
         self.nlights = ti.field(int, ())
         self.skybox = texture_as_field('assets/market.jpg')
+        #self.skybox = texture_as_field('assets/skybox.jpg')
 
         @ti.materialize_callback
         def init_lights():

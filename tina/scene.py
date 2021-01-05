@@ -217,7 +217,7 @@ class PTScene(Scene):
             self.tracer.add_object(object, mtlid)
         self.tracer.update()
 
-    def render(self, nsteps=4, strict=True):
+    def render(self, nsteps=4, strict=False):
         self.engine.load_rays()
         for step in range(nsteps):
             self.engine.step_rays()
