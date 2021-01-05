@@ -32,16 +32,16 @@ class Scene:
         self.shaders = {}
         self.objects = {}
 
-        if self.taa:
-            self.accum = tina.Accumator(self.res)
-
         if self.rtx:
             self.stack = tina.Stack()
             self.tracer = tina.TriangleTracer(**options, multimtl=False)
             self.tree = tina.BVHTree(self.tracer)
 
         if self.pp:
-            self.postp = tina.PostProcessor(self.raw_image, self.res)
+            self.postp = tina.PostProcessor(self.image, self.res)
+
+        if self.taa:
+            self.accum = tina.Accumator(self.res)
 
         @ti.materialize_callback
         def init_light():
@@ -140,20 +140,20 @@ class Scene:
             o.raster.set_object(object)
             o.raster.render(shader)
 
-        if self.taa:
-            self.accum.update(self.image)
         if self.pp:
             self.postp.process()
-
-    @property
-    def raw_image(self):
-        return self.accum.img if self.taa else self.image
+        if self.taa:
+            self.accum.update(self.pp_img)
 
     @property
     def img(self):
         '''
-        The image to be displayed in GUI
+        The final image to be displayed in GUI
         '''
+        return self.accum.img if self.taa else self.pp_img
+
+    @property
+    def pp_img(self):
         return self.postp.out if self.pp else self.raw_image
 
     def input(self, gui):

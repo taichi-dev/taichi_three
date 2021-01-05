@@ -3,7 +3,7 @@ import tina
 
 ti.init(ti.cpu)
 
-scene = tina.Scene(smoothing=True)#, ibl=True)
+scene = tina.Scene(smoothing=True, taa=True)#, ibl=True)
 
 #metallic = tina.Param(float)
 #roughness = tina.Param(float)
