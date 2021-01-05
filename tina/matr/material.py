@@ -274,7 +274,7 @@ class Glass(IMaterial):
 
     @ti.func
     def brdf(self, nrm, idir, odir):
-        return eps
+        return 0.0
 
     def ambient(self):
         return 0.0
@@ -284,13 +284,24 @@ class Glass(IMaterial):
         ior = self.param('ior')
         if sign >= 0:
             ior = 1 / ior
-        has_r, odir = refract(-idir, nrm, ior)
+
+        EPS = 1e-10
+        rdir = reflect(-idir, nrm)
+        f0 = abs((1 - ior) / (1 + ior))**2
+        NoV = min(1 - EPS, max(EPS, nrm.dot(rdir)))
+        fdf = f0 + (1 - f0) * (1 - NoV)**5
+
         wei = 1.0
-        if has_r == 0:
-            odir = reflect(-idir, nrm)
+        odir = V(0., 0., 0.)
+        factor = lerp(fdf, 0.08, 0.92)
+        if ti.random() < factor:
+            odir = rdir
+            wei *= fdf / factor
         else:
-            # TODO: implement full-internal reflection
-            wei = 0.0
+            has_r, odir = refract(-idir, nrm, ior)
+            if has_r == 0:
+                odir = rdir
+            wei *= (1 - fdf) / (1 - factor)
         return odir, wei
 
 
@@ -414,8 +425,8 @@ class MaterialTable:
         self.materials.append(matr)
 
 
-def Classic(shineness=32, specular=0.4):
-    mat_diff = tina.Lambert()
+def Classic(color=1.0, shineness=32, specular=0.4):
+    mat_diff = tina.Lambert() * color
     mat_spec = tina.Phong(shineness=shineness)
     material = tina.MixMaterial(mat_diff, mat_spec, specular)
     return material
