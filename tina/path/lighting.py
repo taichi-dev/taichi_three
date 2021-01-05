@@ -10,8 +10,7 @@ class RTXLighting:
         self.color = ti.Vector.field(3, float, maxlights)
         self.rad = ti.field(float, maxlights)
         self.nlights = ti.field(int, ())
-        self.skybox = texture_as_field('assets/market.jpg')
-        #self.skybox = texture_as_field('assets/skybox.jpg')
+        self.skybox = tina.Skybox('assets/grass.jpg')
 
         @ti.materialize_callback
         def init_lights():
@@ -55,12 +54,12 @@ class RTXLighting:
     @ti.func
     def background(self, rd):
         if ti.static(hasattr(self, 'skybox')):
-            return ce_untonemap(sample_spherical(self.skybox, rd))
+            return self.skybox.sample(rd)
         else:
             return 0.0
 
     @ti.func
-    def shade_color(self, material, pos, normal, viewdir):
+    def shade_color(self, material, tree, pos, normal, viewdir):
         N_li, N_sky = 8, 8
 
         res = V(0.0, 0.0, 0.0)
@@ -72,7 +71,7 @@ class RTXLighting:
                 lwei *= max(0, ldir.dot(normal))
                 if Vall(lwei <= 0):
                     continue
-                occdis, occind, occuv = self.tree.hit(ro, ldir)
+                occdis, occind, occuv = tree.hit(ro, ldir)
                 if occdis < ldis:  # shadow occlusion
                     continue
                 lwei *= material.brdf(normal, ldir, viewdir)
@@ -80,10 +79,10 @@ class RTXLighting:
 
         if ti.static(hasattr(self, 'skybox')):
             for s in range(N_sky):
-                ldir, lwei = material.sample(viewdir, normal)
-                occdis, occind, occuv = self.tree.hit(ro, ldir)
+                ldir, lwei = material.sample(viewdir, normal, 1)
+                occdis, occind, occuv = tree.hit(ro, ldir)
                 if occdis >= inf:
-                    lwei *= self.background(ldir)
-                    res += lwei / N_sky
+                    lclr = lwei * self.background(ldir)
+                    res += lclr / N_sky
 
         return res

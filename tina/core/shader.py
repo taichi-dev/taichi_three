@@ -129,10 +129,27 @@ class Shader:
 
 
 @ti.data_oriented
-class RTXShader(Shader):
+class RTXShader:
     def __init__(self, img, lighting, tree, material):
-        super().__init__(img, lighting, material)
+        self.img = img
+        self.lighting = lighting
+        self.material = material
         self.tree = tree
+
+    @ti.func
+    def shade_color(self, engine, P, f, pos, normal, texcoord, color):
+        viewdir = calc_viewdir(engine, pos)
+        tina.Input.spec_g_pars({
+            'pos': pos,
+            'color': color,
+            'normal': normal,
+            'texcoord': texcoord,
+        })
+
+        res = self.lighting.shade_color(self.material, self.tree, pos, normal, viewdir)
+        self.img[P] = res
+
+        tina.Input.clear_g_pars()
 
 
 @ti.data_oriented

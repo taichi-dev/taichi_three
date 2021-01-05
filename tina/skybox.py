@@ -38,25 +38,25 @@ def unspheremap(coor):
 
 @ti.data_oriented
 class Skybox:
-    def __init__(self, size_or_path, cubic=False):
-        size = size_or_path
-        if isinstance(size, int):
+    def __init__(self, path, cubic=False):
+        shape = path
+        if isinstance(shape, int):
             if cubic:
-                size = size * 3 // 4, size
+                shape = shape * 3 // 4, shape
             else:
-                size = int(ti.pi / 2 * size), size
-        elif isinstance(size, str):
-            size = self._from_image(size)
+                shape = int(ti.pi / 2 * shape), shape
+        elif isinstance(shape, str):
+            shape = self._from_image(shape)
         else:
-            assert isinstance(size, (list, tuple)), size
-        img = ti.Vector.field(3, float, size)
+            assert isinstance(shape, (list, tuple)), shape
+        img = ti.Vector.field(3, float, shape)
         self.img = img
         self.cubic = cubic
         if self.cubic:
-            self.resolution = size[1] // 3
+            self.resolution = shape[1] // 3
         else:
-            self.resolution = size[1]
-        self.shape = size
+            self.resolution = shape[1]
+        self.shape = shape
 
     def _from_image(self, path):
         if not isinstance(path, np.ndarray):

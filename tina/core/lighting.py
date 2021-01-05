@@ -90,6 +90,6 @@ class Lighting:
             cos_i = normal.dot(light_dir)
             if cos_i > 0:
                 lcolor /= light_distance**2
-                mcolor = material.shade(light_dir, viewdir)
+                mcolor = material.brdf(normal, light_dir, viewdir)
                 res += cos_i * lcolor * mcolor
         return res

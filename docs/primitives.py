@@ -1,6 +1,6 @@
 import tina
 
-scene = tina.Scene(smoothing=True, texturing=True)
+scene = tina.Scene(smoothing=True, texturing=True, taa=True)
 
 mesh = tina.PrimitiveMesh.sphere()
 wire = tina.MeshToWire(mesh)
