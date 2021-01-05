@@ -203,11 +203,35 @@ class Lambert(IMaterial):
 
     @staticmethod
     def cook_for_ibl(skybox):
-        return texture_as_field('assets/bridge_lambert.jpg')
+        size = skybox._dense_shape[0] // 10
+        ibl = ti.Vector.field(3, float, (int(ti.pi / 2 * size), size))
+        nsamples = 4096
+
+        @ti.kernel
+        def bake():
+            for I in ti.grouped(ibl):
+                res = V(0., 0., 0.)
+                for s in range(nsamples):
+                    bias = V(ti.random(), ti.random())
+                    v, u = (I + bias) / V(*ibl.shape)
+                    dir = spherical(u * 2 - 1, v)
+                    u, v = ti.random(), ti.random()
+                    odir = tangentspace(dir) @ spherical(u, v)
+                    wei = ce_untonemap(sample_cube(skybox, odir))
+                    res += wei
+                ibl[I] = ce_tonemap(res / nsamples)
+
+        @ti.materialize_callback
+        def init_ibl():
+            print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for Lambert...')
+            bake()
+            print('[Tina] Baking IBL map for Lambert done')
+
+        return ibl
 
     @ti.func
     def sample_ibl(self, ibl, idir, nrm):
-        return ce_untonemap(sample_cube(ibl, nrm))
+        return ce_untonemap(sample_spherical(ibl, nrm))
 
 
 class Mirror(IMaterial):

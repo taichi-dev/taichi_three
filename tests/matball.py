@@ -1,14 +1,14 @@
 import taichi as ti
 import tina
 
-ti.init(ti.cpu)
+ti.init(ti.gpu)
 
 scene = tina.Scene(smoothing=True, taa=True, ibl=True)
 
 #metallic = tina.Param(float)
 #roughness = tina.Param(float)
 #material = tina.CookTorrance(metallic=metallic, roughness=roughness)
-material = tina.Mirror()
+material = tina.Lambert()
 model = tina.PrimitiveMesh.sphere()
 scene.add_object(model, material)
 

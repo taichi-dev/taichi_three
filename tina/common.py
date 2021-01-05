@@ -90,12 +90,12 @@ def clamp(x, xmin, xmax):
     return min(xmax, max(xmin, x))
 
 
-@ti.func
+@ti.pyfunc
 def ifloor(x):
     return int(ti.floor(x))
 
 
-@ti.func
+@ti.pyfunc
 def iceil(x):
     return int(ti.ceil(x))
 
