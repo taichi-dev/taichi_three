@@ -3,7 +3,7 @@ import tina
 
 ti.init(ti.gpu)
 
-scene = tina.Scene(smoothing=True, taa=True)
+scene = tina.Scene(smoothing=True, taa=True, rtx=True)
 
 #roughness = tina.Param(float)
 #material = tina.CookTorrance(roughness=roughness)

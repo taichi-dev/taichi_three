@@ -14,13 +14,17 @@ class Control:
         self.phi = 0.0
         self.fov = fov
 
-        self.lmb = None
-        self.mmb = None
-        self.rmb = None
+        self.last_mouse = None
         self.blendish = blendish
 
     def process_events(self):
-        return any([self.on_event(e) for e in self.gui.get_events()])
+        ret = False
+        for e in self.gui.get_events():
+            if self.on_event(e):
+                ret = True
+        if self.check_mouse_move():
+            ret = True
+        return ret
 
     def on_pan(self, delta, origin):
         right = np.cross(self.up, self.back)
@@ -102,53 +106,35 @@ class Control:
                 else:
                     self.fov = 0
                 return True
+
             elif e.key == self.gui.ESCAPE:
                 self.gui.running = False
 
-        if e.key == self.gui.LMB:
-            if e.type == self.gui.PRESS:
-                self.lmb = np.array(e.pos)
+        elif e.type == self.gui.MOTION:
+            if e.key == self.gui.WHEEL:
+                delta = e.delta[1] / 120
+                self.on_wheel(delta, np.array(e.pos))
                 return True
-            else:
-                self.lmb = None
-
-        elif e.key == self.gui.MMB:
-            if e.type == self.gui.PRESS:
-                self.mmb = np.array(e.pos)
-                return True
-            else:
-                self.mmb = None
-
-        elif e.key == self.gui.RMB:
-            if e.type == self.gui.PRESS:
-                self.rmb = np.array(e.pos)
-                return True
-            else:
-                self.rmb = None
-
-        elif e.key == self.gui.MOVE:
-            if self.lmb is not None:
-                new_lmb = np.array(e.pos)
-                delta_lmb = new_lmb - self.lmb
-                self.on_lmb_drag(delta_lmb, self.lmb)
-                self.lmb = new_lmb
-                return True
-            if self.mmb is not None:
-                new_mmb = np.array(e.pos)
-                delta_mmb = new_mmb - self.mmb
-                self.on_mmb_drag(delta_mmb, self.mmb)
-                self.mmb = new_mmb
-                return True
-            if self.rmb is not None:
-                new_rmb = np.array(e.pos)
-                delta_rmb = new_rmb - self.rmb
-                self.on_rmb_drag(delta_rmb, self.rmb)
-                self.rmb = new_rmb
-                return True
-
-        elif e.key == self.gui.WHEEL:
-            delta = e.delta[1] / 120
-            self.on_wheel(delta, np.array(e.pos))
-            return True
 
         return False
+
+    def check_mouse_move(self):
+        ret = False
+        curr_mouse = np.array(self.gui.get_cursor_pos())
+        btn = list(map(self.gui.is_pressed, [self.gui.LMB, self.gui.MMB, self.gui.RMB]))
+        if self.last_mouse is not None:
+            delta = curr_mouse - self.last_mouse
+            if delta[0] or delta[1]:
+                if btn[0]:
+                    self.on_lmb_drag(delta, self.last_mouse)
+                if btn[1]:
+                    self.on_mmb_drag(delta, self.last_mouse)
+                if btn[2]:
+                    self.on_rmb_drag(delta, self.last_mouse)
+                ret = any(btn)
+
+        if any(btn):
+            self.last_mouse = curr_mouse
+        else:
+            self.last_mouse = None
+        return ret
