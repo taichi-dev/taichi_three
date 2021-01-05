@@ -117,48 +117,6 @@ def unspherical(dir):
 
 
 @ti.func
-def cubemap(dir, size):
-    I = V(0., 0.)
-    dps = 1 - 12 / size
-    eps = 1e-7
-    # dir.y, dir.z = dir.z, -dir.y
-    if dir.z >= 0 and dir.z >= abs(dir.y) - eps and dir.z >= abs(dir.x) - eps:
-        I = V(3 / 8, 3 / 8) + V(dir.x, dir.y) / dir.z / 8 * dps
-    if dir.z <= 0 and -dir.z >= abs(dir.y) - eps and -dir.z >= abs(dir.x) - eps:
-        I = V(7 / 8, 3 / 8) + V(-dir.x, dir.y) / -dir.z / 8 * dps
-    if dir.x <= 0 and -dir.x >= abs(dir.y) - eps and -dir.x >= abs(dir.z) - eps:
-        I = V(1 / 8, 3 / 8) + V(dir.z, dir.y) / -dir.x / 8 * dps
-    if dir.x >= 0 and dir.x >= abs(dir.y) - eps and dir.x >= abs(dir.z) - eps:
-        I = V(5 / 8, 3 / 8) + V(-dir.z, dir.y) / dir.x / 8 * dps
-    if dir.y >= 0 and dir.y >= abs(dir.x) - eps and dir.y >= abs(dir.z) - eps:
-        I = V(3 / 8, 5 / 8) + V(dir.x, -dir.z) / dir.y / 8 * dps
-    if dir.y <= 0 and -dir.y >= abs(dir.x) - eps and -dir.y >= abs(dir.z) - eps:
-        I = V(3 / 8, 1 / 8) + V(dir.x, dir.z) / -dir.y / 8 * dps
-    return (size - 1) * I
-
-
-@ti.func
-def uncubemap(I, size):
-    has_i, dir = 0, V(0., 0., 0.)
-    return has_i, dir
-
-
-@ti.func
-def sample_cube(tex: ti.template(), dir):
-    I = cubemap(dir, tex.shape[0])
-    return bilerp(tex, I)
-
-
-@ti.func
-def sample_spherical(tex: ti.template(), dir):
-    I = V(0., 0.)
-    dir.z, dir.y = dir.y, -dir.z
-    u, v = unspherical(dir)
-    I = (V(*tex.shape) - 1) * V(v, u * 0.5 + 0.5)
-    return bilerp(tex, I)
-
-
-@ti.func
 def _inoise(x):
     value = ti.cast(x, ti.u32)
     value = (value ^ 61) ^ (value >> 16)

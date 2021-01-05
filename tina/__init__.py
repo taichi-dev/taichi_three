@@ -59,4 +59,5 @@ if __import__('lazyimp').lazyguard:
     from .pars import *
     from .voxl import *
     from .scene import *
+    from .skybox import *
     from .postp import *

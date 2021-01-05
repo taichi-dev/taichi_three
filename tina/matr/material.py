@@ -203,35 +203,43 @@ class Lambert(IMaterial):
 
     @staticmethod
     def cook_for_ibl(skybox):
-        size = skybox._dense_shape[0] // 10
-        ibl = ti.Vector.field(3, float, (int(ti.pi / 2 * size), size))
-        nsamples = 4096
+        ibl = tina.Skybox(skybox.resolution // 4)
+        tmp = ti.Vector.field(3, float, ibl.shape)
+        nsamples = 32768
 
         @ti.kernel
         def bake():
-            for I in ti.grouped(ibl):
+            for I in ti.grouped(ibl.img):
                 res = V(0., 0., 0.)
                 for s in range(nsamples):
-                    bias = V(ti.random(), ti.random())
-                    v, u = (I + bias) / V(*ibl.shape)
-                    dir = spherical(u * 2 - 1, v)
+                    coor = I / (V(*ibl.shape) - 1)
+                    dir = tina.unspheremap(coor)
                     u, v = ti.random(), ti.random()
                     odir = tangentspace(dir) @ spherical(u, v)
-                    wei = ce_untonemap(sample_cube(skybox, odir))
+                    wei = skybox.sample(odir) * u
                     res += wei
-                ibl[I] = ce_tonemap(res / nsamples)
+                tmp[I] = res / nsamples
+            for I in ti.grouped(ibl.img):
+                res = tmp[I]
+                if not any(I == 0 or I == V(*ibl.shape) - 1):
+                    res *= 4
+                    for i in ti.static(range(2)):
+                        res += tmp[I + U2(i)] + tmp[I - U2(i)]
+                    res /= 8
+                ibl.img[I] = res
 
         @ti.materialize_callback
         def init_ibl():
             print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for Lambert...')
             bake()
             print('[Tina] Baking IBL map for Lambert done')
+            #ti.imwrite(ce_tonemap(ibl.img.to_numpy()), 'assets/grass_lambert.jpg')
 
         return ibl
 
     @ti.func
     def sample_ibl(self, ibl, idir, nrm):
-        return ce_untonemap(sample_spherical(ibl, nrm))
+        return ibl.sample(nrm)
 
 
 class Mirror(IMaterial):
@@ -252,7 +260,7 @@ class Mirror(IMaterial):
     @ti.func
     def sample_ibl(self, ibl, idir, nrm):
         odir = reflect(-idir, nrm)
-        return ce_untonemap(sample_cube(ibl, odir))
+        return ibl.sample(odir)
 
     @ti.func
     def sample(self, idir, nrm, sign):
