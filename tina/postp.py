@@ -10,4 +10,4 @@ class PostProcessor:
     @ti.kernel
     def process(self):
         for I in ti.grouped(self.inp):
-            self.out[I] = film_tonemap(self.inp[I])
+            self.out[I] = aces_tonemap(self.inp[I])

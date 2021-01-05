@@ -118,8 +118,8 @@ def unspherical(dir):
 @ti.func
 def sample_cube(tex: ti.template(), dir):
     I = V(0., 0.)
-    eps = 1e-5
     dps = 1 - 12 / tex.shape[0]
+    eps = 1e-7
     #dir.y, dir.z = dir.z, -dir.y
     if dir.z >= 0 and dir.z >= abs(dir.y) - eps and dir.z >= abs(dir.x) - eps:
         I = V(3 / 8, 3 / 8) + V(dir.x, dir.y) / dir.z / 8 * dps
@@ -133,7 +133,7 @@ def sample_cube(tex: ti.template(), dir):
         I = V(3 / 8, 5 / 8) + V(dir.x, -dir.z) / dir.y / 8 * dps
     if dir.y <= 0 and -dir.y >= abs(dir.x) - eps and -dir.y >= abs(dir.z) - eps:
         I = V(3 / 8, 1 / 8) + V(dir.x, dir.z) / -dir.y / 8 * dps
-    I = V(tex.shape[0], tex.shape[0]) * I
+    I = (tex.shape[0] - 1) * I
     return bilerp(tex, I)
 
 

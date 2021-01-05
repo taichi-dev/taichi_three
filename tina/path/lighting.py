@@ -3,6 +3,17 @@ from .geometry import *
 
 
 @ti.data_oriented
+class SkyboxLighting:
+    def __init__(self):
+        self.skybox = texture_as_field('assets/bridge.jpg')
+        self.skybox_lambert = texture_as_field('assets/bridge_lambert.jpg')
+
+    @ti.func
+    def background(self, rd):
+        return ce_untonemap(sample_cube(self.skybox, rd))
+
+
+@ti.data_oriented
 class RTXLighting:
     def __init__(self, maxlights=16):
         self.maxlights = maxlights
@@ -55,7 +66,35 @@ class RTXLighting:
     @ti.func
     def background(self, rd):
         if ti.static(hasattr(self, 'skybox')):
-            #return ce_untonemap(sample_cube(self.skybox, rd))
             return ce_untonemap(sample_spherical(self.skybox, rd))
         else:
             return 0.0
+
+    @ti.func
+    def shade_color(self, material, pos, normal, viewdir):
+        N_li, N_sky = 8, 8
+
+        res = V(0.0, 0.0, 0.0)
+        ro = pos + normal * eps * 8
+        for lind in range(self.get_nlights()):
+            for s in range(N_li):
+                # cast shadow ray to lights
+                ldir, lwei, ldis = self.redirect(pos, lind)
+                lwei *= max(0, ldir.dot(normal))
+                if Vall(lwei <= 0):
+                    continue
+                occdis, occind, occuv = self.tree.hit(ro, ldir)
+                if occdis < ldis:  # shadow occlusion
+                    continue
+                lwei *= material.brdf(normal, ldir, viewdir)
+                res += lwei / N_li
+
+        if ti.static(hasattr(self, 'skybox')):
+            for s in range(N_sky):
+                ldir, lwei = material.sample(viewdir, normal)
+                occdis, occind, occuv = self.tree.hit(ro, ldir)
+                if occdis >= inf:
+                    lwei *= self.background(ldir)
+                    res += lwei / N_sky
+
+        return res

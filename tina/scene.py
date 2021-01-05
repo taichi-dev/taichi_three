@@ -16,10 +16,18 @@ class Scene:
         self.options = options
         self.rtx = options.get('rtx', False)
         self.taa = options.get('taa', False)
+        self.ibl = options.get('ibl', False)
         self.pp = options.get('pp', True)
 
+        if not self.rtx:
+            if not self.ibl:
+                self.lighting = tina.Lighting()
+            else:
+                self.lighting = tina.SkyboxLighting()
+        else:
+            self.lighting = tina.RTXLighting()
+
         self.image = ti.Vector.field(3, float, self.res)
-        self.lighting = tina.Lighting() if not self.rtx else tina.RTXLighting()
         self.default_material = tina.Lambert()
         self.shaders = {}
         self.objects = {}
@@ -37,12 +45,9 @@ class Scene:
 
         @ti.materialize_callback
         def init_light():
-            if not self.rtx:
+            if not self.rtx and not self.ibl:
                 self.lighting.add_light(dir=[1, 2, 3], color=[0.9, 0.9, 0.9])
                 self.lighting.set_ambient_light([0.1, 0.1, 0.1])
-            else:
-                pass
-                #self.lighting.set_lights(np.array([[0, 0, 2]]))
 
     def update(self):
         if self.rtx:

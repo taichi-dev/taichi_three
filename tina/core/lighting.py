@@ -56,3 +56,19 @@ class Lighting:
     @ti.func
     def get_ambient_light_color(self):
         return self.ambient_color[None]
+
+    @ti.func
+    def shade_color(self, material, pos, normal, viewdir):
+        res = V(0.0, 0.0, 0.0)
+        res += self.get_ambient_light_color() * material.ambient()
+        for l in ti.smart(self.get_lights_range()):
+            light, lcolor = self.get_light_data(l)
+            light_dir = light.xyz - pos * light.w
+            light_distance = light_dir.norm()
+            light_dir /= light_distance
+            cos_i = normal.dot(light_dir)
+            if cos_i > 0:
+                lcolor /= light_distance**2
+                mcolor = material.shade(light_dir, viewdir)
+                res += cos_i * lcolor * mcolor
+        return res
