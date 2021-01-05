@@ -2,7 +2,8 @@ import tina
 
 scene = tina.Scene(smoothing=True, texturing=True, taa=True)
 
-mesh = tina.PrimitiveMesh.sphere()
+#mesh = tina.PrimitiveMesh.sphere()
+mesh = tina.PrimitiveMesh.cylinder()
 wire = tina.MeshToWire(mesh)
 scene.add_object(mesh)
 scene.add_object(wire)

@@ -5,10 +5,11 @@ print('[Tina] Hint: LMB to orbit, RMB to pan, wheel to zoom')
 
 
 class Control:
-    def __init__(self, gui, fov=60, blendish=False):
+    def __init__(self, gui, fov=60, is_ortho=False, blendish=False):
         self.gui = gui
         self.center = np.array([0, 0, 0], dtype=float)
         #self.up = np.array([0, 1, 1e-12], dtype=float)
+        self.is_ortho = is_ortho
         self.radius = 3.0
         self.theta = 1e-5
         self.phi = 0.0
@@ -64,8 +65,16 @@ class Control:
     def on_zoom(self, delta, origin):
         self.radius *= pow(0.89, delta)
 
+    def on_fovadj(self, delta, origin):
+        self.radius *= pow(0.89, delta)
+        self.fov *= pow(0.89, -delta)
+
     def on_lmb_drag(self, delta, origin):
         if not self.blendish:
+            if self.gui.is_pressed(self.gui.CTRL):
+                delta = delta * 0.2
+            if self.gui.is_pressed(self.gui.SHIFT):
+                delta = delta * 5
             self.on_orbit(delta, origin)
 
     def on_mmb_drag(self, delta, origin):
@@ -77,10 +86,24 @@ class Control:
 
     def on_rmb_drag(self, delta, origin):
         if not self.blendish:
+            if self.gui.is_pressed(self.gui.CTRL):
+                delta = delta * 0.2
+            if self.gui.is_pressed(self.gui.SHIFT):
+                delta = delta * 5
             self.on_pan(delta, origin)
 
     def on_wheel(self, delta, origin):
-        self.on_zoom(delta, origin)
+        if not self.blendish:
+            if self.gui.is_pressed(self.gui.CTRL):
+                self.on_fovadj(delta, origin)
+            else:
+                if self.gui.is_pressed(self.gui.CTRL):
+                    delta = delta * 0.2
+                if self.gui.is_pressed(self.gui.SHIFT):
+                    delta = delta * 5
+                self.on_zoom(delta, origin)
+        else:
+            self.on_zoom(delta, origin)
 
     def get_camera(self, engine):
         ret = self.process_events()
@@ -88,7 +111,7 @@ class Control:
         from .matrix import lookat, orthogonal, perspective
 
         aspect = self.gui.res[0] / self.gui.res[1]
-        if self.fov == 0:
+        if self.is_ortho:
             view = lookat(self.center, self.back / self.radius, self.up)
             proj = orthogonal(self.radius, aspect)
         else:
@@ -101,10 +124,7 @@ class Control:
     def on_event(self, e):
         if e.type == self.gui.PRESS:
             if e.key == self.gui.TAB:
-                if self.fov == 0:
-                    self.fov = 60
-                else:
-                    self.fov = 0
+                self.is_ortho = not self.is_ortho
                 return True
 
             elif e.key == self.gui.ESCAPE:

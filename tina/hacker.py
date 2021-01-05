@@ -24,29 +24,11 @@ def _():
             if isinstance(res, list):
                 res = tuple(res)
             super().__init__(name=name, res=res, **kwargs)
-            self._last_mpos = (0, 0)
             self._post_show_cbs = []
 
         def post_show(self, cb):
             self._post_show_cbs.append(cb)
             return cb
-
-        def get_events(self, *args):
-            events = super().get_events(*args)
-            if ti.get_os_name() == 'linux':
-                return events
-            for e in events:
-                if e.key != GUI.MOVE:
-                    yield e
-            curr_mpos = tuple(self.get_cursor_pos())
-            if curr_mpos != self._last_mpos:
-                self._last_mpos = curr_mpos
-                e = GUI.Event()
-                e.type = GUI.MOTION
-                e.key = GUI.MOVE
-                e.pos = curr_mpos
-                e.modifier = []
-                yield e
 
         def rects(self, topleft, bottomright, radius=1, color=0xffffff):
             import numpy as np
@@ -57,8 +39,8 @@ def _():
             self.lines(bottomright, bottomleft, radius, color)
             self.lines(bottomleft, topleft, radius, color)
 
-        def show(self):
-            super().show()
+        def show(self, *args, **kwargs):
+            super().show(*args, **kwargs)
             for cb in self._post_show_cbs:
                 cb(self)
 

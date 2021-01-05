@@ -51,12 +51,12 @@ def frustum(left=-1, right=1, bottom=-1, top=1, near=1, far=100):
     return lin
 
 
-def orthogonal(size=1, aspect=1, near=0, far=100):
+def orthogonal(size=1, aspect=1, near=-100, far=100):
     ax, ay = size * aspect, size
     return ortho(-ax, ax, -ay, ay, near, far)
 
 
-def perspective(fov=60, aspect=1, near=0.1, far=100):
+def perspective(fov=60, aspect=1, near=0.05, far=500):
     fov = np.tan(np.radians(fov) / 2)
     ax, ay = fov * aspect, fov
     return frustum(-near * ax, near * ax, -near * ay, near * ay, near, far)
