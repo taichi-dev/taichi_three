@@ -5,14 +5,14 @@ ti.init(ti.gpu)
 
 scene = tina.Scene(smoothing=True, taa=True, rtx=True)
 
-#roughness = tina.Param(float)
-#material = tina.CookTorrance(roughness=roughness)
-
-shineness = tina.Param(float, initial=32)
+metallic = tina.Param(float, initial=0.0)
 specular = tina.Param(float, initial=0.5)
-mat_diff = tina.Lambert()
-mat_spec = tina.Phong(shineness=shineness)
-material = tina.MixMaterial(mat_diff, mat_spec, specular)
+roughness = tina.Param(float, initial=0.4)
+material = tina.PBR(metallic=metallic, roughness=roughness, specular=specular)
+
+#shineness = tina.Param(float, initial=32)
+#specular = tina.Param(float, initial=0.5)
+#material = tina.Classic(shineness=shineness, specular=specular)
 
 model = tina.PrimitiveMesh.sphere()
 scene.add_object(model, material)

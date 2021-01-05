@@ -37,11 +37,35 @@ class IMaterial(Node):
     def sample_ibl(self, ibl, idir, nrm):
         raise NotImplementedError(type(self))
 
+    def __add__(self, other):
+        return AddMaterial(self, other)
+
+    def mix(self, other, factor):
+        return MixMaterial(self, other, factor)
+
+    def __mul__(self, factor):
+        return ScaleMaterial(self, factor)
+
+    def __rmul__(self, factor):
+        return ScaleMaterial(self, factor)
+
 
 @ti.func
 def calc_fresnel_factor(metallic, albedo, specular=0.5):
     f0 = metallic * albedo + (1 - metallic) * 0.16 * specular**2
     return f0
+
+
+class FresnelFactor(Node):
+    arguments = ['metallic', 'albedo', 'specular']
+    defaults = [0.0, 1.0, 0.5]
+
+    @ti.func
+    def __call__(self):
+        albedo = self.param('albedo')
+        metallic = self.param('metallic')
+        specular = self.param('specular')
+        return calc_fresnel_factor(metallic, albedo, specular)
 
 
 class MixMaterial(IMaterial):
@@ -79,6 +103,69 @@ class MixMaterial(IMaterial):
         else:
             odir, wei = self.mat1.sample(idir, nrm, sign)
             wei *= (1 - fac) / (1 - factor)
+        return odir, wei
+
+
+class ScaleMaterial(IMaterial):
+    arguments = ['factor']
+    defaults = [1.0]
+
+    def __init__(self, mat, factor):
+        super().__init__(factor=factor)
+        self.mat = mat
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        fac = self.param('factor')
+        f1 = self.mat.brdf(nrm, idir, odir)
+        return fac * f1
+
+    @ti.func
+    def ambient(self):
+        fac = self.param('factor')
+        f1 = self.mat1.ambient()
+        return fac * f1
+
+    @ti.func
+    def sample(self, idir, nrm, sign):
+        fac = self.param('factor')
+        odir, wei = self.mat2.sample(idir, nrm, sign)
+        wei *= fac
+        return odir, wei
+
+
+class AddMaterial(IMaterial):
+    arguments = []
+    defaults = []
+
+    def __init__(self, mat1, mat2):
+        super().__init__()
+        self.mat1 = mat1
+        self.mat2 = mat2
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        f1 = self.mat1.brdf(nrm, idir, odir)
+        f2 = self.mat2.brdf(nrm, idir, odir)
+        return f1 + f2
+
+    @ti.func
+    def ambient(self):
+        fac = self.param('factor')
+        f1 = self.mat1.ambient()
+        f2 = self.mat2.ambient()
+        return f1 + f2
+
+    @ti.func
+    def sample(self, idir, nrm, sign):
+        odir = V(0., 0., 0.)
+        wei = V(0., 0., 0.)
+        if ti.random(int) % 2 == 0:
+            odir, wei = self.mat1.sample(idir, nrm, sign)
+            wei *= 2
+        else:
+            odir, wei = self.mat2.sample(idir, nrm, sign)
+            wei *= 2
         return odir, wei
 
 
@@ -261,8 +348,8 @@ class Lambert(IMaterial):
 
 
 class Mirror(IMaterial):
-    arguments = ['color']
-    defaults = ['color']
+    arguments = []
+    defaults = []
 
     @ti.func
     def brdf(self, nrm, idir, odir):
@@ -331,4 +418,12 @@ def Classic(shineness=32, specular=0.4):
     mat_diff = tina.Lambert()
     mat_spec = tina.Phong(shineness=shineness)
     material = tina.MixMaterial(mat_diff, mat_spec, specular)
+    return material
+
+
+def PBR(albedo=1.0, metallic=0.0, roughness=0.4, specular=0.5):
+    mat_diff = tina.Lambert()
+    mat_spec = tina.CookTorrance(roughness=roughness)
+    f0 = tina.FresnelFactor(metallic=metallic, albedo=albedo, specular=specular)
+    material = tina.MixMaterial(mat_diff, mat_spec, f0)
     return material
