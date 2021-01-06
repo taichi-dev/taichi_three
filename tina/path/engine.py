@@ -116,15 +116,15 @@ class PathEngine:
 
     @ti.func
     def transmit(self, ro, rd, rc, rl):
-        near, ind, uv = self.geom.hit(ro, rd)
-        if ind == -1:
+        near, ind, gid, uv = self.geom.hit(ro, rd)
+        if gid == -1:
             # no hit
             rl += rc * self.lighting.background(rd)
             rc *= 0
         else:
             # hit object
             ro += near * rd
-            nrm, tex = self.geom.calc_geometry(near, ind, uv, ro, rd)
+            nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
 
             sign = 1
             if nrm.dot(rd) > 0:
@@ -138,7 +138,7 @@ class PathEngine:
                 'texcoord': tex,
             })
 
-            mtlid = self.geom.get_material_id(ind)
+            mtlid = self.geom.get_material_id(ind, gid)
             material = self.mtltab.get(mtlid)
 
             ro += nrm * eps * 8
@@ -149,9 +149,9 @@ class PathEngine:
                 li_wei *= max(0, new_rd.dot(nrm))
                 if Vall(li_wei <= 0):
                     continue
-                occ_near, occ_ind, occ_uv = self.geom.hit(ro, new_rd)
-                if occ_near < li_dis:  # shadow occlusion
-                    continue
+                occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, new_rd)
+                if occ_gid != -1 and occ_near < li_dis:  # shadow occlusion
+                    continue  # but what if it's glass?
                 li_wei *= material.brdf(nrm, -rd, new_rd)
                 li_clr += li_wei
 

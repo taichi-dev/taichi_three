@@ -18,6 +18,9 @@ class ParticleTracer:  # TODO: realize me
         self.sizes = ti.field(float, maxpars)
         if self.coloring:
             self.colors = ti.Vector.field(3, float, maxpars)
+        if self.multimtl:
+            self.mtlids = ti.field(int, maxpars)
+        self.npars = ti.field(int, ())
 
         @ti.materialize_callback
         def init_pars():
@@ -25,21 +28,24 @@ class ParticleTracer:  # TODO: realize me
             if self.coloring:
                 self.colors.fill(1)
 
+        self.tree = tina.BVHTree(self, self.maxpars * 4)
+
     @ti.kernel
     def _export_geometry(self, verts: ti.ext_arr(), sizes: ti.ext_arr()):
-        for i in range(self.nfaces[None]):
+        for i in range(self.npars[None]):
             sizes[i] = self.sizes[i]
             for k in ti.static(range(3)):
                 verts[i, k] = self.verts[i][k]
 
-    def build(self, tree):
-        pos = np.empty((self.nfaces[None], 3), dtype=np.float32)
-        rad = np.empty((self.nfaces[None]), dtype=np.float32)
+    def update(self):
+        pos = np.empty((self.npars[None], 3), dtype=np.float32)
+        rad = np.empty((self.npars[None]), dtype=np.float32)
         self._export_geometry(pos, rad)
-        tree.build(pos - rad, pos + rad)
+        rad = np.stack([rad, rad, rad], axis=1)
+        self.tree.build(pos - rad, pos + rad)
 
     def clear_objects(self):
-        self.nfaces[None] = 0
+        self.npars[None] = 0
 
     @ti.kernel
     def add_object(self, pars: ti.template(), mtlid: ti.template()):
@@ -65,3 +71,13 @@ class ParticleTracer:  # TODO: realize me
         rad = self.sizes[ind]
         hit, depth = ray_sphere_hit(pos, rad, ro, rd)
         return hit, depth, V(0., 0.)
+
+    @ti.func
+    def hit(self, ro, rd):
+        return self.tree.hit(ro, rd)
+
+    @ti.func
+    def get_material_id(self, ind):
+        if ti.static(not self.multimtl):
+            return 0
+        return self.mtlids[ind]

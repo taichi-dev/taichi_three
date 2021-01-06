@@ -129,7 +129,7 @@ def readgltf(path):
                     kwargs['metallic'] = value
                 elif key == 'roughnessFactor':
                     kwargs['roughness'] = value
-            return tina.CookTorrance(**kwargs)
+            return tina.PBR(**kwargs)
 
     def load_uri(uri):
         if uri.startswith('data:'):

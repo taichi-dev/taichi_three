@@ -14,7 +14,7 @@ class RTXLighting:
 
         @ti.materialize_callback
         def init_lights():
-            self.nlights[None] = 1
+            #self.nlights[None] = 1
             self.color.fill(2.0)
             self.rad.fill(0.1)
 

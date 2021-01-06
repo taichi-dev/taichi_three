@@ -20,7 +20,7 @@ class TriangleTracer:
             self.mtlids = ti.field(int, maxfaces)
         self.nfaces = ti.field(int, ())
 
-        self.tree = tina.BVHTree(self)
+        self.tree = tina.BVHTree(self, self.maxfaces * 4)
 
     def clear_objects(self):
         self.nfaces[None] = 0

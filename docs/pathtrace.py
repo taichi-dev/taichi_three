@@ -6,9 +6,12 @@ import tina
 ti.init(ti.gpu)
 
 scene = tina.PTScene(smoothing=True, texturing=True)
-material = tina.Phong(color=[0.25, 0.5, 0.5])
+material = tina.Phong()
 mesh = tina.MeshModel('assets/monkey.obj')
 scene.add_object(mesh, material)
+pars = tina.SimpleParticles()
+scene.add_object(pars, material)
+pars.set_particles(np.random.rand(2**10, 3) * 2 - 1)
 
 gui = ti.GUI('pathtrace', scene.res)
 
