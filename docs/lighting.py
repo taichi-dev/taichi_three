@@ -10,9 +10,9 @@ ti.init(ti.gpu)
 scene = tina.Scene()
 
 # 5. Material - for describing the material of an object
-material = tina.CookTorrance(metallic=0.6, roughness=0.2)
+material = tina.PBR(metallic=0.6, roughness=0.2)
 # parameters may also be specified by textures (add texturing=True to Scene)
-#material = tina.CookTorrance(basecolor=tina.Texture('assets/cloth.jpg'))
+#material = tina.PBR(basecolor=tina.Texture('assets/cloth.jpg'))
 
 model = tina.MeshModel('assets/monkey.obj')
 # load our model into the scene with material specified:

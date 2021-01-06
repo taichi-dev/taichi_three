@@ -123,13 +123,13 @@ class ScaleMaterial(IMaterial):
     @ti.func
     def ambient(self):
         fac = self.param('factor')
-        f1 = self.mat1.ambient()
+        f1 = self.mat.ambient()
         return fac * f1
 
     @ti.func
     def sample(self, idir, nrm, sign):
         fac = self.param('factor')
-        odir, wei = self.mat2.sample(idir, nrm, sign)
+        odir, wei = self.mat.sample(idir, nrm, sign)
         wei *= fac
         return odir, wei
 
@@ -432,9 +432,9 @@ def Classic(color=1.0, shineness=32, specular=0.4):
     return material
 
 
-def PBR(albedo=1.0, metallic=0.0, roughness=0.4, specular=0.5):
-    mat_diff = tina.Lambert()
+def PBR(basecolor=1.0, metallic=0.0, roughness=0.4, specular=0.5):
+    mat_diff = tina.Lambert() * basecolor
     mat_spec = tina.CookTorrance(roughness=roughness)
-    f0 = tina.FresnelFactor(metallic=metallic, albedo=albedo, specular=specular)
+    f0 = tina.FresnelFactor(metallic=metallic, albedo=basecolor, specular=specular)
     material = tina.MixMaterial(mat_diff, mat_spec, f0)
     return material

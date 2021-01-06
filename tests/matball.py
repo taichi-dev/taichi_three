@@ -3,12 +3,13 @@ import tina
 
 ti.init(ti.gpu)
 
-scene = tina.Scene(smoothing=True, taa=True, rtx=True)
+scene = tina.Scene(smoothing=True, taa=True)
 
+albedo = [1.0, 0.0, 0.0]
 metallic = tina.Param(float, initial=0.0)
 specular = tina.Param(float, initial=0.5)
 roughness = tina.Param(float, initial=0.4)
-material = tina.PBR(metallic=metallic, roughness=roughness, specular=specular)
+material = tina.PBR(albedo=albedo, metallic=metallic, roughness=roughness, specular=specular)
 
 #shineness = tina.Param(float, initial=32)
 #specular = tina.Param(float, initial=0.5)

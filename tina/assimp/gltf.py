@@ -127,8 +127,16 @@ def readgltf(path):
                     kwargs['basecolor'] = tina.Texture(img)
                 elif key == 'metallicFactor':
                     kwargs['metallic'] = value
+                elif key == 'metallicTexture':
+                    #assert value.get('texCoord', 0) == 0
+                    img = images[value['index']]
+                    kwargs['metallic'] = tina.Texture(img)
                 elif key == 'roughnessFactor':
                     kwargs['roughness'] = value
+                elif key == 'roughnessTexture':
+                    #assert value.get('texCoord', 0) == 0
+                    img = images[value['index']]
+                    kwargs['roughness'] = tina.Texture(img)
             return tina.PBR(**kwargs)
 
     def load_uri(uri):

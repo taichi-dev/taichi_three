@@ -4,10 +4,10 @@ from ..advans import *
 @ti.data_oriented
 class SkyboxLighting:
     def __init__(self):
-        #self.skybox = tina.Skybox('assets/skybox.jpg', cubic=True)
+        self.skybox = tina.Skybox('assets/skybox.jpg', cubic=True)
         #self.skybox = tina.Skybox('assets/cobelt.png')
         #self.skybox = tina.Skybox('assets/market.jpg')
-        self.skybox = tina.Skybox('assets/grass.jpg')
+        #self.skybox = tina.Skybox('assets/grass.jpg')
         self.ibls = {}
         for mattype in [tina.Mirror, tina.Lambert]:
             self.ibls[mattype] = mattype.cook_for_ibl(self.skybox)

@@ -30,17 +30,18 @@ Here's a list of important features currently Tina have:
 
 * triangles - `docs/triangle.py`
 * particles - `docs/particles.py`
-* construct surface from particles - `examples/mciso_mpm3d.py`
 * smooth shading - `docs/smooth.py`
 * mesh wireframe - `docs/wireframe.py`
 * mesh grid - `examples/meshgrid_wave.py`
+* construct surface from particles - `examples/mciso_mpm3d.py`
 * lighting & materials - `docs/lighting.py`
-* loading GLTF scene (WIP) - `docs/gltf.py`
+* loading GLTF scene - `docs/gltf.py`
 * transforming models - `docs/transform.py`
 * real-time rendering volume - `docs/volume.py`
 * loading OBJ models - `docs/monkey.py`
-* path tracing (WIP) - `tests/path.py`
-* cornell box (WIP) `examples/cornell_box.py`
+* path tracing (WIP) - `docs/pathtrace.py`
+* real-time ray tracing (WIP) - `examples/material_ball.py`
+* cornell box (WIP) - `examples/cornell_box.py`
 * Blender addon (WIP) - [`Taichi-Blend`](https://github.com/taichi-dev/taichi_blend)
 
 If you didn't find your feature of interest, feel free to [open an issue](https://github.com/taichi-dev/taichi_three/issues/new/choose) for requesting it :)
