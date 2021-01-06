@@ -35,7 +35,7 @@ class Scene:
         if self.rtx:
             self.stack = tina.Stack()
             self.tracer = tina.TriangleTracer(**options, multimtl=False)
-            self.tree = tina.BVHTree(self.tracer)
+            self.geom = self.tracer.tree
 
         if self.pp:
             self.postp = tina.PostProcessor(self.image, self.res)
@@ -57,14 +57,14 @@ class Scene:
             self.tracer.clear_objects()
             for object in self.objects:
                 self.tracer.add_object(object, 0)
-            self.tracer.build(self.tree)
+            self.tracer.update()
 
     def _ensure_material_shader(self, material):
         if material not in self.shaders:
             if not self.rtx:
                 shader = tina.Shader(self.image, self.lighting, material)
             else:
-                shader = tina.RTXShader(self.image, self.lighting, self.tree, material)
+                shader = tina.RTXShader(self.image, self.lighting, self.geom, material)
             self.shaders[material] = shader
 
     def add_object(self, object, material=None, raster=None):

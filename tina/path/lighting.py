@@ -59,8 +59,8 @@ class RTXLighting:
             return 0.0
 
     @ti.func
-    def shade_color(self, material, tree, pos, normal, viewdir):
-        N_li, N_sky = 8, 8
+    def shade_color(self, material, geom, pos, normal, viewdir):
+        N_li, N_sky = 1, 1
 
         res = V(0.0, 0.0, 0.0)
         ro = pos + normal * eps * 8
@@ -71,7 +71,7 @@ class RTXLighting:
                 lwei *= max(0, ldir.dot(normal))
                 if Vall(lwei <= 0):
                     continue
-                occdis, occind, occuv = tree.hit(ro, ldir)
+                occdis, occind, occuv = geom.hit(ro, ldir)
                 if occdis < ldis:  # shadow occlusion
                     continue
                 lwei *= material.brdf(normal, ldir, viewdir)
@@ -80,7 +80,7 @@ class RTXLighting:
         if ti.static(hasattr(self, 'skybox')):
             for s in range(N_sky):
                 ldir, lwei = material.sample(viewdir, normal, 1)
-                occdis, occind, occuv = tree.hit(ro, ldir)
+                occdis, occind, occuv = geom.hit(ro, ldir)
                 if occdis >= inf:
                     lclr = lwei * self.background(ldir)
                     res += lclr / N_sky

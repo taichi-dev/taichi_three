@@ -40,8 +40,7 @@ Here's a list of important features currently Tina have:
 * real-time rendering volume - `docs/volume.py`
 * loading OBJ models - `docs/monkey.py`
 * path tracing (WIP) - `docs/pathtrace.py`
-* real-time ray tracing (WIP) - `examples/material_ball.py`
-* cornell box (WIP) - `examples/cornell_box.py`
+* real-time ray tracing (WIP) - `tests/rtx.py`
 * Blender addon (WIP) - [`Taichi-Blend`](https://github.com/taichi-dev/taichi_blend)
 
 If you didn't find your feature of interest, feel free to [open an issue](https://github.com/taichi-dev/taichi_three/issues/new/choose) for requesting it :)
