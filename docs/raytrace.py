@@ -6,10 +6,9 @@ import tina
 ti.init(ti.gpu)
 
 scene = tina.Scene(smoothing=True, texturing=True, rtx=True, taa=True)
-#material = tina.Phong(color=[0.25, 0.5, 0.5])
+material = tina.Phong(shineness=64)
+mesh = tina.PrimitiveMesh.sphere()
 #mesh = tina.MeshModel('assets/monkey.obj')
-material = tina.Phong(specular=1.0)
-mesh = tina.MeshModel('assets/sphere.obj')
 scene.add_object(mesh, material)
 
 gui = ti.GUI('raytrace', scene.res)
