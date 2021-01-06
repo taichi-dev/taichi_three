@@ -21,6 +21,7 @@ class TriangleTracer:
         self.nfaces = ti.field(int, ())
 
         self.tree = tina.BVHTree(self, self.maxfaces * 4)
+        self.impo = tina.ImportanceCDF(self.maxfaces)
 
     def clear_objects(self):
         self.nfaces[None] = 0
@@ -83,7 +84,9 @@ class TriangleTracer:
         self._export_vertices(verts)
         bmax = np.max(verts, axis=1)
         bmin = np.min(verts, axis=1)
+        area = np.ones(len(verts))  # TODO: implement the correct calculation
         self.tree.build(bmin, bmax)
+        self.impo.build(area)
 
     @ti.func
     def hit(self, ro, rd):
@@ -127,3 +130,17 @@ class TriangleTracer:
         v2 = self.verts[ind, 2]
         hit, depth, uv = ray_triangle_hit(v0, v1, v2, ro, rd)
         return hit, depth, uv
+
+    @ti.func
+    def choice(self, ro):
+        ind = self.impo.choice()
+        v0 = self.verts[ind, 0]
+        v1 = self.verts[ind, 1]
+        v2 = self.verts[ind, 2]
+        # https://math.stackexchange.com/questions/18686/uniform-random-point-in-triangle
+        r1, r2 = ti.random(), ti.random()
+        r1 = ti.sqrt(r1)
+        pos = (1 - r1) * v0 + r1 * (1 - r2) * v1 + r2 * r1 * v2
+        rd = (pos - ro).normalized()
+        wei = 1 / (pos - ro).norm_sqr()
+        return rd, wei

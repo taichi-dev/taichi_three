@@ -29,6 +29,7 @@ class ParticleTracer:  # TODO: realize me
                 self.colors.fill(1)
 
         self.tree = tina.BVHTree(self, self.maxpars * 4)
+        self.impo = tina.ImportanceCDF(self.maxpars)
 
     @ti.kernel
     def _export_geometry(self, verts: ti.ext_arr(), sizes: ti.ext_arr()):
@@ -41,8 +42,10 @@ class ParticleTracer:  # TODO: realize me
         pos = np.empty((self.npars[None], 3), dtype=np.float32)
         rad = np.empty((self.npars[None]), dtype=np.float32)
         self._export_geometry(pos, rad)
+        area = np.pi * rad**2  # should multiply luminance too
         rad = np.stack([rad, rad, rad], axis=1)
         self.tree.build(pos - rad, pos + rad)
+        self.impo.build(area)
 
     def clear_objects(self):
         self.npars[None] = 0
@@ -75,6 +78,17 @@ class ParticleTracer:  # TODO: realize me
     @ti.func
     def hit(self, ro, rd):
         return self.tree.hit(ro, rd)
+
+    @ti.func
+    def choice(self, ro):
+        ind = self.impo.choice()
+        pos = self.verts[ind]
+        rad = self.sizes[ind]
+        u, v = ti.random() * 2 - 1, ti.random()
+        pos += spherical(u, v) * rad
+        rd = (pos - ro).normalized()
+        wei = 1 / (pos - ro).norm_sqr()
+        return rd, wei
 
     @ti.func
     def get_material_id(self, ind):

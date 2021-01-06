@@ -4,4 +4,5 @@ if __import__('lazyimp').lazyguard:
     from .geometry import *
     from .particle import *
     from .triangle import *
+    from .importance import *
     from .tree import *

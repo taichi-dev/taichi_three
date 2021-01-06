@@ -232,6 +232,19 @@ class MixedGeometryTracer:
                 mtlid = tracer.get_material_id(ind)
         return mtlid
 
+    @ti.func
+    def choice(self, ro):
+        if ti.static(len(self.tracers) == 1):
+            return self.tracers[0].choice(ro)
+
+        wei = 0.0
+        rd = V(0., 0., 0.)
+        gid = ti.random(int) % len(self.tracers)
+        for i, tracer in ti.static(enumerate(self.tracers)):
+            if i == gid:
+                rd, wei = tracer.choice(ro)
+        return rd, wei
+
 
 # noinspection PyMissingConstructor
 class PTScene(Scene):

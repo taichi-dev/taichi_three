@@ -143,20 +143,38 @@ class PathEngine:
 
             ro += nrm * eps * 8
             li_clr = V(0., 0., 0.)
-            for li_ind in range(self.lighting.get_nlights()):
-                # cast shadow ray to lights
-                new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
-                li_wei *= max(0, new_rd.dot(nrm))
-                if Vall(li_wei <= 0):
-                    continue
-                occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, new_rd)
-                if occ_gid != -1 and occ_near < li_dis:  # shadow occlusion
-                    continue  # but what if it's glass?
-                li_wei *= material.brdf(nrm, -rd, new_rd)
-                li_clr += li_wei
+            if ti.static(0):
+                for li_ind in range(self.lighting.get_nlights()):
+                    # cast shadow ray to lights
+                    new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
+                    li_wei *= max(0, new_rd.dot(nrm))
+                    if Vall(li_wei <= 0):
+                        continue
+                    occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, new_rd)
+                    if occ_gid != -1 and occ_near < li_dis:  # shadow occlusion
+                        continue  # but what if it's glass?
+                    li_wei *= material.brdf(nrm, -rd, new_rd)
+                    li_clr += li_wei
 
-            # sample indirect light
-            rd, ir_wei = material.sample(-rd, nrm, sign)
+            # importance sampling indirect light by material
+            mat_rd, mat_wei = material.sample(-rd, nrm, sign)
+
+            # importance sampling indirect light by geometry
+            geo_wei = V(0., 0., 0.)
+            geo_rd, geo_wei = self.geom.choice(ro)
+            geo_wei *= material.brdf(nrm, -rd, geo_rd)
+
+            wei = V(0., 0., 0.)
+            factor = lerp(max(eps, Vavg(geo_wei)) / max(eps, Vavg(geo_wei + mat_wei)), 0.06, 0.94)
+            if ti.random() < factor:
+                geo_rd = 0
+                geo_wei = 0
+                wei = geo_wei / factor
+                rd = geo_rd
+            else:
+                wei = mat_wei / (1 - factor)
+                rd = mat_rd
+
             if rd.dot(nrm) < 0:
                 # refract into / outof
                 ro -= nrm * eps * 16
@@ -164,6 +182,6 @@ class PathEngine:
             tina.Input.clear_g_pars()
 
             rl += rc * li_clr
-            rc *= ir_wei
+            rc *= wei
 
         return ro, rd, rc, rl
