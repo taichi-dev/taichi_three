@@ -13,6 +13,7 @@ def readgltf(path):
     }
 
     if isinstance(path, str):
+        print(f'[Tina] Loading GLTF file: {path}...')
         with open(path, 'rb') as f:
             root = json.load(f)
     elif isinstance(path, dict):
@@ -150,6 +151,7 @@ def readgltf(path):
                 data = f.read()
         return data
 
+    print(f'[Tina] Loading GLTF buffers...')
     buffers = []
     for buffer in root['buffers']:
         data = load_uri(buffer['uri'])
@@ -176,6 +178,7 @@ def readgltf(path):
         array = np.frombuffer(buffer, dtype=dtype, count=count)
         return array
 
+    print(f'[Tina] Loading GLTF images...')
     images = []
     if 'images' in root:
         for image in root['images']:
@@ -189,6 +192,7 @@ def readgltf(path):
             im = np.swapaxes(im, 0, 1)
             images.append(im)
 
+    print(f'[Tina] Loading GLTF materials...')
     materials = []
     if 'materials' in root:
         for material in root['materials']:
@@ -227,8 +231,11 @@ def readgltf(path):
             res_scene.add_node(res_node)
         return res_scene
 
+    print(f'[Tina] Loading GLTF scene...')
     scene = root['scenes'][root.get('scene', 0)]
     res_scene = parse_scene(scene)
+
+    print(f'[Tina] Loading GLTF done')
     return res_scene
 
 

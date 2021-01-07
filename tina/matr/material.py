@@ -326,7 +326,7 @@ class CookTorrance(IMaterial):
             for ibl, (roughness, rough_step) in zip(ibls[1:], cls.rough_levels):
                 print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for CookTorrance with roughness {roughness}...')
                 bake(ibl, roughness, nsamples)
-                nsamples = int(nsamples * 3 ** (rough_step * 4))
+                nsamples = int(nsamples * min(3 ** (rough_step * 4), 6))
                 #ti.imshow(ce_tonemap(ibl.img.to_numpy()))
             #print('[Tina] Baking fresnel LUT for CookTorrance...')
             #bake_lut()
@@ -350,7 +350,7 @@ class Lambert(IMaterial):
     def cook_for_ibl(cls, env):
         ibl = tina.Skybox(env.resolution // 4)
         tmp = ti.Vector.field(3, float, ibl.shape)
-        nsamples = 4096
+        nsamples = 8192
 
         @ti.kernel
         def bake():

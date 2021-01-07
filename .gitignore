@@ -1,6 +1,7 @@
 /dist/
 /build/
 /*.egg-info/
+/rubbish.bin
 __pycache__/
 /GNUmakefile
 /.*_localrc

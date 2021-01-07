@@ -34,7 +34,6 @@ class Control:
         right /= np.linalg.norm(right)
         up /= np.linalg.norm(up)
 
-        delta *= 2
         self.center -= (right * delta[0] + up * delta[1]) * self.radius
 
     @property

@@ -188,5 +188,4 @@ class Scene:
         Load the scene from a GLTF format file
         '''
 
-        from .assimp.gltf import readgltf
-        return readgltf(path).extract(self)
+        return tina.readgltf(path).extract(self)
