@@ -9,11 +9,13 @@ class Node:
     def __init__(self, **kwargs):
         self.params = {}
         for dfl, key in zip(self.defaults, self.arguments):
-            value = kwargs.get(key, None)
-            if value is None:
+            if key not in kwargs:
                 if dfl is None:
                     raise ValueError(f'`{key}` must specified for `{type(self)}`')
                 value = dfl
+            else:
+                value = kwargs[key]
+                del kwargs[key]
 
             if isinstance(value, (int, float, ti.Matrix)):
                 value = Const(value)
@@ -25,6 +27,10 @@ class Node:
                 else:
                     value = Input(value)
             self.params[key] = value
+
+        for key in kwargs.keys():
+            raise TypeError(
+                    f"{type(self).__name__}() got an unexpected keyword argument '{key}', supported keywords are: {self.arguments}")
 
     def __call__(self, *args, **kwargs):
         raise NotImplementedError(type(self))

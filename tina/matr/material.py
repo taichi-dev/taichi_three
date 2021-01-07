@@ -526,6 +526,11 @@ def Classic(color=1.0, shineness=32, specular=0.4):
     return material
 
 
+def Diffuse(color=1.0):
+    material = tina.Lambert() * color
+    return material
+
+
 def PBR(basecolor=1.0, metallic=0.0, roughness=0.4, specular=0.5):
     mat_diff = tina.Lambert() * basecolor
     f0 = tina.FresnelFactor(metallic=metallic, albedo=basecolor, specular=specular)

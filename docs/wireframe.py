@@ -8,7 +8,8 @@ import tina
 ti.init(ti.cpu)
 
 # you may specify the line width for rendering wireframes:
-scene = tina.Scene(linewidth=2)
+# taa=True turns on Temporal Anti-Aliasing to make lines smoother
+scene = tina.Scene(linewidth=2, taa=True)
 
 # load the monkey using `tina.MeshModel` node (`tina.SimpleMesh` works too):
 model = tina.MeshModel('assets/monkey.obj')
