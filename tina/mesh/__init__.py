@@ -7,3 +7,4 @@ if __import__('lazyimp').lazyguard:
     from .model import *
     from .simple import *
     from .prim import *
+    from .conn import *

@@ -32,6 +32,9 @@ class MeshModel:
         self.maxcoors = len(obj['vt'])
         self.maxnorms = len(obj['vn'])
 
+    def get_npolygon(self):
+        return 3
+
     @ti.func
     def pre_compute(self):
         pass

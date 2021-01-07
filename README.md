@@ -28,8 +28,9 @@ python3 -m pip install dist/*.whl
 
 Here's a list of important features currently Tina have:
 
-* triangles - `docs/triangle.py`
 * particles - `docs/particles.py`
+* triangle meshes - `docs/triangle.py`
+* connective meshes - `tests/connect.py`
 * smooth shading - `docs/smooth.py`
 * mesh wireframe - `docs/wireframe.py`
 * mesh grid - `examples/meshgrid_wave.py`
