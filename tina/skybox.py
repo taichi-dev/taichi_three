@@ -38,7 +38,7 @@ def unspheremap(coor):
 
 @ti.data_oriented
 class Skybox:
-    def __init__(self, path, cubic=False):
+    def __init__(self, path, scale=None, cubic=False):
         shape = path
         if isinstance(shape, int):
             if cubic:
@@ -59,6 +59,13 @@ class Skybox:
         else:
             self.resolution = shape[1]
         self.shape = shape
+
+        if scale is not None:
+            @ti.materialize_callback
+            @ti.kernel
+            def scale_skybox():
+                for I in ti.grouped(self.img):
+                    self.img[I] *= scale
 
     def _from_raw(self, img):
         @ti.materialize_callback

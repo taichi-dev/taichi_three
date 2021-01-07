@@ -195,68 +195,6 @@ class CookTorrance(IMaterial):
     def ambient(self):
         return 1.0
 
-    @ti.func
-    def sub_brdf(self, nrm, idir, odir):  # idir = L, odir = V
-        roughness = self.param('roughness')
-        f0 = self.param('fresnel')
-        EPS = 1e-10
-
-        half = (idir + odir).normalized()
-        NoH = max(EPS, half.dot(nrm))
-        NoL = max(EPS, idir.dot(nrm))
-        NoV = max(EPS, odir.dot(nrm))
-        VoH = min(1 - EPS, max(EPS, half.dot(odir)))
-        LoH = min(1 - EPS, max(EPS, half.dot(idir)))
-
-        # Trowbridge-Reitz GGX microfacet distribution
-        alpha2 = max(0, roughness**2)
-        denom = 1 - NoH**2 * (1 - alpha2)
-        ndf = alpha2 / denom**2  # D
-
-        # Smith's method with Schlick-GGX
-        k = (roughness + 1)**2 / 8
-        vdf = 1 / ((NoV * (1 - k) + k))
-        vdf *= 1 / ((NoL * (1 - k) + k))  # G
-
-        # GGX partial geometry term
-        #tan2 = (1 - VoH**2) / VoH**2
-        #vdf = 1 / (1 + ti.sqrt(1 + roughness**2 * tan2))
-
-        # Fresnel-Schlick approximation
-        #kf = abs((1 - ior) / (1 + ior))**2
-        #f0 = kf * basecolor + (1 - kf) * metallic
-        fdf = f0 + (1 - f0) * (1 - VoH)**5  # F
-
-        return fdf, vdf, ndf
-
-    @ti.func
-    def brdf(self, nrm, idir, odir):
-        fdf, vdf, ndf = self.sub_brdf(nrm, idir, odir)
-        return fdf * vdf * ndf / 4
-
-    @ti.func
-    def sample(self, idir, nrm, sign):
-        roughness = self.param('roughness')  # TODO: param duplicate evaluation?
-        alpha2 = max(0, roughness**2)
-        EPS = 1e-10
-
-        # https://zhuanlan.zhihu.com/p/95865910
-        u, v = ti.random(), ti.random()
-        u = ti.sqrt((1 - u) / (1 - u * (1 - alpha2)))
-        rdir = reflect(-idir, nrm)
-        axes = tangentspace(rdir)
-        odir = axes @ spherical(u, v)
-
-        pdf = 1.0
-        if odir.dot(nrm) < 0:
-            odir = -odir
-            pdf = 0.0  # TODO: fix energy loss on border
-        else:
-            fdf, vdf, ndf = self.sub_brdf(nrm, idir, odir)
-            pdf = fdf * vdf / 4
-
-        return odir, pdf
-
     #rough_levels = [0.5, 1.0]
     rough_levels = [0.03, 0.08, 0.18, 0.35, 0.65, 1.0]
     rough_levels = [(a, a - b) for a, b in zip(rough_levels, [0] + rough_levels)]
@@ -324,6 +262,68 @@ class CookTorrance(IMaterial):
 
         return tuple(ibls), lut
 
+    @ti.func
+    def sub_brdf(self, nrm, idir, odir):  # idir = L, odir = V
+        roughness = self.param('roughness')
+        f0 = self.param('fresnel')
+        EPS = 1e-10
+
+        half = (idir + odir).normalized()
+        NoH = max(EPS, half.dot(nrm))
+        NoL = max(EPS, idir.dot(nrm))
+        NoV = max(EPS, odir.dot(nrm))
+        VoH = min(1 - EPS, max(EPS, half.dot(odir)))
+        LoH = min(1 - EPS, max(EPS, half.dot(idir)))
+
+        # Trowbridge-Reitz GGX microfacet distribution
+        alpha2 = max(0, roughness**2)
+        denom = 1 - NoH**2 * (1 - alpha2)
+        ndf = alpha2 / denom**2  # D
+
+        # Smith's method with Schlick-GGX
+        k = (roughness + 1)**2 / 8
+        vdf = 0.5 / ((NoV * k + 1 - k))
+        vdf *= 0.5 / ((NoL * k + 1 - k))  # G
+
+        # GGX partial geometry term
+        #tan2 = (1 - VoH**2) / VoH**2
+        #vdf = 1 / (1 + ti.sqrt(1 + roughness**2 * tan2))
+
+        # Fresnel-Schlick approximation
+        #kf = abs((1 - ior) / (1 + ior))**2
+        #f0 = kf * basecolor + (1 - kf) * metallic
+        fdf = f0 + (1 - f0) * (1 - VoH)**5  # F
+
+        return fdf, vdf, ndf
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        fdf, vdf, ndf = self.sub_brdf(nrm, idir, odir)
+        return fdf * vdf * ndf
+
+    @ti.func
+    def sample(self, idir, nrm, sign):
+        roughness = self.param('roughness')  # TODO: param duplicate evaluation?
+        alpha2 = max(0, roughness**2)
+        EPS = 1e-10
+
+        # https://zhuanlan.zhihu.com/p/95865910
+        u, v = ti.random(), ti.random()
+        u = ti.sqrt((1 - u) / (1 - u * (1 - alpha2)))
+        rdir = reflect(-idir, nrm)
+        axes = tangentspace(rdir)
+        odir = axes @ spherical(u, v)
+
+        pdf = 1.0
+        if odir.dot(nrm) < 0:
+            odir = -odir
+            pdf = 0.0  # TODO: fix energy loss on border
+        else:
+            fdf, vdf, ndf = self.sub_brdf(nrm, idir, odir)
+            pdf = fdf
+
+        return odir, pdf
+
 
 class Lambert(IMaterial):
     arguments = []
@@ -335,6 +335,14 @@ class Lambert(IMaterial):
 
     def ambient(self):
         return 1.0
+
+    @ti.func
+    def sample(self, idir, nrm, sign):
+        u, v = ti.random(), ti.random()
+        axes = tangentspace(nrm)
+        odir = axes @ spherical(u, v)
+        odir = odir.normalized()
+        return odir, 1.0
 
     @classmethod
     def cook_for_ibl(cls, env, precision):

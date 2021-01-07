@@ -10,7 +10,9 @@ class RTXLighting:
         self.color = ti.Vector.field(3, float, maxlights)
         self.rad = ti.field(float, maxlights)
         self.nlights = ti.field(int, ())
-        self.skybox = tina.Skybox('assets/skybox.jpg', cubic=True)
+        #self.skybox = tina.Skybox('assets/skybox.jpg', cubic=True)
+        self.skybox = tina.Skybox('assets/simplelight.png')
+        #self.skybox = tina.Skybox(np.array([[[1.0, 1.0, 1.0]]]))
 
         @ti.materialize_callback
         def init_lights():
