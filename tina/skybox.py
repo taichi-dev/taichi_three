@@ -85,3 +85,9 @@ class Skybox:
             I = (V(*self.shape) - 1) * spheremap(dir)
             return bilerp(self.img, I)
 
+    @ti.func
+    def unmap(self, I):
+        ti.static_assert(not self.cubic)
+        coor = I / (V(*ibl.shape) - 1)
+        return unspheremap(coor)
+

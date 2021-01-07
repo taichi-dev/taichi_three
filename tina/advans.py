@@ -100,7 +100,7 @@ def tangentspace(nrm):
 @ti.func
 def spherical(h, p):
     unit = V(ti.cos(p * ti.tau), ti.sin(p * ti.tau))
-    dir = V23(ti.sqrt(1 - h**2) * unit, h)
+    dir = V23(ti.sqrt(max(0, 1 - h**2)) * unit, h)
     return dir
 
 

@@ -196,8 +196,7 @@ class CookTorrance(IMaterial):
         ndf = alpha2 / denom**2
 
         # Smith's method with Schlick-GGX
-        #k = (roughness + 1)**2 / 8
-        k = alpha2 / 2
+        k = (roughness + 1)**2 / 8
         vdf = 1 / ((NoV * (1 - k) + k))
         vdf *= 1 / ((NoL * (1 - k) + k))
 
@@ -230,11 +229,7 @@ class CookTorrance(IMaterial):
         axes = tangentspace(rdir)
         odir = axes @ spherical(u, v)
 
-        half = (idir + odir).normalized()
-        NoH = max(EPS, half.dot(nrm))
-
         pdf = 1.0
-
         if odir.dot(nrm) <= 0:
             odir = -odir
             pdf = 0.0
@@ -336,11 +331,10 @@ class Lambert(IMaterial):
         @ti.kernel
         def bake():
             # https://zhuanlan.zhihu.com/p/261005894
-            for I in ti.grouped(ibl.img):
+            for I in ti.smart(ibl):
                 res = V(0., 0., 0.)
                 for s in range(nsamples):
-                    coor = I / (V(*ibl.shape) - 1)
-                    dir = tina.unspheremap(coor)
+                    dir = ibl.unmap(I)
                     u, v = ti.random(), ti.random()
                     odir = tangentspace(dir) @ spherical(u, v)
                     wei = skybox.sample(odir) * u
@@ -445,7 +439,7 @@ def Classic(color=1.0, shineness=32, specular=0.4):
 
 def PBR(basecolor=1.0, metallic=0.0, roughness=0.4, specular=0.5):
     mat_diff = tina.Lambert() * basecolor
-    mat_spec = tina.CookTorrance(roughness=roughness)
     f0 = tina.FresnelFactor(metallic=metallic, albedo=basecolor, specular=specular)
+    mat_spec = tina.CookTorrance(roughness=roughness, fresnel=f0)
     material = tina.MixMaterial(mat_diff, mat_spec, f0)
     return material
