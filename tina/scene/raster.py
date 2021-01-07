@@ -18,6 +18,7 @@ class Scene:
         self.taa = options.get('taa', False)
         self.ibl = options.get('ibl', None)
         self.pp = options.get('pp', True)
+        self.bgcolor = options.get('bgcolor', 0)
 
         if not self.rtx:
             if not self.ibl:
@@ -136,7 +137,7 @@ class Scene:
         if self.taa:
             self.engine.randomize_bias(self.accum.count[None] == 0)
 
-        self.image.fill(0)
+        self.image.fill(self.bgcolor)
         self.engine.clear_depth()
 
         for object, oinfo in self.objects.items():

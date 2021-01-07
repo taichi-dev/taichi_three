@@ -47,7 +47,7 @@ class PathEngine:
             val = lerp((I // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
             if self.cnt[I] != 0:
                 val = self.img[I] / self.cnt[I]
-            if not (val >= 0 or val <= 0):
+            if not all(val >= 0 or val <= 0):  # NaN?
                 val = V(.9, .4, .9)
             val = tonemap(val)
             if ti.static(is_ext):

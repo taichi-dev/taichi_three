@@ -58,6 +58,12 @@ class PTScene(Scene):
         self.objects = []
         self.tracers = []
 
+        @ti.materialize_callback
+        def init_mtltab():
+            self.mtltab.clear_materials()
+            for material in self.materials:
+                self.mtltab.add_material(material)
+
     def add_object(self, object, material=None, tracer=None):
         if material is None:
             material = self.default_material
@@ -85,11 +91,8 @@ class PTScene(Scene):
 
     def update(self):
         self.engine.clear_image()
-        self.mtltab.clear_materials()
         for tracer in self.geom.tracers:
             tracer.clear_objects()
-        for material in self.materials:
-            self.mtltab.add_material(material)
         for object, mtlid, tracer in self.objects:
             tracer.add_object(object, mtlid)
         for tracer in self.geom.tracers:
