@@ -30,7 +30,7 @@ class IMaterial(Node):
         return odir, brdf
 
     @classmethod
-    def cook_for_ibl(cls, env):
+    def cook_for_ibl(cls, env, precision):
         raise NotImplementedError(cls)
 
     @ti.func
@@ -286,7 +286,7 @@ class CookTorrance(IMaterial):
         return wei
 
     @classmethod
-    def cook_for_ibl(cls, env):
+    def cook_for_ibl(cls, env, precision):
         @ti.kernel
         def bake(ibl: ti.template(),
                 roughness: ti.template(),
@@ -304,14 +304,7 @@ class CookTorrance(IMaterial):
                     res += wei * u
                 ibl.img[I] = res / nsamples
 
-        lutres = 64
-        lutsamples = 256
-        #lut = ti.Vector.field(2, float, (lutres, lutres))
         lut = texture_as_field('assets/lut.jpg')
-
-        #@ti.kernel
-        #def bake_lut():
-        #    pass
 
         ibls = [env]
         resolution = env.resolution
@@ -322,14 +315,11 @@ class CookTorrance(IMaterial):
 
         @ti.materialize_callback
         def init_ibl():
-            nsamples = 2048
+            nsamples = 4 * precision
             for ibl, (roughness, rough_step) in zip(ibls[1:], cls.rough_levels):
                 print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for CookTorrance with roughness {roughness}...')
                 bake(ibl, roughness, nsamples)
                 nsamples = int(nsamples * 3**(rough_step * 4))
-                #ti.imshow(ce_tonemap(ibl.img.to_numpy()))
-            #print('[Tina] Baking fresnel LUT for CookTorrance...')
-            #bake_lut()
             print('[Tina] Baking IBL map for CookTorrance done')
 
         return tuple(ibls), lut
@@ -347,10 +337,10 @@ class Lambert(IMaterial):
         return 1.0
 
     @classmethod
-    def cook_for_ibl(cls, env):
-        ibl = tina.Skybox(env.resolution // 4)
+    def cook_for_ibl(cls, env, precision):
+        ibl = tina.Skybox(env.resolution // 6)
         tmp = ti.Vector.field(3, float, ibl.shape)
-        nsamples = 32768
+        nsamples = 256 * precision
 
         @ti.kernel
         def bake():
@@ -466,7 +456,7 @@ class Mirror(IMaterial):
         return 0.0
 
     @classmethod
-    def cook_for_ibl(cls, env):
+    def cook_for_ibl(cls, env, precision):
         return env
 
     @ti.func

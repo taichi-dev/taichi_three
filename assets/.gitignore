@@ -5,3 +5,4 @@ lens.*
 *.blend*
 hp_*
 *.hdr
+*.npz

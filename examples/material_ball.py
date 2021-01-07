@@ -3,7 +3,7 @@ import tina
 
 ti.init(ti.gpu)
 
-scene = tina.Scene(smoothing=True, taa=True, ibl=True)
+scene = tina.Scene(smoothing=True, taa=True, ibl='assets/skybox.jpg')
 
 roughness = tina.Param(float, initial=0.15)
 metallic = tina.Param(float, initial=0.25)

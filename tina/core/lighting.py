@@ -3,15 +3,29 @@ from ..advans import *
 
 @ti.data_oriented
 class SkyboxLighting:
-    def __init__(self):
-        #self.skybox = tina.Skybox('assets/skybox.jpg', cubic=True)
-        self.skybox = tina.Skybox(np.load('assets/ballroom_halfres.npy'))
-        #self.skybox = tina.Skybox('assets/cobelt.png')
-        #self.skybox = tina.Skybox('assets/market.jpg')
-        #self.skybox = tina.Skybox('assets/grass.jpg')
-        self.ibls = {}
-        for mattype in [tina.CookTorrance, tina.Lambert, tina.Mirror]:
-            self.ibls[mattype] = mattype.cook_for_ibl(self.skybox)
+    def __init__(self, path, precision=32):
+        if path.endswith('.npz'):
+            print('[Tina] Loading pre-cooked IBL map from', path)
+            data = np.load(path, allow_pickle=True)
+            self.skybox = tina.Skybox(data['env'])
+            self.ibls = {}
+            self.ibls[tina.Lambert] = tina.Skybox(data['diff'])
+            self.ibls[tina.CookTorrance] = tuple(map(tina.Skybox, data['spec'])), texture_as_field(data['lut'])
+        else:
+            if path.endswith('.npy'):
+                self.skybox = tina.Skybox(np.load(path))
+            else:
+                self.skybox = tina.Skybox(path, cubic=True)
+            self.ibls = {}
+            for mattype in [tina.CookTorrance, tina.Lambert, tina.Mirror]:
+                self.ibls[mattype] = mattype.cook_for_ibl(self.skybox, precision)
+
+    def save(self, path):
+        spec = tuple(x.img.to_numpy() for x in self.ibls[tina.CookTorrance][0])
+        lut = self.ibls[tina.CookTorrance][1].to_numpy()
+        diff = self.ibls[tina.Lambert].img.to_numpy()
+        env = self.skybox.img.to_numpy()
+        np.savez(path, env=env, spec=spec, lut=lut, diff=diff)
 
     @ti.func
     def background(self, rd):

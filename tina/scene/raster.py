@@ -16,14 +16,14 @@ class Scene:
         self.options = options
         self.rtx = options.get('rtx', False)
         self.taa = options.get('taa', False)
-        self.ibl = options.get('ibl', False)
+        self.ibl = options.get('ibl', None)
         self.pp = options.get('pp', True)
 
         if not self.rtx:
             if not self.ibl:
                 self.lighting = tina.Lighting()
             else:
-                self.lighting = tina.SkyboxLighting()
+                self.lighting = tina.SkyboxLighting(self.ibl, options.get('ibl_precision', 32))
         else:
             self.lighting = tina.RTXLighting()
 
