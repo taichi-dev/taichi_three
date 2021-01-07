@@ -3,7 +3,7 @@ import tina
 
 ti.init(ti.gpu)
 
-scene = tina.Scene(smoothing=True, taa=True)
+scene = tina.Scene(smoothing=True)#, taa=True, rtx=True)
 
 metallic = tina.Param(float, initial=0.0)
 specular = tina.Param(float, initial=0.5)

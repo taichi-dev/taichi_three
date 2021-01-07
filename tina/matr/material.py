@@ -178,7 +178,7 @@ class CookTorrance(IMaterial):
     defaults = [0.4, 1.0]
 
     @ti.func
-    def brdf(self, nrm, idir, odir):  # idir = L, odir = V
+    def sub_brdf(self, nrm, idir, odir):  # idir = L, odir = V
         roughness = self.param('roughness')
         f0 = self.param('fresnel')
         EPS = 1e-10
@@ -191,13 +191,13 @@ class CookTorrance(IMaterial):
         LoH = min(1 - EPS, max(EPS, half.dot(idir)))
 
         # Trowbridge-Reitz GGX microfacet distribution
-        alpha2 = max(eps, roughness**2)
+        alpha2 = max(0, roughness**2)
         denom = 1 - NoH**2 * (1 - alpha2)
         ndf = alpha2 / denom**2
 
         # Smith's method with Schlick-GGX
-        k = (roughness + 1)**2 / 8
-        #k = roughness**2 / 2
+        #k = (roughness + 1)**2 / 8
+        k = alpha2 / 2
         vdf = 1 / ((NoV * (1 - k) + k))
         vdf *= 1 / ((NoL * (1 - k) + k))
 
@@ -210,28 +210,39 @@ class CookTorrance(IMaterial):
         #f0 = kf * basecolor + (1 - kf) * metallic
         fdf = f0 + (1 - f0) * (1 - VoH)**5
 
+        return fdf, vdf, ndf
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        fdf, vdf, ndf = self.sub_brdf(nrm, idir, odir)
         return fdf * vdf * ndf / 4
 
     @ti.func
     def sample(self, idir, nrm, sign):
         roughness = self.param('roughness')
-        # https://computergraphics.stackexchange.com/questions/1515/what-is-the-accepted-method-of-converting-shininess-to-roughness-and-vice-versa
-        shine = 2 / max(eps * 10, roughness**1.4) - 2
+        alpha2 = max(0, roughness**2)
+        EPS = 1e-10
+
+        # https://zhuanlan.zhihu.com/p/95865910
         u, v = ti.random(), ti.random()
-        u = lerp(u, eps * 314, 1 - eps * 1428.57)
+        u = ti.sqrt((1 - u) / (1 - u * (1 - alpha2)))
         rdir = reflect(-idir, nrm)
-        u = u ** (1 / (shine + 1))
         axes = tangentspace(rdir)
         odir = axes @ spherical(u, v)
-        VoR = clamp(odir.dot(rdir), eps, inf)
-        phong_brdf = clamp(VoR ** shine * (shine + 1), eps, inf)
-        ipdf = 1 / phong_brdf
-        if odir.dot(nrm) < 0:
+
+        half = (idir + odir).normalized()
+        NoH = max(EPS, half.dot(nrm))
+
+        pdf = 1.0
+
+        if odir.dot(nrm) <= 0:
             odir = -odir
-            ipdf = 0.0  # TODO: fix energy loss for low shineness
-        brdf = self.brdf(nrm, idir, odir)
-        brdf = clamp(brdf, eps, inf)
-        return odir, brdf * ipdf
+            pdf = 0.0
+        else:
+            fdf, vdf, ndf = self.sub_brdf(nrm, idir, odir)
+            pdf = fdf * vdf / 4
+
+        return odir, pdf
 
     def ambient(self):
         return 1.0

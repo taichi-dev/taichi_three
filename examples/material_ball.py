@@ -5,22 +5,16 @@ ti.init(ti.gpu)
 
 scene = tina.Scene(smoothing=True, taa=True, rtx=True)
 
-#roughness = tina.Param(float)
-#material = tina.CookTorrance(roughness=roughness)
-
-shineness = tina.Param(float, initial=32)
-material = tina.Phong(shineness=shineness)
+roughness = tina.Param(float, initial=0.0)
+metallic = tina.Param(float, initial=1.0)
+material = tina.PBR(metallic=metallic, roughness=roughness)
 
 model = tina.PrimitiveMesh.sphere()
 scene.add_object(model, material)
 
 gui = ti.GUI('matball')
-if 'roughness' in globals():
-    roughness.make_slider(gui, 'roughness')
-if 'metallic' in globals():
-    metallic.make_slider(gui, 'metallic')
-if 'shineness' in globals():
-    shineness.make_slider(gui, 'shineness', 1, 400, 1)
+roughness.make_slider(gui, 'roughness')
+metallic.make_slider(gui, 'metallic')
 
 scene.init_control(gui, blendish=True)
 while gui.running:
