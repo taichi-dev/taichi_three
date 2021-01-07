@@ -16,12 +16,18 @@ def V34(xyz, w):
     return V(xyz.x, xyz.y, xyz.z, w)
 
 
-def Vx2(x):
-    return V(x, x)
+def V2(x):
+    if isinstance(x, ti.Matrix):
+        return x
+    else:
+        return V(x, x)
 
 
-def Vx3(x):
-    return V(x, x, x)
+def V3(x):
+    if isinstance(x, ti.Matrix):
+        return x
+    else:
+        return V(x, x, x)
 
 
 def Vavg(u):
@@ -85,8 +91,8 @@ def vconcat(*xs):
     return ti.Vector(res)
 
 
-@ti.func
-def clamp(x, xmin, xmax):
+@ti.pyfunc
+def clamp(x, xmin=0, xmax=1):
     return min(xmax, max(xmin, x))
 
 
@@ -144,6 +150,7 @@ def mapply(mat, pos, wei):
 def mapply_pos(mat, pos):
     res, rew = mapply(mat, pos, 1)
     return res / rew
+
 
 @ti.func
 def mapply_dir(mat, dir):

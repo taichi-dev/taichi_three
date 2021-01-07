@@ -92,12 +92,6 @@ def get_image():
 def tangentspace(nrm):
     #up = V(0., 1., 0.)
     up = V(233., 666., 512.).normalized()
-    '''
-    if abs(nrm.y) > 0.9:
-        up = V(0., 0., 1.)
-        if abs(nrm.z) > 0.9:
-            up = V(1., 0., 0.)
-    '''
     bitan = nrm.cross(up).normalized()
     tan = bitan.cross(nrm)
     return ti.Matrix.cols([tan, bitan, nrm])
