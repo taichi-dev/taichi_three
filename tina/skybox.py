@@ -44,7 +44,7 @@ class Skybox:
             if cubic:
                 shape = shape * 3 // 4, shape
             else:
-                shape = int(ti.pi / 2 * shape), shape
+                shape = 2 * shape, shape
         elif isinstance(shape, str):
             shape = self._from_image(shape)
         else:
@@ -53,7 +53,7 @@ class Skybox:
         self.img = img
         self.cubic = cubic
         if self.cubic:
-            self.resolution = shape[1] // 3
+            self.resolution = shape[1] * 2 // 3
         else:
             self.resolution = shape[1]
         self.shape = shape
@@ -86,8 +86,20 @@ class Skybox:
             return bilerp(self.img, I)
 
     @ti.func
-    def unmap(self, I):
+    def mapcoor(self, I):
+        if ti.static(self.cubic):
+            coor = cubemap(dir)
+            I = (self.shape[0] - 1) * coor
+            return I
+        else:
+            coor = spheremap(dir)
+            I = (V(*self.shape) - 1) * coor
+            return I
+
+    @ti.func
+    def unmapcoor(self, I):
         ti.static_assert(not self.cubic)
-        coor = I / (V(*ibl.shape) - 1)
-        return unspheremap(coor)
+        coor = I / (V(*self.shape) - 1)
+        dir = unspheremap(coor)
+        return dir
 

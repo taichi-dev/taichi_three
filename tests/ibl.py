@@ -3,12 +3,17 @@ import tina
 
 ti.init(ti.gpu)
 
-scene = tina.Scene(smoothing=True, taa=True, rtx=True)
+scene = tina.Scene(smoothing=True, taa=True, ibl=True)
 model = tina.PrimitiveMesh.sphere()
-material = tina.CookTorrance(roughness=0.2)
+roughness = tina.Param(float)
+material = tina.CookTorrance(roughness=roughness)
+#material = tina.Lambert()
 scene.add_object(model, material)
 
 gui = ti.GUI()
+roughness.make_slider(gui, 'roughness')
+
+scene.init_control(gui, blendish=True)
 while gui.running:
     scene.input(gui)
     scene.render()

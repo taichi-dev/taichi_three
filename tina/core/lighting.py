@@ -9,7 +9,8 @@ class SkyboxLighting:
         #self.skybox = tina.Skybox('assets/market.jpg')
         #self.skybox = tina.Skybox('assets/grass.jpg')
         self.ibls = {}
-        for mattype in [tina.Mirror, tina.Lambert]:
+        for mattype in [tina.CookTorrance]:
+        #for mattype in [tina.Lambert]:
             self.ibls[mattype] = mattype.cook_for_ibl(self.skybox)
 
     @ti.func

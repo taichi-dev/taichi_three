@@ -30,7 +30,7 @@ class IMaterial(Node):
         return odir, brdf
 
     @classmethod
-    def cook_for_ibl(cls, skybox):
+    def cook_for_ibl(cls, env):
         raise NotImplementedError(cls)
 
     @ti.func
@@ -172,10 +172,12 @@ class AddMaterial(IMaterial):
 # http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
 # https://blog.csdn.net/cui6864520fei000/article/details/90033863
 # https://neil3d.blog.csdn.net/article/details/83783638
-# TODO: support real importance sampling for PBR
 class CookTorrance(IMaterial):
     arguments = ['roughness', 'fresnel']
     defaults = [0.4, 1.0]
+
+    def ambient(self):
+        return 1.0
 
     @ti.func
     def sub_brdf(self, nrm, idir, odir):  # idir = L, odir = V
@@ -193,12 +195,12 @@ class CookTorrance(IMaterial):
         # Trowbridge-Reitz GGX microfacet distribution
         alpha2 = max(0, roughness**2)
         denom = 1 - NoH**2 * (1 - alpha2)
-        ndf = alpha2 / denom**2
+        ndf = alpha2 / denom**2  # D
 
         # Smith's method with Schlick-GGX
         k = (roughness + 1)**2 / 8
         vdf = 1 / ((NoV * (1 - k) + k))
-        vdf *= 1 / ((NoL * (1 - k) + k))
+        vdf *= 1 / ((NoL * (1 - k) + k))  # G
 
         # GGX partial geometry term
         #tan2 = (1 - VoH**2) / VoH**2
@@ -207,7 +209,7 @@ class CookTorrance(IMaterial):
         # Fresnel-Schlick approximation
         #kf = abs((1 - ior) / (1 + ior))**2
         #f0 = kf * basecolor + (1 - kf) * metallic
-        fdf = f0 + (1 - f0) * (1 - VoH)**5
+        fdf = f0 + (1 - f0) * (1 - VoH)**5  # F
 
         return fdf, vdf, ndf
 
@@ -230,17 +232,124 @@ class CookTorrance(IMaterial):
         odir = axes @ spherical(u, v)
 
         pdf = 1.0
-        if odir.dot(nrm) <= 0:
+        if odir.dot(nrm) < 0:
             odir = -odir
-            pdf = 0.0
+            pdf = 0.0  # TODO: fix energy loss on border
         else:
             fdf, vdf, ndf = self.sub_brdf(nrm, idir, odir)
             pdf = fdf * vdf / 4
 
         return odir, pdf
 
+    rough_levels = [0.04, 0.1, 0.2, 0.32, 0.5, 0.7, 1.0]
+    rough_levels = [(a, a - b) for a, b in zip(rough_levels, [0] + rough_levels)]
+
+    @ti.func
+    def sample_ibl(self, ibls, idir, nrm):
+        # https://zhuanlan.zhihu.com/p/261005894
+        roughness = self.param('roughness')
+        f0 = self.param('fresnel')
+
+        rdir = reflect(-idir, nrm)
+        wei = V(1., 1., 1.)
+        for id, _ in ti.static(enumerate(self.rough_levels)):
+            rough, rough_step = _
+            if rough - rough_step <= roughness <= rough:
+                wei1 = ibls[id].sample(rdir)
+                wei2 = ibls[id + 1].sample(rdir)
+                fac2 = (rough - roughness) / rough_step
+                wei = lerp(fac2, wei2, wei1)
+        return wei
+
+    @classmethod
+    def cook_for_ibl(cls, env):
+        @ti.kernel
+        def bake(ibl: ti.template(),
+                roughness: ti.template(),
+                nsamples: ti.template()):
+            # https://zhuanlan.zhihu.com/p/261005894
+            for I in ti.grouped(ibl.img):
+                dir = ibl.unmapcoor(I)
+                res = V(0., 0., 0.)
+                alpha2 = max(0, roughness**2)
+                for s in range(nsamples):
+                    u, v = ti.random(), ti.random()
+                    u = ti.sqrt((1 - u) / (1 - u * (1 - alpha2)))
+                    odir = tangentspace(dir) @ spherical(u, v)
+                    wei = env.sample(odir)
+                    res += wei * u
+                ibl.img[I] = res / nsamples
+
+        ibls = [env]
+        resolution = env.resolution
+        for roughness, rough_step in cls.rough_levels:
+            resolution = int(resolution / 2 ** (rough_step * 4))
+            ibl = tina.Skybox(resolution)
+            ibls.append(ibl)
+
+        @ti.materialize_callback
+        def init_ibl():
+            nsamples = 512
+            for ibl, (roughness, rough_step) in zip(ibls[1:], cls.rough_levels):
+                print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for CookTorrance with roughness {roughness}...')
+                bake(ibl, roughness, nsamples)
+                nsamples = int(nsamples * 3 ** (rough_step * 4))
+                #ti.imshow(ce_tonemap(ibl.img.to_numpy()))
+                ibls.append(ibl)
+            print('[Tina] Baking IBL map for CookTorrance done')
+
+        return tuple(ibls)
+
+
+class Lambert(IMaterial):
+    arguments = []
+    defaults = []
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        return 1.0
+
     def ambient(self):
         return 1.0
+
+    @classmethod
+    def cook_for_ibl(cls, env):
+        ibl = tina.Skybox(env.resolution // 4)
+        tmp = ti.Vector.field(3, float, ibl.shape)
+        nsamples = 4096
+
+        @ti.kernel
+        def bake():
+            # https://zhuanlan.zhihu.com/p/261005894
+            for I in ti.grouped(ibl.img):
+                dir = ibl.unmapcoor(I)
+                res = V(0., 0., 0.)
+                for s in range(nsamples):
+                    u, v = ti.random(), ti.random()
+                    odir = tangentspace(dir) @ spherical(u, v)
+                    wei = env.sample(odir)
+                    res += wei * u
+                tmp[I] = res / nsamples
+            for I in ti.grouped(ibl.img):
+                res = tmp[I]
+                if not any(I == 0 or I == V(*ibl.shape) - 1):
+                    res *= 4
+                    for i in ti.static(range(2)):
+                        res += tmp[I + U2(i)] + tmp[I - U2(i)]
+                    res /= 8
+                ibl.img[I] = res
+
+        @ti.materialize_callback
+        def init_ibl():
+            print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for Lambert...')
+            bake()
+            print('[Tina] Baking IBL map for Lambert done')
+
+        return ibl
+
+    @ti.func
+    def sample_ibl(self, ibl, idir, nrm):
+        return ibl.sample(nrm)
 
 
 class Phong(IMaterial):
@@ -311,58 +420,6 @@ class Glass(IMaterial):
         return odir, wei
 
 
-class Lambert(IMaterial):
-    arguments = []
-    defaults = []
-
-    @ti.func
-    def brdf(self, nrm, idir, odir):
-        return 1.0
-
-    def ambient(self):
-        return 1.0
-
-    @staticmethod
-    def cook_for_ibl(skybox):
-        ibl = tina.Skybox(skybox.resolution // 4)
-        tmp = ti.Vector.field(3, float, ibl.shape)
-        nsamples = 32768
-
-        @ti.kernel
-        def bake():
-            # https://zhuanlan.zhihu.com/p/261005894
-            for I in ti.smart(ibl):
-                res = V(0., 0., 0.)
-                for s in range(nsamples):
-                    dir = ibl.unmap(I)
-                    u, v = ti.random(), ti.random()
-                    odir = tangentspace(dir) @ spherical(u, v)
-                    wei = skybox.sample(odir) * u
-                    res += wei
-                tmp[I] = res / nsamples
-            for I in ti.grouped(ibl.img):
-                res = tmp[I]
-                if not any(I == 0 or I == V(*ibl.shape) - 1):
-                    res *= 4
-                    for i in ti.static(range(2)):
-                        res += tmp[I + U2(i)] + tmp[I - U2(i)]
-                    res /= 8
-                ibl.img[I] = res
-
-        @ti.materialize_callback
-        def init_ibl():
-            print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for Lambert...')
-            bake()
-            print('[Tina] Baking IBL map for Lambert done')
-            #ti.imwrite(ce_tonemap(ibl.img.to_numpy()), 'assets/grass_lambert.jpg')
-
-        return ibl
-
-    @ti.func
-    def sample_ibl(self, ibl, idir, nrm):
-        return ibl.sample(nrm)
-
-
 class Mirror(IMaterial):
     arguments = []
     defaults = []
@@ -374,9 +431,9 @@ class Mirror(IMaterial):
     def ambient(self):
         return 0.0
 
-    @staticmethod
-    def cook_for_ibl(skybox):
-        return skybox
+    @classmethod
+    def cook_for_ibl(cls, env):
+        return env
 
     @ti.func
     def sample_ibl(self, ibl, idir, nrm):
