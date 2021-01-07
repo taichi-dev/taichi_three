@@ -80,16 +80,16 @@ class MixMaterial(IMaterial):
     @ti.func
     def brdf(self, nrm, idir, odir):
         fac = self.param('factor')
-        f1 = self.mat1.brdf(nrm, idir, odir)
-        f2 = self.mat2.brdf(nrm, idir, odir)
-        return (1 - fac) * f1 + fac * f2
+        wei1 = self.mat1.brdf(nrm, idir, odir)
+        wei2 = self.mat2.brdf(nrm, idir, odir)
+        return (1 - fac) * wei1 + fac * wei2
 
     @ti.func
     def ambient(self):
         fac = self.param('factor')
-        f1 = self.mat1.ambient()
-        f2 = self.mat2.ambient()
-        return (1 - fac) * f1 + fac * f2
+        wei1 = self.mat1.ambient()
+        wei2 = self.mat2.ambient()
+        return (1 - fac) * wei1 + fac * wei2
 
     @ti.func
     def sample(self, idir, nrm, sign):
@@ -105,6 +105,15 @@ class MixMaterial(IMaterial):
             wei *= (1 - fac) / (1 - factor)
         return odir, wei
 
+    @ti.func
+    def sample_ibl(self, ibls: ti.template(), idir, nrm):
+        fac = self.param('factor')
+        ibl1 = ti.static(ibls.get(type(self.mat1), ibls))
+        ibl2 = ti.static(ibls.get(type(self.mat2), ibls))
+        wei1 = self.mat1.sample_ibl(ibl1, idir, nrm)
+        wei2 = self.mat2.sample_ibl(ibl2, idir, nrm)
+        return (1 - fac) * wei1 + fac * wei2  # XXX: avoid ks duplication for LUT
+
 
 class ScaleMaterial(IMaterial):
     arguments = ['factor']
@@ -117,14 +126,14 @@ class ScaleMaterial(IMaterial):
     @ti.func
     def brdf(self, nrm, idir, odir):
         fac = self.param('factor')
-        f1 = self.mat.brdf(nrm, idir, odir)
-        return fac * f1
+        wei = self.mat.brdf(nrm, idir, odir)
+        return fac * wei
 
     @ti.func
     def ambient(self):
         fac = self.param('factor')
-        f1 = self.mat.ambient()
-        return fac * f1
+        wei = self.mat.ambient()
+        return fac * wei
 
     @ti.func
     def sample(self, idir, nrm, sign):
@@ -132,6 +141,13 @@ class ScaleMaterial(IMaterial):
         odir, wei = self.mat.sample(idir, nrm, sign)
         wei *= fac
         return odir, wei
+
+    @ti.func
+    def sample_ibl(self, ibls: ti.template(), idir, nrm):
+        fac = self.param('factor')
+        ibl = ti.static(ibls.get(type(self.mat), ibls))
+        wei = self.mat.sample_ibl(ibl, idir, nrm)
+        return fac * wei
 
 
 class AddMaterial(IMaterial):
@@ -145,16 +161,16 @@ class AddMaterial(IMaterial):
 
     @ti.func
     def brdf(self, nrm, idir, odir):
-        f1 = self.mat1.brdf(nrm, idir, odir)
-        f2 = self.mat2.brdf(nrm, idir, odir)
-        return f1 + f2
+        wei1 = self.mat1.brdf(nrm, idir, odir)
+        wei2 = self.mat2.brdf(nrm, idir, odir)
+        return wei1 + wei2
 
     @ti.func
     def ambient(self):
         fac = self.param('factor')
-        f1 = self.mat1.ambient()
-        f2 = self.mat2.ambient()
-        return f1 + f2
+        wei1 = self.mat1.ambient()
+        wei2 = self.mat2.ambient()
+        return wei1 + wei2
 
     @ti.func
     def sample(self, idir, nrm, sign):
@@ -220,7 +236,7 @@ class CookTorrance(IMaterial):
 
     @ti.func
     def sample(self, idir, nrm, sign):
-        roughness = self.param('roughness')
+        roughness = self.param('roughness')  # TODO: param duplicate evaluation?
         alpha2 = max(0, roughness**2)
         EPS = 1e-10
 
@@ -241,24 +257,32 @@ class CookTorrance(IMaterial):
 
         return odir, pdf
 
-    rough_levels = [0.04, 0.1, 0.2, 0.32, 0.5, 0.7, 1.0]
+    #rough_levels = [0.5, 1.0]
+    rough_levels = [0.03, 0.08, 0.18, 0.35, 0.65, 1.0]
     rough_levels = [(a, a - b) for a, b in zip(rough_levels, [0] + rough_levels)]
 
     @ti.func
-    def sample_ibl(self, ibls, idir, nrm):
+    def sample_ibl(self, ibl_info: ti.template(), idir, nrm):
+        ibls, lut = ti.static(ibl_info)
         # https://zhuanlan.zhihu.com/p/261005894
         roughness = self.param('roughness')
         f0 = self.param('fresnel')
 
         rdir = reflect(-idir, nrm)
         wei = V(1., 1., 1.)
-        for id, _ in ti.static(enumerate(self.rough_levels)):
-            rough, rough_step = _
+        for id, rough_info in ti.static(enumerate(self.rough_levels)):
+            rough, rough_step = rough_info
             if rough - rough_step <= roughness <= rough:
                 wei1 = ibls[id].sample(rdir)
                 wei2 = ibls[id + 1].sample(rdir)
                 fac2 = (rough - roughness) / rough_step
                 wei = lerp(fac2, wei2, wei1)
+
+        EPS = 1e-10
+        half = (idir + rdir).normalized()
+        VoH = min(1 - EPS, max(EPS, half.dot(rdir)))
+        AB = bilerp(lut, V(VoH, roughness))
+        wei *= f0 * AB.x + AB.y
         return wei
 
     @classmethod
@@ -280,6 +304,15 @@ class CookTorrance(IMaterial):
                     res += wei * u
                 ibl.img[I] = res / nsamples
 
+        lutres = 64
+        lutsamples = 256
+        #lut = ti.Vector.field(2, float, (lutres, lutres))
+        lut = texture_as_field('assets/lut.jpg')
+
+        #@ti.kernel
+        #def bake_lut():
+        #    pass
+
         ibls = [env]
         resolution = env.resolution
         for roughness, rough_step in cls.rough_levels:
@@ -295,10 +328,11 @@ class CookTorrance(IMaterial):
                 bake(ibl, roughness, nsamples)
                 nsamples = int(nsamples * 3 ** (rough_step * 4))
                 #ti.imshow(ce_tonemap(ibl.img.to_numpy()))
-                ibls.append(ibl)
+            #print('[Tina] Baking fresnel LUT for CookTorrance...')
+            #bake_lut()
             print('[Tina] Baking IBL map for CookTorrance done')
 
-        return tuple(ibls)
+        return tuple(ibls), lut
 
 
 class Lambert(IMaterial):

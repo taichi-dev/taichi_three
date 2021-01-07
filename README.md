@@ -38,6 +38,7 @@ Here's a list of important features currently Tina have:
 * lighting & materials - `docs/lighting.py`
 * loading GLTF scene - `docs/gltf.py`
 * transforming models - `docs/transform.py`
+* image-based lighting (IBL) - `examples/material_ball.py`
 * real-time rendering volume - `docs/volume.py`
 * loading OBJ models - `docs/monkey.py`
 * path tracing (WIP) - `docs/pathtrace.py`

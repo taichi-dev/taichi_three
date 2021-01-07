@@ -9,8 +9,7 @@ class SkyboxLighting:
         #self.skybox = tina.Skybox('assets/market.jpg')
         #self.skybox = tina.Skybox('assets/grass.jpg')
         self.ibls = {}
-        for mattype in [tina.CookTorrance]:
-        #for mattype in [tina.Lambert]:
+        for mattype in [tina.CookTorrance, tina.Lambert, tina.Mirror]:
             self.ibls[mattype] = mattype.cook_for_ibl(self.skybox)
 
     @ti.func
@@ -19,7 +18,7 @@ class SkyboxLighting:
 
     @ti.func
     def shade_color(self, material, pos, normal, viewdir):
-        ibl = ti.static(self.ibls[type(material)])
+        ibl = ti.static(self.ibls.get(type(material), self.ibls))
         return material.sample_ibl(ibl, viewdir, normal)
 
 

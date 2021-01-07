@@ -3,10 +3,10 @@ import tina
 
 ti.init(ti.gpu)
 
-scene = tina.Scene(smoothing=True, taa=True, rtx=True)
+scene = tina.Scene(smoothing=True, taa=True, ibl=True)
 
-roughness = tina.Param(float, initial=0.0)
-metallic = tina.Param(float, initial=1.0)
+roughness = tina.Param(float, initial=0.15)
+metallic = tina.Param(float, initial=0.25)
 material = tina.PBR(metallic=metallic, roughness=roughness)
 
 model = tina.PrimitiveMesh.sphere()
