@@ -1,3 +1,3 @@
-if __import__('lazyimp').lazyguard:
+if __import__('tina').lazyguard:
     from .raster import *
     from .tracer import *

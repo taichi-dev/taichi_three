@@ -1,3 +1,3 @@
-if __import__('lazyimp').lazyguard:
+if __import__('tina').lazyguard:
     from .nodes import *
     from .material import *

@@ -1,4 +1,4 @@
-if __import__('lazyimp').lazyguard:
+if __import__('tina').lazyguard:
     from .obj import *
     from .gltf import *
     from .tet import *
