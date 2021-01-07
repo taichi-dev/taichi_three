@@ -45,6 +45,8 @@ class Skybox:
                 shape = shape * 3 // 4, shape
             else:
                 shape = 2 * shape, shape
+        elif isinstance(shape, np.ndarray):
+            shape = self._from_raw(shape)
         elif isinstance(shape, str):
             shape = self._from_image(shape)
         else:
@@ -57,6 +59,18 @@ class Skybox:
         else:
             self.resolution = shape[1]
         self.shape = shape
+
+    def _from_raw(self, img):
+        @ti.materialize_callback
+        def init_skybox():
+            @ti.kernel
+            def init_skybox(img: ti.ext_arr()):
+                for I in ti.grouped(self.img):
+                    for k in ti.static(range(3)):
+                        self.img[I][k] = img[I, k]
+            init_skybox(img)
+
+        return img.shape[:2]
 
     def _from_image(self, path):
         if not isinstance(path, np.ndarray):

@@ -4,7 +4,8 @@ from ..advans import *
 @ti.data_oriented
 class SkyboxLighting:
     def __init__(self):
-        self.skybox = tina.Skybox('assets/skybox.jpg', cubic=True)
+        #self.skybox = tina.Skybox('assets/skybox.jpg', cubic=True)
+        self.skybox = tina.Skybox(np.load('assets/ballroom_halfres.npy'))
         #self.skybox = tina.Skybox('assets/cobelt.png')
         #self.skybox = tina.Skybox('assets/market.jpg')
         #self.skybox = tina.Skybox('assets/grass.jpg')
