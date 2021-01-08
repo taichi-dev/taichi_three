@@ -5,8 +5,6 @@ ti.init(ti.gpu)
 
 scene = tina.Scene(smoothing=True, taa=True, ibl=True)
 
-scene.lighting.load_skybox('assets/skybox.jpg')
-
 roughness = tina.Param(float, initial=0.15)
 metallic = tina.Param(float, initial=0.25)
 material = tina.PBR(metallic=metallic, roughness=roughness)

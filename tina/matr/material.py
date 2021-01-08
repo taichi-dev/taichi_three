@@ -253,7 +253,7 @@ class CookTorrance(IMaterial):
 
         @ti.materialize_callback
         def init_ibl():
-            nsamples = 4 * precision
+            nsamples = 6 * precision
             for ibl, (roughness, rough_step) in zip(ibls[1:], cls.rough_levels):
                 print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for CookTorrance with roughness {roughness}...')
                 bake(ibl, roughness, nsamples)
@@ -348,7 +348,7 @@ class Lambert(IMaterial):
     def cook_for_ibl(cls, env, precision):
         ibl = tina.Skybox(env.resolution // 6)
         tmp = ti.Vector.field(3, float, ibl.shape)
-        nsamples = 256 * precision
+        nsamples = 128 * precision
 
         @ti.kernel
         def bake():

@@ -6,7 +6,6 @@ ti.init(ti.gpu)
 
 scene = tina.Scene(ibl=True, smoothing=True, taa=True, maxfaces=2**18)
 #scene = tina.Scene(taa=True, rtx=True)
-scene.lighting.load_skybox(tina.Atomsphere())
 
 metallic = tina.Param(float, initial=0.0)
 roughness = tina.Param(float, initial=0.0)

@@ -48,11 +48,14 @@ class Scene:
         if self.rtx or self.ibl:
             self.background_shader = tina.BackgroundShader(self.image, self.lighting)
 
-        @ti.materialize_callback
-        def init_light():
-            if not self.rtx and not self.ibl:
-                self.lighting.add_light(dir=[1, 2, 3], color=[0.9, 0.9, 0.9])
-                self.lighting.set_ambient_light([0.1, 0.1, 0.1])
+        if self.ibl:
+            self.lighting.load_skybox(tina.Atomsphere())
+
+        if not self.rtx and not self.ibl:
+            @ti.materialize_callback
+            def add_default_lights():
+                    self.lighting.add_light(dir=[1, 2, 3], color=[0.9, 0.9, 0.9])
+                    self.lighting.set_ambient_light([0.1, 0.1, 0.1])
 
     def update(self):
         if self.rtx:
