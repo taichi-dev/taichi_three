@@ -15,7 +15,7 @@ if isinstance(scene, tina.PTScene):
         0.09,
     ], dtype=np.float32))
     scene.lighting.set_light_colors(np.array([
-        [4.0, 4.0, 4.0],
+        [1.0, 1.0, 1.0],
     ], dtype=np.float32))
 
 if isinstance(scene, tina.PTScene):

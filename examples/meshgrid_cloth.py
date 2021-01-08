@@ -59,8 +59,8 @@ scene = tina.Scene((1024, 768), smoothing=True, texturing=True)
 mesh = tina.MeshNoCulling(tina.MeshGrid((N, N)))
 ball = tina.MeshTransform(tina.PrimitiveMesh.sphere())
 
-cloth = tina.CookTorrance(basecolor=tina.ChessboardTexture(size=0.2))
-metal = tina.CookTorrance(basecolor=[1.0, 0.9, 0.8], metallic=0.8, roughness=0.4)
+cloth = tina.PBR(basecolor=tina.ChessboardTexture(size=0.2))
+metal = tina.PBR(basecolor=[1.0, 0.9, 0.8], metallic=0.8, roughness=0.4)
 
 scene.add_object(mesh, cloth)
 scene.add_object(ball, metal)

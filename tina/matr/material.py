@@ -136,6 +136,7 @@ class ScaleMaterial(IMaterial):
     @ti.func
     def sample(self, idir, nrm, sign):
         fac = self.param('factor')
+        wei = V(0., 0., 0.)
         odir, wei = self.mat.sample(idir, nrm, sign)
         wei *= fac
         return odir, wei
@@ -315,7 +316,7 @@ class CookTorrance(IMaterial):
         axes = tangentspace(rdir)
         odir = axes @ spherical(u, v)
 
-        pdf = 1.0
+        pdf = V(1., 1., 1.)
         if odir.dot(nrm) < 0:
             odir = -odir
             pdf = 0.0  # TODO: fix energy loss on border
