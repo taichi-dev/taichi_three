@@ -3,7 +3,10 @@ from ..advans import *
 
 @ti.data_oriented
 class SkyboxLighting:
-    def __init__(self, path, precision=32):
+    def __init__(self):
+        pass
+
+    def load_skybox(self, path, precision=32, cubic=True):
         if path.endswith('.npz'):
             print('[Tina] Loading pre-cooked IBL map from', path)
             data = np.load(path, allow_pickle=True)
@@ -15,7 +18,7 @@ class SkyboxLighting:
             if path.endswith('.npy'):
                 self.skybox = tina.Skybox(np.load(path))
             else:
-                self.skybox = tina.Skybox(path, cubic=True)
+                self.skybox = tina.Skybox(path, cubic=cubic)
             self.ibls = {}
             for mattype in [tina.CookTorrance, tina.Lambert, tina.Mirror]:
                 self.ibls[mattype] = mattype.cook_for_ibl(self.skybox, precision)

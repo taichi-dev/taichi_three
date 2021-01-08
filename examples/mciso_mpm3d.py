@@ -104,15 +104,19 @@ def init():
 mciso = MCISO(int(n_grid * 1))
 voxel = Voxelizer(mciso.N, radius=1, weight=18)
 
-scene = tina.Scene(smoothing=True, maxfaces=2**18)
-scene.add_object(mciso)
+scene = tina.Scene(smoothing=True, maxfaces=2**18, ibl=True)
+material = tina.PBR(metallic=0.45, roughness=0.12)
+scene.add_object(mciso, material)
 
 gui = ti.GUI('mciso_mpm3d', scene.res)
 scene.init_control(gui, center=[0.5, 0.5, 0.5], radius=1.5)
 
-scene.lighting.clear_lights()
-scene.lighting.add_light([-0.4, 1.5, 1.8], color=[0.8, 0.8, 0.8])
-scene.lighting.set_ambient_light([0.22, 0.22, 0.22])
+if scene.ibl:
+    scene.lighting.load_skybox('assets/skybox.jpg')
+else:
+    scene.lighting.clear_lights()
+    scene.lighting.add_light([-0.4, 1.5, 1.8], color=[0.8, 0.8, 0.8])
+    scene.lighting.set_ambient_light([0.22, 0.22, 0.22])
 
 init()
 while gui.running:
@@ -129,7 +133,6 @@ while gui.running:
     mciso.march()
 
     # tina.writeobj(f'/tmp/{gui.frame:04d}.obj', mciso.get_mesh())
-
     # np.save(f'/tmp/{gui.frame:04d}.npy', x.to_numpy())
 
     scene.render()
