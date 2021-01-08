@@ -40,7 +40,7 @@ ti.Expr.__setstate__ = _Expr_setstate
 ti.Matrix.__setstate__ = _Matrix_setstate
 
 
-def mock(foo):
+def _mock(foo):
     @functools.wraps(foo)
     def wrapped(*a, **b):
         ret = foo(*a, **b)
@@ -52,9 +52,12 @@ def mock(foo):
     return wrapped
 
 
-ti.field = mock(ti.field)
-ti.Vector.field = mock(ti.Vector.field)
-ti.Matrix.field = mock(ti.Matrix.field)
+ti.field = _mock(ti.field)
+ti.Vector.field = _mock(ti.Vector.field)
+ti.Matrix.field = _mock(ti.Matrix.field)
+
+
+print('[Tina] Taichi fields pickle hacked')
 
 
 __all__ = []

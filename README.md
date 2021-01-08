@@ -2,29 +2,20 @@
 
 A real-time soft renderer based on the [Taichi](https://github.com/taichi-dev/taichi) programming language.
 
-Checkout [`docs/`](https://github.com/taichi-dev/taichi_three/tree/master/docs) to getting started.
+Checkout [`docs/`](https://github.com/taichi-dev/taichi_three/tree/master/docs) for API demos to getting started.
 
-Checkout [`examples/`](https://github.com/taichi-dev/taichi_three/tree/master/examples) for mixed examples.
+Checkout [`examples/`](https://github.com/taichi-dev/taichi_three/tree/master/examples) for application examples.
 
 NOTE: the renderer has been previously named Taichi THREE, see bottom.
 
-## Installation
+# Installation
 
-For end users:
+End users may install Tina from PyPI:
 ```bash
 python3 -m pip install taichi-tina
 ```
 
-For developers:
-```bash
-git clone https://github.com/taichi-dev/taichi_three.git --depth=1
-cd taichi_three
-python3 -m pip install wheel
-python3 setup.py bdist_wheel
-python3 -m pip install dist/*.whl
-```
-
-## Features
+# Features
 
 Here's a list of important features currently Tina have:
 
@@ -49,7 +40,101 @@ Here's a list of important features currently Tina have:
 
 If you didn't find your feature of interest, feel free to [open an issue](https://github.com/taichi-dev/taichi_three/issues/new/choose) for requesting it :)
 
-## Legacy
+# Developer installation
+
+If you'd like to make use of Tina in your own project or contribute to Tina:
+
+Thank for your support! You may like to clone it locally instead of the
+end-user installation so that you could easily modify its source code to
+best fit your own needs :)
+
+Here's the suggested script for Linux users:
+
+```bash
+cd
+pip uninstall -y taichi-tina  # uninstall end-user version
+pip uninstall -y taichi-tina  # twice for sure :)
+git clone https://github.com/taichi-dev/taichi_three.git --depth=10
+cd taichi_three
+echo export PYTHONPATH=`pwd` >> ~/.bashrc  # add path for Python to search
+source ~/.bashrc  # reload the configuration to take effect
+```
+
+Or, feel free to make use of `virtualenv` if you're familiar with it :)
+
+## Verifying developer installation
+
+After that, you may try this command to verify installation:
+
+```bash
+python -c "import tina; print(tina)"
+```
+
+It should shows up the path to the repository, e.g.:
+```
+<module 'tina' from '/home/bate/Develop/taichi_three/tina/__init__.py'>
+```
+Congratulations! Now you may `import tina` in your project to have fun.
+
+Message containing `site-packages` may mean something wrong with PYTHONPATH:
+```
+<module 'tina' from '/lib/python3.8/site-packages/tina/__init__.py'>
+```
+
+## How to contribute
+
+If you've done with some new features, or bug fixes with developer mode:
+
+I would appericate very much if you'd like to contribute them by
+opening an [pull request](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/about-pull-requests)
+so that people (including me) could share your works :) To do so:
+
+```bash
+vim tina/somefile.py # suppose you've now modified some file ready to share..
+git checkout -b fix-bug  # switch to a new branch with name 'fix-bug'
+git add .  # add and commit the file change
+git commit -m "Hello, I fixed a bug in tina/somefile.py"
+git push -u origin fix-bug
+```
+
+Then visit https://github.com/taichi-dev/taichi/pull/new/fix-bug and click
+`Create Pull Request`, so that it will open a new pull request for you.
+Then I'll reply to your pull request soon, thank for the contribution!
+
+## Folder structures
+
+```bash
+$ ls
+tina/        # the main source code of Tina
+assets/      # binary assets (models, images) for the demos
+docs/        # simple demos aimed to demonstrate the usage of basic APIs
+examples/    # advanced demos to show what applications Tina is capable to do
+tests/       # some work in progress (WIP) feature that are remain testing
+setup.py     # the script to build the PyPI package for Tina
+
+$ ls tina/
+assimp/      # asset (model) loaders, e.g. GLTF, OBJ, INP..
+core/        # codebase related to the real-time rasterizer
+path/        # codebase related to the offline path tracer
+mesh/        # mesh storing and editing nodes
+voxl/        # volume / voxel storing nodes
+pars/        # particle set storing nodes
+scene/       # define the tina.Scene class
+matr/        # material and shading nodes
+util/        # some useful utilities for Tina and your project
+blend/       # Blender addon module (WIP)
+cli/         # command line interface (WIP)
+postp.py     # post-processing, mainly about tone mapping
+skybox.py    # implementing cube map and spherical map for skybox
+common.py    # some common functions that might be used by Tina or your project
+advans.py    # some advanced functions that might be used by Tina or your project
+hacker.py    # some dirty hacks into Taichi to make Tina easier to maintain
+lazimp.py    # lazy importing infrastructure to reduce import time
+shield.py    # make Taichi fields to support pickle (WIP)
+inject.py    # profiling JIT compilation time (WIP)
+```
+
+# Legacy
 
 Hello, dear Taichi THREE users:
 

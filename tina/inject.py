@@ -84,7 +84,7 @@ def _(self, *args, **kwargs):
     return callback
 
 
-print('[Tinject] Taichi JIT injected!')
+print('[Tina] Taichi JIT injected!')
 
 __all__ = []
 

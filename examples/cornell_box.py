@@ -1,6 +1,5 @@
 import taichi as ti
 import numpy as np
-import taichi_inject
 import tina
 
 ti.init(ti.gpu)
