@@ -157,4 +157,5 @@ if __import__('tina').lazyguard:
     from .voxl import *
     from .scene import *
     from .skybox import *
+    from .probe import *
     from .postp import *

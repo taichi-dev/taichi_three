@@ -101,7 +101,7 @@ def init():
 
 scene = tina.Scene(maxpars=n_particles, bgcolor=[0.37, 0.18, 0.25])
 pars = tina.SimpleParticles(n_particles, radius=0.01)
-color = tina.Lambert() * [0.02, 0.82, 0.83]
+color = tina.Diffuse(color=[0.02, 0.82, 0.83])
 scene.add_object(pars, color)
 
 gui = ti.GUI('pars_mpm3d', scene.res)

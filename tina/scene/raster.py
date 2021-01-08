@@ -14,10 +14,10 @@ class Scene:
         self.engine = tina.Engine(res)
         self.res = self.engine.res
         self.options = options
+        self.pp = options.get('pp', True)
         self.rtx = options.get('rtx', False)
         self.taa = options.get('taa', False)
         self.ibl = options.get('ibl', None)
-        self.pp = options.get('pp', True)
         self.bgcolor = options.get('bgcolor', 0)
 
         if not self.rtx:
@@ -30,6 +30,7 @@ class Scene:
 
         self.image = ti.Vector.field(3, float, self.res)
         self.default_material = tina.Lambert()
+        self.probe_shaders = []
         self.shaders = {}
         self.objects = {}
 
@@ -139,11 +140,16 @@ class Scene:
 
         self.image.fill(self.bgcolor)
         self.engine.clear_depth()
+        for shader in self.probe_shaders:
+            if hasattr(shader, 'clear_buffer'):
+                shader.clear_buffer()
 
         for object, oinfo in self.objects.items():
             shader = self.shaders[oinfo.material]
             oinfo.raster.set_object(object)
             oinfo.raster.render(shader)
+            for shader in self.probe_shaders:
+                oinfo.raster.render_color(shader)
 
         if hasattr(self, 'background_shader'):
             self.engine.render_background(self.background_shader)
@@ -162,7 +168,7 @@ class Scene:
 
     @property
     def pp_img(self):
-        return self.postp.out if self.pp else self.raw_image
+        return self.postp.out if self.pp else self.image
 
     def input(self, gui):
         '''

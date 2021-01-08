@@ -63,13 +63,13 @@ class ColorShader:
 
 @ti.data_oriented
 class ChessboardShader:
-    def __init__(self, img, size=0.05):
+    def __init__(self, img, size=8):
         self.img = img
         self.size = size
 
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
-        self.img[P] = lerp((texcoord // self.size).sum() % 2, 0.4, 0.9)
+        self.img[P] = lerp((p // self.size).sum() % 2, 0.4, 0.9)
 
 
 @ti.func

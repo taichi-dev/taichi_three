@@ -122,3 +122,13 @@ class ChessboardTexture(Node):
         color1 = self.param('color1')
         texcoord = self.param('texcoord')
         return lerp((texcoord // size).sum() % 2, color0, color1)
+
+
+class LerpTexture(Node):
+    arguments = ['x0', 'x1', 'y0', 'y1', 'texcoord']
+    defaults = [0.0, 1.0, 0.0, 0.0, 'texcoord']
+
+    @ti.func
+    def __call__(self):
+        x0, x1, y0, y1, uv = tuple(map(self.param, self.arguments))
+        return lerp(uv.x, x0, x1) + lerp(uv.y, x0, x1)
