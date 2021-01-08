@@ -17,8 +17,7 @@ class RTXLighting:
             self.color.fill(2.0)
             self.rad.fill(0.1)
 
-    def load_skybox(self, path, cubic=True):
-        self.skybox = tina.Skybox(path, cubic=cubic)
+        self.skybox = tina.HosekSkybox()
 
     @ti.kernel
     def set_lights(self, pos: ti.ext_arr()):

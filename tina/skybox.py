@@ -98,15 +98,6 @@ class Skybox:
         return img.shape[:2]
 
     @ti.func
-    def sample(self, dir):
-        if ti.static(self.cubic):
-            I = (self.shape[0] - 1) * cubemap(dir)
-            return bilerp(self.img, I)
-        else:
-            I = (V(*self.shape) - 1) * spheremap(dir)
-            return bilerp(self.img, I)
-
-    @ti.func
     def mapcoor(self, I):
         if ti.static(self.cubic):
             coor = cubemap(dir)
@@ -124,3 +115,21 @@ class Skybox:
         dir = unspheremap(coor)
         return dir
 
+    @ti.func
+    def sample(self, dir):
+        if ti.static(self.cubic):
+            I = (self.shape[0] - 1) * cubemap(dir)
+            return bilerp(self.img, I)
+        else:
+            I = (V(*self.shape) - 1) * spheremap(dir)
+            return bilerp(self.img, I)
+
+
+@ti.data_oriented
+class HosekSkybox:
+    def __init__(self):
+        pass
+
+    @ti.func
+    def sample(self, dir):
+        return clamp(dir.z, 0, 1)

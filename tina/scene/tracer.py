@@ -17,7 +17,7 @@ class MixedGeometryTracer:
         for gid, tracer in ti.static(enumerate(self.tracers)):
             near, ind, uv = tracer.hit(ro, rd)
             if near < ret_near:
-                ret_near, ret_ind, ret_gid, ret_uv = near, ind, gid, uv
+                    ret_near, ret_ind, ret_gid, ret_uv = near, ind, gid, uv
         return ret_near, ret_ind, ret_gid, ret_uv
 
     @ti.func
