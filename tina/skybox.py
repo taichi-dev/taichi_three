@@ -125,11 +125,162 @@ class Skybox:
             return bilerp(self.img, I)
 
 
+
+def _get_incident_light():
+    g = 0.76;
+
+    @ti.func
+    def henyey_greenstein_phase_func(mu):
+        return (1. - g*g) / ((4. * ti.pi) * pow(1. + g*g - 2.*g*mu, 1.5))
+
+
+    @ti.func
+    def isect_sphere(ray_origin, ray_direction, sphere):
+        rc = sphere[0] - ray_origin;
+        radius2 = sphere[1]**2
+        tca = rc.dot(ray_direction);
+        d2 = rc.norm_sqr() - tca**2
+
+        hit = 0
+        t0 = 0.0
+        t1 = 0.0
+        if not (d2 > radius2):
+            hit = 1
+            thc = ti.sqrt(radius2 - d2);
+            t0 = tca - thc;
+            t1 = tca + thc;
+
+        return hit, t0, t1;
+
+    betaR = V(5.5e-6, 13.0e-6, 22.4e-6);
+    betaM = V3(21e-6);
+
+    hR = 7994.0;
+    hM = 1200.0;
+
+    @ti.func
+    def rayleigh_phase_func(mu):
+        return 3. * (1. + mu*mu) / (16. * ti.pi);
+
+
+    earth_radius = 6360e3;
+    atmosphere_radius = 6420e3;
+    atmosphere = [V(0, 0, 0), atmosphere_radius, 0];
+
+    num_samples = 16;
+    num_samples_light = 8;
+
+
+    @ti.func
+    def get_sun_light(ray_origin, ray_direction, optical_depthR, optical_depthM):
+        t0 = 0.0
+        t1 = 0.0
+        hit, t0, t1 = isect_sphere(ray_origin, ray_direction, atmosphere);
+
+        ret = 0
+        if hit:
+            ret = 1
+
+            march_pos = 0.;
+            march_step = t1 / float(num_samples_light);
+
+            for i in range(num_samples_light):
+                s = ray_origin + ray_direction * (march_pos + 0.5 * march_step);
+                height = (s).norm() - earth_radius;
+                if (height < 0.):
+                    ret = 0
+                    break
+
+                optical_depthR += ti.exp(-height / hR) * march_step;
+                optical_depthM += ti.exp(-height / hM) * march_step;
+
+                march_pos += march_step;
+
+        return ret;
+
+
+
+    sun_power = 20.0;
+
+    @ti.func
+    def get_incident_light(ray_origin, ray_direction, sun_dir):
+        t0 = 0.0
+        t1 = 0.0
+        hit, t0, t1 = isect_sphere(ray_origin, ray_direction, atmosphere)
+
+        ret = V3(0.)
+        #ret = V(1., 0., 1.)
+        if hit:
+
+            march_step = t1 / float(num_samples);
+
+            mu = ray_direction.dot(sun_dir);
+
+            phaseR = rayleigh_phase_func(mu);
+            phaseM = henyey_greenstein_phase_func(mu);
+
+            optical_depthR = 0.;
+            optical_depthM = 0.;
+
+            sumR = V3(0.);
+            sumM = V3(0.);
+            march_pos = 0.;
+
+            for i in range(num_samples):
+                s = ray_origin + ray_direction * (march_pos + 0.5 * march_step);
+                height = (s).norm() - earth_radius;
+
+                hr = ti.exp(-height / hR) * march_step;
+                hm = ti.exp(-height / hM) * march_step;
+                optical_depthR += hr;
+                optical_depthM += hm;
+
+                optical_depth_lightR = 0.;
+                optical_depth_lightM = 0.;
+                overground = get_sun_light(
+                    s, sun_dir,
+                    optical_depth_lightR,
+                    optical_depth_lightM);
+
+                if (overground):
+                    tau = betaR * (optical_depthR + optical_depth_lightR) + betaM * 1.1 * (optical_depthM + optical_depth_lightM);
+                    attenuation = ti.exp(-tau);
+
+                    sumR += hr * attenuation;
+                    sumM += hm * attenuation;
+
+                march_pos += march_step;
+
+            ret = sun_power * (sumR * phaseR * betaR + sumM * phaseM * betaM);
+
+        return ret
+
+    return get_incident_light
+
+
+# https://www.shadertoy.com/view/XtBXDz
 @ti.data_oriented
-class HosekSkybox:
-    def __init__(self):
-        pass
+class Atomsphere:
+    def __init__(self, scale=1):
+        self.img = texture_as_field('assets/atms.png')
+        self.res = tovector(self.img._dense_shape)
+        self.resolution = self.res.x // 2
+        self.scale = scale
+        #self.resolution = 256
+        #self.get_incident_light = _get_incident_light()
+
+    #@ti.func
+    #def sample_sky(self, dir):
+        #org = V(0., 0., earth_radius + 1.)
+        #sun_dir = V(0., 0., 1.)
+        #ret = self.get_incident_light(org, dir, sun_dir)
+        #return ret
 
     @ti.func
     def sample(self, dir):
-        return clamp(dir.z, 0, 1)
+        dir.y, dir.z = -dir.z, dir.y
+        I = self.res * (dir.xy * 0.49 + 0.5)
+        sky = ce_untonemap(bilerp(self.img, I)) * self.scale
+        #sky = self.sample_sky(dir)
+        ground = lerp((dir.xy / dir.z // 4).sum() % 2, 0.2, 0.7)
+        return lerp(clamp(dir.z * 32, -1, 1) * 0.5 + 0.5, ground, sky)

@@ -7,7 +7,7 @@ class SkyboxLighting:
         pass
 
     def load_skybox(self, path, precision=32, cubic=True):
-        if path.endswith('.npz'):
+        if isinstance(path, str) and path.endswith('.npz'):
             print('[Tina] Loading pre-cooked IBL map from', path)
             data = np.load(path, allow_pickle=True)
             self.skybox = tina.Skybox(data['env'])
@@ -15,7 +15,9 @@ class SkyboxLighting:
             self.ibls[tina.Lambert] = tina.Skybox(data['diff'])
             self.ibls[tina.CookTorrance] = tuple(map(tina.Skybox, data['spec'])), texture_as_field(data['lut'])
         else:
-            if path.endswith('.npy'):
+            if hasattr(path, 'sample'):
+                self.skybox = path
+            elif path.endswith('.npy'):
                 self.skybox = tina.Skybox(np.load(path))
             else:
                 self.skybox = tina.Skybox(path, cubic=cubic)
