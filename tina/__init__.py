@@ -143,6 +143,7 @@ def lazyguard():
 
 
 from .hacker import *
+from .shield import *
 from .common import *
 from .advans import *
 

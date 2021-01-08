@@ -24,7 +24,7 @@ class Scene:
             if not self.ibl:
                 self.lighting = tina.Lighting()
             else:
-                self.lighting = tina.SkyboxLighting()
+                self.lighting = tina.SkyboxLighting(tina.Atomsphere())
         else:
             self.lighting = tina.RTXLighting()
 
@@ -47,9 +47,6 @@ class Scene:
 
         if self.rtx or self.ibl:
             self.background_shader = tina.BackgroundShader(self.image, self.lighting)
-
-        if self.ibl:
-            self.lighting.load_skybox(tina.Atomsphere())
 
         if not self.rtx and not self.ibl:
             @ti.materialize_callback

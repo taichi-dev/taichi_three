@@ -30,7 +30,7 @@ class IMaterial(Node):
         return odir, brdf
 
     @classmethod
-    def cook_for_ibl(cls, env, precision):
+    def cook_for_ibl(cls, tab, precision):
         raise NotImplementedError(cls)
 
     @ti.func
@@ -106,13 +106,11 @@ class MixMaterial(IMaterial):
         return odir, wei
 
     @ti.func
-    def sample_ibl(self, ibls: ti.template(), idir, nrm):
+    def sample_ibl(self, ibltab, idir, nrm):
         fac = self.param('factor')
-        ibl1 = ti.static(ibls.get(type(self.mat1), ibls))
-        ibl2 = ti.static(ibls.get(type(self.mat2), ibls))
-        wei1 = self.mat1.sample_ibl(ibl1, idir, nrm)
-        wei2 = self.mat2.sample_ibl(ibl2, idir, nrm)
-        return (1 - fac) * wei1 + fac * wei2  # XXX: avoid ks duplication for LUT
+        wei1 = self.mat1.sample_ibl(ibltab, idir, nrm)
+        wei2 = self.mat2.sample_ibl(ibltab, idir, nrm)
+        return (1 - fac) * wei1 + fac * wei2
 
 
 class ScaleMaterial(IMaterial):
@@ -200,8 +198,8 @@ class CookTorrance(IMaterial):
     rough_levels = [(a, a - b) for a, b in zip(rough_levels, [0] + rough_levels)]
 
     @ti.func
-    def sample_ibl(self, ibl_info: ti.template(), idir, nrm):
-        ibls, lut = ti.static(ibl_info)
+    def sample_ibl(self, tab: ti.template(), idir, nrm):
+        ibls, lut = ti.static(tab['spec'], tab['lut'])
         # https://zhuanlan.zhihu.com/p/261005894
         roughness = self.param('roughness')
         f0 = self.param('fresnel')
@@ -224,7 +222,9 @@ class CookTorrance(IMaterial):
         return wei
 
     @classmethod
-    def cook_for_ibl(cls, env, precision):
+    def cook_for_ibl(cls, tab, precision):
+        env = tab['env']
+
         @ti.kernel
         def bake(ibl: ti.template(),
                 roughness: ti.template(),
@@ -260,7 +260,8 @@ class CookTorrance(IMaterial):
                 nsamples = int(nsamples * 3**(rough_step * 4))
             print('[Tina] Baking IBL map for CookTorrance done')
 
-        return tuple(ibls), lut
+        tab['spec'] = tuple(ibls)
+        tab['lut'] = lut
 
     @ti.func
     def sub_brdf(self, nrm, idir, odir):  # idir = L, odir = V
@@ -345,7 +346,8 @@ class Lambert(IMaterial):
         return odir, 1.0
 
     @classmethod
-    def cook_for_ibl(cls, env, precision):
+    def cook_for_ibl(cls, tab, precision):
+        env = tab['env']
         ibl = tina.Skybox(env.resolution // 6)
         tmp = ti.Vector.field(3, float, ibl.shape)
         nsamples = 128 * precision
@@ -377,11 +379,11 @@ class Lambert(IMaterial):
             bake()
             print('[Tina] Baking IBL map for Lambert done')
 
-        return ibl
+        tab['diff'] = ibl
 
     @ti.func
-    def sample_ibl(self, ibl, idir, nrm):
-        return ibl.sample(nrm)
+    def sample_ibl(self, tab, idir, nrm):
+        return tab['diff'].sample(nrm)
 
 
 class Phong(IMaterial):
@@ -464,13 +466,13 @@ class Mirror(IMaterial):
         return 0.0
 
     @classmethod
-    def cook_for_ibl(cls, env, precision):
-        return env
+    def cook_for_ibl(cls, env, tab, precision):
+        pass
 
     @ti.func
-    def sample_ibl(self, ibl, idir, nrm):
+    def sample_ibl(self, tab, idir, nrm):
         odir = reflect(-idir, nrm)
-        return ibl.sample(odir)
+        return tab['env'].sample(odir)
 
     @ti.func
     def sample(self, idir, nrm, sign):
@@ -519,19 +521,19 @@ class MaterialTable:
         self.materials.append(matr)
 
 
-def Classic(color=1.0, shineness=32, specular=0.4):
+def Classic(color='color', shineness=32, specular=0.4):
     mat_diff = tina.Lambert() * color
     mat_spec = tina.Phong(shineness=shineness)
     material = tina.MixMaterial(mat_diff, mat_spec, specular)
     return material
 
 
-def Diffuse(color=1.0):
+def Diffuse(color='color'):
     material = tina.Lambert() * color
     return material
 
 
-def PBR(basecolor=1.0, metallic=0.0, roughness=0.4, specular=0.5):
+def PBR(basecolor='color', metallic=0.0, roughness=0.4, specular=0.5):
     mat_diff = tina.Lambert() * basecolor
     f0 = tina.FresnelFactor(metallic=metallic, albedo=basecolor, specular=specular)
     mat_spec = tina.CookTorrance(roughness=roughness, fresnel=f0)

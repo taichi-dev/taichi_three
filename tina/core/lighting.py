@@ -3,34 +3,14 @@ from ..advans import *
 
 @ti.data_oriented
 class SkyboxLighting:
-    def __init__(self):
-        pass
-
-    def load_skybox(self, path, precision=32, cubic=True):
-        if isinstance(path, str) and path.endswith('.npz'):
-            print('[Tina] Loading pre-cooked IBL map from', path)
-            data = np.load(path, allow_pickle=True)
-            self.skybox = tina.Skybox(data['env'])
-            self.ibls = {}
-            self.ibls[tina.Lambert] = tina.Skybox(data['diff'])
-            self.ibls[tina.CookTorrance] = tuple(map(tina.Skybox, data['spec'])), texture_as_field(data['lut'])
-        else:
-            if hasattr(path, 'sample'):
-                self.skybox = path
-            elif path.endswith('.npy'):
-                self.skybox = tina.Skybox(np.load(path))
-            else:
-                self.skybox = tina.Skybox(path, cubic=cubic)
-            self.ibls = {}
-            for mattype in [tina.CookTorrance, tina.Lambert, tina.Mirror]:
-                self.ibls[mattype] = mattype.cook_for_ibl(self.skybox, precision)
-
-    def save(self, path):
-        spec = tuple(x.img.to_numpy() for x in self.ibls[tina.CookTorrance][0])
-        lut = self.ibls[tina.CookTorrance][1].to_numpy()
-        diff = self.ibls[tina.Lambert].img.to_numpy()
-        env = self.skybox.img.to_numpy()
-        np.savez(path, env=env, spec=spec, lut=lut, diff=diff)
+    def __init__(self, skybox, ibltab=None):
+        self.skybox = skybox
+        if ibltab is None:
+            precision = 32
+            ibltab = {'env': skybox}
+            tina.CookTorrance.cook_for_ibl(ibltab, precision)
+            tina.Lambert.cook_for_ibl(ibltab, precision)
+        self.ibltab = ibltab
 
     @ti.func
     def background(self, rd):
@@ -38,8 +18,7 @@ class SkyboxLighting:
 
     @ti.func
     def shade_color(self, material, pos, normal, viewdir):
-        ibl = ti.static(self.ibls.get(type(material), self.ibls))
-        return material.sample_ibl(ibl, viewdir, normal)
+        return material.sample_ibl(self.ibltab, viewdir, normal)
 
 
 @ti.data_oriented
