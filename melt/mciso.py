@@ -1,36 +1,55 @@
 import taichi as ti
 import numpy as np
-import tina
+from tina.common import *
 
 
 @ti.data_oriented
 class MCISO:
-    def __init__(self, N, N_res=None, dim=3):
-        self.N = N
-        self.dim = dim
-        self.N_res = N_res or N**self.dim
+    def __init__(self, res):
+        self.res = tovector(res)
+        self.dim = len(res)
 
         from mciso_data import _et2, _et3
-        et = [_et2, _et3][dim - 2]
-        self.et = ti.Vector.field(dim, int, et.shape[:2])
+        et = [_et2, _et3][self.dim - 2]
+        self.et = ti.Vector.field(self.dim, int, et.shape[:2])
 
         @ti.materialize_callback
         def init_tables():
             self.et.from_numpy(et)
 
+        indices = [ti.ij, ti.ijk][self.dim - 2]
+
         self.m = ti.field(float)
         self.g = ti.Vector.field(self.dim, float)
         self.Jtab = ti.field(int)
-        indices = [ti.ij, ti.ijk][dim - 2]
-        self.root = ti.root.dense(indices, 1)
-        self.grid = self.root.pointer(indices, self.N // 16).pointer(indices, 16)
-        self.grid.dense(ti.l, self.dim).place(self.Jtab)
-        self.grid.place(self.m, self.g)
 
-        self.Js = ti.Vector.field(self.dim + 1, int, (self.N_res, self.dim))
-        self.Jts = ti.Vector.field(self.dim, int, self.N_res)
-        self.vs = ti.Vector.field(self.dim, float, self.N_res)
-        self.ns = ti.Vector.field(self.dim, float, self.N_res)
+        grid_size = 4096
+        grid_block_size = 128
+        leaf_block_size = 8
+        self.offset = (-grid_size // 2,) * self.dim
+
+        self.grid = ti.root.pointer(indices, grid_size // grid_block_size)
+        block = self.grid.pointer(indices, grid_block_size // leaf_block_size)
+        block.bitmasked(indices, leaf_block_size
+                ).dense(ti.l, self.dim).place(self.Jtab, offset=self.offset + (0, ))
+        block.dense(indices, leaf_block_size
+                ).place(self.m, self.g, offset=self.offset)
+
+        max_num_elems = 2**24
+        self.face = ti.root.dynamic(ti.i, max_num_elems, max_num_elems // 128)
+        self.vert = ti.root.dynamic(ti.i, max_num_elems, max_num_elems // 128)
+
+        self.Js = ti.Vector.field(self.dim + 1, int)
+        self.Jts = ti.Vector.field(self.dim, int)
+        #self.Jis = ti.Vector.field(self.dim, int)
+        self.face.dense(ti.j, self.dim).place(self.Js)
+        self.face.place(self.Jts)
+        #self.grid.dynamic(leaf_block_size * 32).place(self.Jis)
+
+        self.vs = ti.Vector.field(self.dim, float)
+        self.ns = ti.Vector.field(self.dim, float)
+        self.vert.place(self.vs, self.ns)
+
         self.Js_n = ti.field(int, ())
         self.vs_n = ti.field(int, ())
 
@@ -94,7 +113,7 @@ class MCISO:
                 self.Jts[i][l] = self.Jtab[self.Js[i, l]]
 
     def clear(self):
-        self.root.deactivate_all()
+        self.grid.deactivate_all()
 
     @ti.func
     def get_cubeid(self, I):
@@ -120,7 +139,7 @@ class MCISO:
     def get_mesh(self):
         ret = {}
         ret['f'] = self.Jts.to_numpy()[:self.Js_n[None]][:, ::-1]
-        ret['v'] = (self.vs.to_numpy()[:self.vs_n[None]] + 0.5) / self.N
+        ret['v'] = (self.vs.to_numpy()[:self.vs_n[None]] + 0.5) / self.res
         ret['vn'] = self.ns.to_numpy()[:self.vs_n[None]]
         return ret
 
@@ -134,9 +153,9 @@ class MCISO:
 
     @ti.func
     def get_face_verts(self, n):
-        a = (self.vs[self.Jts[n][2]] + 0.5) / self.N
-        b = (self.vs[self.Jts[n][1]] + 0.5) / self.N
-        c = (self.vs[self.Jts[n][0]] + 0.5) / self.N
+        a = (self.vs[self.Jts[n][2]] + 0.5) / self.res * 2 - 1
+        b = (self.vs[self.Jts[n][1]] + 0.5) / self.res * 2 - 1
+        c = (self.vs[self.Jts[n][0]] + 0.5) / self.res * 2 - 1
         return a, b, c
 
     @ti.func
@@ -145,11 +164,6 @@ class MCISO:
         b = self.ns[self.Jts[n][1]]
         c = self.ns[self.Jts[n][0]]
         return a, b, c
-
-    @ti.func
-    def sample_volume(self, pos):
-        from ..advans import trilerp
-        return trilerp(self.m, pos * self.N)
 
     @ti.func
     def get_transform(self):
@@ -163,11 +177,11 @@ class _MCISO_Example(MCISO):
 
     @ti.kernel
     def touch(self, mx: float, my: float):
-        for o in ti.grouped(ti.ndrange(*[self.N] * self.dim)):
-            p = o / self.N
+        for o in ti.grouped(ti.ndrange(*self.res)):
+            p = o / self.res
             a = self.gauss((p - 0.5).norm() / 0.25)
-            p.x -= mx - 0.5 / self.N
-            p.y -= my - 0.5 / self.N
+            p.x -= mx - 0.5 / self.res.x
+            p.y -= my - 0.5 / self.res.y
             if ti.static(self.dim == 3):
                 p.z -= 0.5
             b = self.gauss(p.norm() / 0.25)
@@ -179,34 +193,20 @@ class _MCISO_Example(MCISO):
     def main(self):
         gui = ti.GUI('Marching cube')
 
-        scene = tina.Scene()
-        mesh = tina.SimpleMesh()
-        scene.add_object(mesh)
+        scene = tina.Scene(maxfaces=2**18, smoothing=True)
+        scene.add_object(self)
 
         while gui.running and not gui.get_event(gui.ESCAPE):
             self.clear()
             self.touch(*gui.get_cursor_pos())
             self.march()
 
-            Jts = self.Jts.to_numpy()[:self.Js_n[None], ::-1]
-            vs = (self.vs.to_numpy()[:self.vs_n[None]] + 0.5) / self.N * 2 - 1
-            ns = self.ns.to_numpy()[:self.vs_n[None]]
-            mesh.set_face_verts(vs[Jts])
-            mesh.set_face_norms(ns[Jts])
             scene.render()
-
             gui.set_image(scene.img)
-            gui.text(f'Press space to save mesh to PLY ({len(vs)} verts, {len(Jts)} faces)', (0, 1))
             gui.show()
-
-            if gui.is_pressed(gui.SPACE):
-                writer = ti.PLYWriter(num_vertices=len(vs), num_faces=len(Jts))
-                writer.add_vertex_pos(vs[:, 0], vs[:, 1], vs[:, 2])
-                writer.add_faces(Jts)
-                writer.export('mciso_output.ply')
-                print('Mesh saved to mciso_output.ply')
 
 
 if __name__ == '__main__':
-    ti.init(ti.gpu)
-    _MCISO_Example(64).main()
+    ti.init(ti.cuda, kernel_profiler=True)
+    _MCISO_Example([256] * 3).main()
+    ti.kernel_profiler_print()
