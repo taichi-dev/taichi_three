@@ -22,9 +22,9 @@ class MPMSolver:
     SAND = 3
 
     def __init__(self, res, size=1, dt_scale=1, E_scale=1):
-        assert len(res) in [2, 3]
         self.res = tovector(res)
         self.dim = len(self.res)
+        assert self.dim in [2, 3]
         self.dx = size / self.res.x
         self.dt = 2e-2 * self.dx / size * dt_scale
         self.steps = int(1 / (120 * self.dt))
@@ -82,8 +82,8 @@ class MPMSolver:
 
     @ti.kernel
     def reset(self):
-        for i in range(8192):
-            pos = V(*[ti.random() for i in range(self.dim)]) * 0.3 + 0.5
+        for i in range(self.res.x**self.dim):
+            pos = V(*[ti.random() for i in range(self.dim)]) * 0.7
             vel = ti.Vector.zero(float, self.dim)
             self.seed_particle(i, pos, vel, self.WATER)
 
@@ -92,6 +92,7 @@ class MPMSolver:
         self.x[i] = pos
         self.v[i] = vel
         self.F[i] = ti.Matrix.identity(float, self.dim)
+        self.C[i] = ti.Matrix.zero(float, self.dim, self.dim)
         self.material[i] = material
         if material == self.SAND:
             self.Jp[i] = 0
@@ -121,7 +122,7 @@ class MPMSolver:
             fx = Xp - base
             w = [0.5 * (1.5 - fx)**2, 0.75 - (fx - 1)**2, 0.5 * (fx - 0.5)**2]
             self.F[p] = (ti.Matrix.identity(float, self.dim) + self.dt * self.C[p]) @ self.F[p]
-            h = ti.exp(10 * (1.0 - self.Jp[p]))
+            h = ti.exp(10 * (1 - self.Jp[p]))
             if self.material[p] == self.JELLY:
                 h = 0.3
             mu, la = self.mu_0 * h, self.lambda_0 * h
@@ -169,14 +170,18 @@ class MPMSolver:
                 self.grid_m[base + offset] += weight * self.p_mass
 
     @ti.kernel
-    def grid_op(self):
+    def grid_normalize(self):
         for I in ti.grouped(self.grid_m):
             if self.grid_m[I] > 0:
                 self.grid_v[I] /= self.grid_m[I]
             self.grid_v[I] -= self.dt * self.gravity
-            #cond1 = I < -self.res and self.grid_v[I] < 0
-            #cond2 = I > self.res and self.grid_v[I] > 0
-            #self.grid_v[I] = 0 if cond1 or cond2 else self.grid_v[I]
+
+    @ti.kernel
+    def grid_boundary(self):
+        for I in ti.grouped(self.grid_m):
+            cond1 = I < -self.res and self.grid_v[I] < 0
+            cond2 = I > self.res and self.grid_v[I] > 0
+            self.grid_v[I] = 0 if cond1 or cond2 else self.grid_v[I]
 
     @ti.kernel
     def g2p(self):
@@ -233,12 +238,12 @@ class MPMSolver:
     @ti.kernel
     def _get_particle_pos(self, out: ti.ext_arr()):
         for i in range(out.shape[0]):
-            for k in ti.static(range(3)):
+            for k in ti.static(range(self.dim)):
                 out[i, k] = self.x[i][k]
 
     def get_particle_pos(self):
         num = self.get_num_particles()
-        out = np.empty((num, 3), dtype=np.float32)
+        out = np.empty((num, self.dim), dtype=np.float32)
         self._get_particle_pos(out)
         return out
 
@@ -247,32 +252,50 @@ class MPMSolver:
             self.grid.deactivate_all()
             self.build_pid()
             self.p2g()
-            self.grid_op()
+            self.grid_normalize()
+            self.grid_boundary()
             self.g2p()
 
 def main():
-    ti.init(ti.gpu, make_block_local=False, kernel_profiler=True)
-    mpm = MPMSolver([64] * 3)
+    use_mciso = True
 
-    scene = tina.Scene()
-    pars = tina.SimpleParticles(radius=0.01)
-    scene.add_object(pars, tina.Classic())
+    ti.init(ti.gpu, make_block_local=False, kernel_profiler=True)
+    mpm = MPMSolver([32] * 3)
+
+    scene = tina.Scene(maxfaces=2**18, smoothing=True)
+    if use_mciso:
+        mciso = tina.MCISO(mpm.res)
+        scene.add_object(mciso)
+    else:
+        pars = tina.SimpleParticles(radius=0.01)
+        scene.add_object(pars, tina.Classic())
 
     wire = tina.MeshToWire(tina.PrimitiveMesh.asset('cube'))
     scene.add_object(wire)
 
     gui = ti.GUI()
+
+    scene.init_control(gui, blendish=True)
+    if use_mciso:
+        w0 = gui.slider('w0', 0, 100, 0.1)
+        w0.value = 11
+        rad = gui.slider('rad', 0, 15, 1)
+        rad.value = 4
+        sig = gui.slider('sig', 0, 8, 0.1)
+        sig.value = 5
+
     while gui.running:
         scene.input(gui)
         if gui.is_pressed('r'):
             mpm.reset()
-        mpm.step()
-        #mciso.clear()
-        #voxel.voxelize(mciso.m, mpm.x)
-        #mciso.march()
-        pars.set_particles(mpm.get_particle_pos() * 2 - 1)
-        #colors = np.array(list(map(ti.hex_to_rgb, [0x068587, 0xED553B, 0xEEEEF0])))
-        #pars.set_particle_colors(colors[mpm.material.to_numpy()])
+        if not gui.is_pressed(gui.SPACE):
+            mpm.step()
+        if use_mciso:
+            mciso.march(mpm.x, w0.value, rad.value, sig.value)
+        else:
+            pars.set_particles(mpm.get_particle_pos())
+            #colors = np.array(list(map(ti.hex_to_rgb, [0x068587, 0xED553B, 0xEEEEF0])))
+            #pars.set_particle_colors(colors[mpm.material.to_numpy()])
         scene.render()
         gui.set_image(scene.img)
         gui.show()
@@ -280,13 +303,16 @@ def main():
     ti.kernel_profiler_print()
 
 def main2():
-    ti.init(ti.gpu)
+    ti.init(ti.gpu, make_block_local=False)
     mpm = MPMSolver([128] * 2)
 
     gui = ti.GUI()
-    while gui.running:
-        mpm.step()
-        gui.circles(mpm.get_particle_pos())
+    while gui.running and not gui.get_event(gui.ESCAPE):
+        if gui.is_pressed('r'):
+            mpm.reset()
+        if not gui.is_pressed(gui.SPACE):
+            mpm.step()
+        gui.circles(mpm.get_particle_pos() * 0.5 + 0.5)
         gui.show()
 
 if __name__ == '__main__':
