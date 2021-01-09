@@ -5,7 +5,7 @@ import tina
 
 @ti.data_oriented
 class MCISO:
-    def __init__(self, N=128, N_res=None, dim=3):
+    def __init__(self, N, N_res=None, dim=3):
         self.N = N
         self.dim = dim
         self.N_res = N_res or N**self.dim
@@ -13,6 +13,7 @@ class MCISO:
         from mciso_data import _et2, _et3
         et = [_et2, _et3][dim - 2]
         self.et = ti.Vector.field(dim, int, et.shape[:2])
+
         @ti.materialize_callback
         def init_tables():
             self.et.from_numpy(et)
@@ -21,9 +22,10 @@ class MCISO:
         self.g = ti.Vector.field(self.dim, float)
         self.Jtab = ti.field(int)
         indices = [ti.ij, ti.ijk][dim - 2]
-        ti.root.dense(indices, self.N).place(self.g)
-        ti.root.pointer(indices, self.N // 16).dense(indices, 16).place(self.m)
-        ti.root.dense(indices, 1).dense(ti.l, self.dim).pointer(indices, self.N // 8).bitmasked(indices, 8).place(self.Jtab)
+        self.root = ti.root.dense(indices, 1)
+        self.grid = self.root.pointer(indices, self.N // 16).pointer(indices, 16)
+        self.grid.dense(ti.l, self.dim).place(self.Jtab)
+        self.grid.place(self.m, self.g)
 
         self.Js = ti.Vector.field(self.dim + 1, int, (self.N_res, self.dim))
         self.Jts = ti.Vector.field(self.dim, int, self.N_res)
@@ -42,7 +44,7 @@ class MCISO:
             for i in ti.static(range(self.dim)):
                 d = ti.Vector.unit(self.dim, i, int)
                 r[i] = self.m[I + d] - self.m[I - d]
-            self.g[I] = -r.normalized(1e-4)
+            self.g[I] = -r.normalized(1e-5)
 
         for I in ti.grouped(self.m):
             id = self.get_cubeid(I)
@@ -69,8 +71,6 @@ class MCISO:
                     self.Jtab[J] = 1
 
         for J in ti.grouped(self.Jtab):
-            if self.Jtab[J] == 0:
-                continue
             vs_n = ti.atomic_add(self.vs_n[None], 1)
             I = ti.Vector(ti.static(J.entries[:-1]))
             vs = I * 1.0
@@ -94,7 +94,7 @@ class MCISO:
                 self.Jts[i][l] = self.Jtab[self.Js[i, l]]
 
     def clear(self):
-        ti.root.deactivate_all()
+        self.root.deactivate_all()
 
     @ti.func
     def get_cubeid(self, I):
@@ -156,18 +156,7 @@ class MCISO:
         return ti.Matrix.identity(float, 4)
 
 
-def extend_bounds(m, bound=1):
-    assert len(m.shape) == 3
-    x = np.zeros((bound, m.shape[1], m.shape[2]), dtype=m.dtype)
-    y = np.zeros((m.shape[0] + bound * 2, bound, m.shape[2]), dtype=m.dtype)
-    z = np.zeros((m.shape[0] + bound * 2, m.shape[1] + bound * 2, bound), dtype=m.dtype)
-    m = np.concatenate([x, m, x], axis=0)
-    m = np.concatenate([y, m, y], axis=1)
-    m = np.concatenate([z, m, z], axis=2)
-    return m
-
-
-class MCISO_Example(MCISO):
+class _MCISO_Example(MCISO):
     @ti.func
     def gauss(self, x):
         return ti.exp(-6 * x**2)
@@ -190,7 +179,7 @@ class MCISO_Example(MCISO):
     def main(self):
         gui = ti.GUI('Marching cube')
 
-        scene = tina.Scene(smoothing=True)
+        scene = tina.Scene()
         mesh = tina.SimpleMesh()
         scene.add_object(mesh)
 
@@ -219,5 +208,5 @@ class MCISO_Example(MCISO):
 
 
 if __name__ == '__main__':
-    ti.init(ti.cpu)
-    MCISO_Example().main()
+    ti.init(ti.gpu)
+    _MCISO_Example(64).main()
