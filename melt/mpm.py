@@ -43,12 +43,12 @@ class MPMSolver:
         sin_phi = ti.sin(np.radians(45))
         self.alpha = ti.sqrt(2 / 3) * 2 * sin_phi / (3 - sin_phi)
 
-        self.x = ti.Vector.field(self.dim, float, self.n_particles)
-        self.v = ti.Vector.field(self.dim, float, self.n_particles)
-        self.C = ti.Matrix.field(self.dim, self.dim, float, self.n_particles)
-        self.F = ti.Matrix.field(self.dim, self.dim, float, self.n_particles)
-        self.material = ti.field(int, self.n_particles)
-        self.Jp = ti.field(float, self.n_particles)
+        self.x = ti.Vector.field(self.dim, float)
+        self.v = ti.Vector.field(self.dim, float)
+        self.C = ti.Matrix.field(self.dim, self.dim, float)
+        self.F = ti.Matrix.field(self.dim, self.dim, float)
+        self.material = ti.field(int)
+        self.Jp = ti.field(float)
 
         indices = ti.ij if self.dim == 2 else ti.ijk
 
@@ -64,23 +64,30 @@ class MPMSolver:
 
         self.grid_v = ti.Vector.field(self.dim, float)
         self.grid_m = ti.field(float)
+
+        block_component(self.grid_m)
         for v in self.grid_v.entries:
             block_component(v)
-        block_component(self.grid_m)
 
         self.pid = ti.field(int)
-        block.dynamic(ti.indices(self.dim), 1024**2,
+        block.dynamic(ti.indices(self.dim), 2**20,
                 chunk_size=leaf_block_size**self.dim * 8).place(
                         self.pid, offset=self.offset + (0,))
+
+        max_num_particles = 2**20
+        self.particle = ti.root.dynamic(ti.i, max_num_particles)
+        for c in [self.x, self.v, self.C, self.F, self.material, self.Jp]:
+            self.particle.place(c)
+        self.particle_num = ti.field(int, ())
 
         ti.materialize_callback(self.reset)
 
     @ti.kernel
     def reset(self):
-        for i in self.x:
+        for i in range(self.n_particles):
             pos = V(*[ti.random() for i in range(self.dim)]) * 0.3 + 0.5
             vel = ti.Vector.zero(float, self.dim)
-            self.seed_particle(i, pos, vel, self.SAND)
+            self.seed_particle(i, pos, vel, self.WATER)
 
     @ti.func
     def seed_particle(self, i, pos, vel, material):
@@ -97,20 +104,20 @@ class MPMSolver:
         return ti.ndrange(*(3,) * self.dim)
 
     @ti.kernel
-    def substep(self):
-        for I in ti.grouped(self.grid_m):
-            self.grid_v[I] = ti.Vector.zero(float, self.dim)
-            self.grid_m[I] = 0
+    def build_pid(self):
         ti.block_dim(64)
-        for p in self.x:
+        for p in self.particle:
             base = ifloor(self.x[p] / self.dx - 0.5)
             ti.append(self.pid.parent(), base - tovector(self.offset), p)
+
+    @ti.kernel
+    def p2g(self):
+        ti.no_activate(self.particle)
         ti.block_dim(256)
         ti.block_local(self.grid_v)
         ti.block_local(self.grid_m)
-        #for I in ti.grouped(self.pid):
-            #p = self.pid[I]
-        for p in self.x:
+        for I in ti.grouped(self.pid):
+            p = self.pid[I]
             Xp = self.x[p] / self.dx
             base = ifloor(Xp - 0.5)
             fx = Xp - base
@@ -162,6 +169,9 @@ class MPMSolver:
                     weight *= list_subscript(w, offset[i])[i]
                 self.grid_v[base + offset] += weight * (self.p_mass * self.v[p] + affine @ dpos)
                 self.grid_m[base + offset] += weight * self.p_mass
+
+    @ti.kernel
+    def grid_op(self):
         for I in ti.grouped(self.grid_m):
             if self.grid_m[I] > 0:
                 self.grid_v[I] /= self.grid_m[I]
@@ -169,12 +179,14 @@ class MPMSolver:
             cond1 = I < self.bound and self.grid_v[I] < 0
             cond2 = I > self.n_grid - self.bound and self.grid_v[I] > 0
             self.grid_v[I] = 0 if cond1 or cond2 else self.grid_v[I]
+
+    @ti.kernel
+    def g2p(self):
+        ti.no_activate(self.particle)
         ti.block_dim(256)
         ti.block_local(self.grid_v)
-        ti.block_local(self.grid_m)
-        #for I in ti.grouped(self.pid):
-            #p = self.pid[I]
-        for p in self.x:
+        for I in ti.grouped(self.pid):
+            p = self.pid[I]
             Xp = self.x[p] / self.dx
             base = ifloor(Xp - 0.5)
             fx = Xp - base
@@ -216,13 +228,32 @@ class MPMSolver:
 
         return sigma_out
 
+    @ti.kernel
+    def get_num_particles(self) -> int:
+        return ti.length(self.particle, [])
+
+    @ti.kernel
+    def _get_particle_pos(self, out: ti.ext_arr()):
+        for i in range(out.shape[0]):
+            for k in ti.static(range(3)):
+                out[i, k] = self.x[i][k]
+
+    def get_particle_pos(self):
+        num = self.get_num_particles()
+        out = np.empty((num, 3), dtype=np.float32)
+        self._get_particle_pos(out)
+        return out
+
     def step(self):
         for s in range(self.steps):
             self.grid.deactivate_all()
-            self.substep()
+            self.build_pid()
+            self.p2g()
+            self.grid_op()
+            self.g2p()
 
 def main():
-    ti.init(ti.gpu)
+    ti.init(ti.gpu, make_block_local=False, kernel_profiler=True)
     mpm = MPMSolver(dim=3)
 
     scene = tina.Scene()
@@ -241,12 +272,14 @@ def main():
         #mciso.clear()
         #voxel.voxelize(mciso.m, mpm.x)
         #mciso.march()
-        pars.set_particles(mpm.x.to_numpy() * 2 - 1)
+        pars.set_particles(mpm.get_particle_pos() * 2 - 1)
         #colors = np.array(list(map(ti.hex_to_rgb, [0x068587, 0xED553B, 0xEEEEF0])))
         #pars.set_particle_colors(colors[mpm.material.to_numpy()])
         scene.render()
         gui.set_image(scene.img)
         gui.show()
+
+    ti.kernel_profiler_print()
 
 def main2():
     ti.init(ti.gpu)
@@ -255,7 +288,7 @@ def main2():
     gui = ti.GUI()
     while gui.running:
         mpm.step()
-        gui.circles(mpm.x.to_numpy())
+        gui.circles(mpm.get_particle_pos())
         gui.show()
 
 if __name__ == '__main__':
