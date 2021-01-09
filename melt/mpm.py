@@ -40,6 +40,8 @@ class MPMSolver:
 
         self.mu_0 = E / (2 * (1 + nu))
         self.lambda_0 = E * nu / ((1 + nu) * (1 - 2 * nu))
+        sin_phi = ti.sin(np.radians(45))
+        self.alpha = ti.sqrt(2 / 3) * 2 * sin_phi / (3 - sin_phi)
 
         self.x = ti.Vector.field(self.dim, float, self.n_particles)
         self.v = ti.Vector.field(self.dim, float, self.n_particles)
@@ -57,11 +59,19 @@ class MPMSolver:
     def reset(self):
         for i in self.x:
             pos = V(*[ti.random() for i in range(self.dim)]) * 0.3 + 0.5
+            vel = ti.Vector.zero(float, self.dim)
+            self.seed_particle(i, pos, vel, self.SAND)
+
+    @ti.func
+    def seed_particle(self, i, pos, cel, material):
             self.x[i] = pos
-            self.v[i] = ti.Vector.zero(float, self.dim)
+            self.v[i] = vel
             self.F[i] = ti.Matrix.identity(float, self.dim)
-            self.material[i] = self.WATER
-            self.Jp[i] = 1
+            self.material[i] = material
+            if material == self.SAND:
+                self.Jp[i] = 0
+            else:
+                self.Jp[i] = 1
 
     def stencil_range(self):
         return ti.ndrange(*(3,) * self.dim)
@@ -88,19 +98,35 @@ class MPMSolver:
                 mu = 0.0
             U, sig, V = ti.svd(self.F[p])
             J = 1.0
-            for d in ti.static(range(self.dim)):
-                new_sig = sig[d, d]
-                if self.material[p] == self.SNOW:
-                    new_sig = min(max(sig[d, d], 1 - 2.5e-2), 1 + 4.5e-3)
-                self.Jp[p] *= sig[d, d] / new_sig
-                sig[d, d] = new_sig
-                J *= new_sig
+            if self.material[p] != self.SAND:
+                for d in ti.static(range(self.dim)):
+                    new_sig = sig[d, d]
+                    if self.material[p] == self.SNOW:
+                        new_sig = min(max(sig[d, d], 1 - 2.5e-2), 1 + 4.5e-3)
+                    self.Jp[p] *= sig[d, d] / new_sig
+                    sig[d, d] = new_sig
+                    J *= new_sig
             if self.material[p] == self.WATER:
                 self.F[p] = ti.Matrix.identity(float, self.dim) * J**(1 / self.dim)
             elif self.material[p] == self.SNOW:
                 self.F[p] = U @ sig @ V.transpose()
-            stress = 2 * mu * (self.F[p] - U @ V.transpose()) @ self.F[p].transpose()
-            stress += ti.Matrix.identity(float, self.dim) * la * J * (J - 1)
+            stress = ti.Matrix.identity(float, self.dim)
+            if self.material[p] != self.SAND:
+                stress = 2 * mu * (self.F[p] - U @ V.transpose()) @ self.F[p].transpose()
+                stress += ti.Matrix.identity(float, self.dim) * la * J * (J - 1)
+            else:
+                sig = self.sand_projection(sig, p)
+                self.F[p] = U @ sig @ V.transpose()
+                log_sig_sum = 0.0
+                center = ti.Matrix.zero(float, self.dim, self.dim)
+                for i in ti.static(range(self.dim)):
+                    log_sig = ti.log(sig[i, i])
+                    center[i, i] = 2.0 * self.mu_0 * log_sig / sig[i, i]
+                    log_sig_sum += log_sig
+                for i in ti.static(range(self.dim)):
+                    center[i, i] += self.lambda_0 * log_sig_sum / sig[i, i]
+                stress = U @ center @ V.transpose() @ self.F[p].transpose()
+
             stress = (-self.dt * self.p_vol * 4 / self.dx**2) * stress
             affine = stress + self.p_mass * self.C[p]
             for offset in ti.grouped(ti.ndrange(*(3,) * self.dim)):
@@ -114,8 +140,9 @@ class MPMSolver:
             if self.grid_m[I] > 0:
                 self.grid_v[I] /= self.grid_m[I]
             self.grid_v[I] -= self.dt * self.gravity
-            cond = I < self.bound and self.grid_v[I] < 0 or I > self.n_grid - self.bound and self.grid_v[I] > 0
-            self.grid_v[I] = 0 if cond else self.grid_v[I]
+            cond1 = I < self.bound and self.grid_v[I] < 0
+            cond2 = I > self.n_grid - self.bound and self.grid_v[I] > 0
+            self.grid_v[I] = 0 if cond1 or cond2 else self.grid_v[I]
         ti.block_dim(self.n_grid)
         ti.block_local(self.grid_v)
         ti.block_local(self.grid_m)
@@ -137,6 +164,29 @@ class MPMSolver:
             self.v[p] = new_v
             self.C[p] = new_C
             self.x[p] += self.dt * self.v[p]
+
+    @ti.func
+    def sand_projection(self, sigma, p):
+        sigma_out = ti.Matrix.zero(ti.f32, self.dim, self.dim)
+        epsilon = ti.Vector.zero(ti.f32, self.dim)
+        for i in ti.static(range(self.dim)):
+            epsilon[i] = ti.log(max(abs(sigma[i, i]), 1e-4))
+            sigma_out[i, i] = 1
+        tr = epsilon.sum() + self.Jp[p]
+        epsilon_hat = epsilon - tr / self.dim
+        epsilon_hat_norm = epsilon_hat.norm() + 1e-20
+        if tr >= 0.0:
+            self.Jp[p] = tr
+        else:
+            self.Jp[p] = 0.0
+            delta_gamma = epsilon_hat_norm + (
+                self.dim * self.lambda_0 +
+                2 * self.mu_0) / (2 * self.mu_0) * tr * self.alpha
+            for i in ti.static(range(self.dim)):
+                sigma_out[i, i] = ti.exp(epsilon[i] - max(0, delta_gamma) /
+                                         epsilon_hat_norm * epsilon_hat[i])
+
+        return sigma_out
 
     def step(self):
         for s in range(self.steps):
