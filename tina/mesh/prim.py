@@ -10,7 +10,7 @@ class PrimitiveMesh(SimpleMesh):
         verts = faces[:, :, 0]
         norms = faces[:, :, 1]
         coors = faces[:, :, 2]
-        super().__init__(maxfaces=len(verts))
+        super().__init__(maxfaces=len(verts), npolygon=len(verts[0]))
 
         @ti.materialize_callback
         def init_mesh():
@@ -84,4 +84,18 @@ class PrimitiveMesh(SimpleMesh):
             v2 = at(lats, lon)[0], norm, coor
             v3 = at(lats, lon + 1)[0], norm, coor
             faces.append([v1, v2, v3])
+        return cls(faces)
+
+    @classmethod
+    def asset(cls, name):
+        obj = tina.readobj('assets/' + name + '.obj', quadok=True)
+        verts = obj['v'][obj['f'][:, :, 0]]
+        coors = obj['vt'][obj['f'][:, :, 1]]
+        norms = obj['vn'][obj['f'][:, :, 2]]
+        faces = []
+        for vs, cs, ns in zip(verts, coors, norms):
+            cs = list(cs)
+            for i, c in enumerate(cs):
+                cs[i] = list(c) + [0]
+            faces.append(list(zip(vs, cs, ns)))
         return cls(faces)

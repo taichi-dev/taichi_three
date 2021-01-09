@@ -67,7 +67,7 @@ def scale(factor):
 
 
 def translate(offset):
-    return affine(np.eye(3), np.array(offset))
+    return affine(np.eye(3), np.array(offset) * np.ones(3))
 
 
 # https://zhuanlan.zhihu.com/p/259999988

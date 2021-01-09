@@ -3,6 +3,11 @@ from tina.advans import *
 
 @ti.data_oriented
 class MPMSolver:
+    WATER = 0
+    JELLY = 1
+    SNOW = 2
+    SAND = 3
+
     def __init__(self, dim=3, n_grid=32, E=400, nu=0.2, gravity=(0, 9.8, 0)):
         self.dim = dim
         self.n_grid = n_grid
@@ -42,7 +47,7 @@ class MPMSolver:
             self.x[i] = pos
             self.v[i] = ti.Vector.zero(float, self.dim)
             self.F[i] = ti.Matrix.identity(float, self.dim)
-            self.material[i] = 1
+            self.material[i] = self.WATER
             self.Jp[i] = 1
 
     def stencil_range(self):
@@ -63,23 +68,23 @@ class MPMSolver:
             w = [0.5 * (1.5 - fx)**2, 0.75 - (fx - 1)**2, 0.5 * (fx - 0.5)**2]
             self.F[p] = (ti.Matrix.identity(float, self.dim) + self.dt * self.C[p]) @ self.F[p]
             h = ti.exp(10 * (1.0 - self.Jp[p]))
-            if self.material[p] == 1:
+            if self.material[p] == self.JELLY:
                 h = 0.3
             mu, la = self.mu_0, self.lambda_0 * h
-            if self.material[p] == 0:
+            if self.material[p] == self.WATER:
                 mu = 0.0
             U, sig, V = ti.svd(self.F[p])
             J = 1.0
             for d in ti.static(range(self.dim)):
                 new_sig = sig[d, d]
-                if self.material[p] == 2:
+                if self.material[p] == self.SNOW:
                     new_sig = min(max(sig[d, d], 1 - 2.5e-2), 1 + 4.5e-3)
                 self.Jp[p] *= sig[d, d] / new_sig
                 sig[d, d] = new_sig
                 J *= new_sig
-            if self.material[p] == 0:
+            if self.material[p] == self.WATER:
                 self.F[p] = ti.Matrix.identity(float, self.dim) * ti.sqrt(J)
-            elif self.material[p] == 2:
+            elif self.material[p] == self.SNOW:
                 self.F[p] = U @ sig @ V.transpose()
             stress = 2 * mu * (self.F[p] - U @ V.transpose()) @ self.F[p].transpose()
             stress += ti.Matrix.identity(float, self.dim) * la * J * (J - 1)
@@ -124,32 +129,45 @@ class MPMSolver:
         for s in range(self.steps):
             self.substep()
 
-
-if __name__ == '__main__':
+def main():
     ti.init(ti.gpu)
-    scene = tina.Scene()
-    pars = tina.SimpleParticles()
-    scene.add_object(pars)
-
     mpm = MPMSolver()
 
+    scene = tina.Scene()
+    pars = tina.SimpleParticles(radius=0.01)
+    scene.add_object(pars, tina.Classic())
+
+    #scene = tina.Scene(smoothing=True)
+    #mciso = tina.MCISO(int(mpm.n_grid))
+    #voxel = tina.Voxelizer(mciso.N, radius=1, weight=18)
+    #scene.add_object(tina.MeshTransform(mciso, tina.translate(-1) @ tina.scale(2)))
+
+    wire = tina.MeshToWire(tina.PrimitiveMesh.asset('cube'))
+    scene.add_object(wire)
+
     gui = ti.GUI()
-    scene.init_control(gui, center=[0.5, 0.5, 0.5], radius=1.8)
     while gui.running:
         scene.input(gui)
         mpm.step()
-        pars.set_particles(mpm.x.to_numpy())
+        #mciso.clear()
+        #voxel.voxelize(mciso.m, mpm.x)
+        #mciso.march()
+        pars.set_particles(mpm.x.to_numpy() * 2 - 1)
+        #colors = np.array(list(map(ti.hex_to_rgb, [0x068587, 0xED553B, 0xEEEEF0])))
+        #pars.set_particle_colors(colors[mpm.material.to_numpy()])
         scene.render()
         gui.set_image(scene.img)
         gui.show()
-    '''
+
+def main2():
     ti.init(ti.gpu)
     mpm = MPMSolver(dim=2, n_grid=128)
-    print(mpm.n_particles, mpm.n_grid)
 
     gui = ti.GUI()
     while gui.running:
         mpm.step()
         gui.circles(mpm.x.to_numpy())
         gui.show()
-    '''
+
+if __name__ == '__main__':
+    main()

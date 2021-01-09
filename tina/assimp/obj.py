@@ -14,7 +14,7 @@ def _tri_append(faces, indices):
         assert False, len(indices)
 
 
-def readobj(path, orient='xyz', scale=None, simple=False, usemtl=True):
+def readobj(path, orient='xyz', scale=None, simple=False, usemtl=True, quadok=False):
     v = []
     vt = []
     vn = []
@@ -72,7 +72,10 @@ def readobj(path, orient='xyz', scale=None, simple=False, usemtl=True):
         # the index in 'f 5/1/1 1/2/1 4/3/1' STARTS AT 1 !!!
         indices = [[int(_) - 1 if _ else 0 for _ in field.split(b'/')] for field in fields]
 
-        _tri_append(faces, indices)
+        if quadok:
+            faces.append(indices)
+        else:
+            _tri_append(faces, indices)
 
     ret = {}
     ret['v'] = np.array([[0, 0, 0]], dtype=np.float32) if len(v) == 0 else np.array(v, dtype=np.float32)

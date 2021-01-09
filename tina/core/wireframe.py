@@ -4,7 +4,7 @@ from ..common import *
 @ti.data_oriented
 class WireframeRaster:
     def __init__(self, engine, maxwires=65536, linewidth=1.5,
-                  linecolor=(.9, .6, 0), clipping=True, **extra_options):
+                  linecolor=(.9, .6, 0), clipping=False, **extra_options):
         self.engine = engine
         self.res = self.engine.res
         self.maxfaces = maxwires
@@ -78,13 +78,15 @@ class WireframeRaster:
 
             ban = (b - a).normalized()
             wscale = 1 / ti.Vector([mapply(self.engine.W2V[None], p, 1)[1] for p in [Al, Bl]])
-            for P, cor in ti.smart(self.draw_line(a, b)):
+            for p, cor in ti.smart(self.draw_line(a, b)):
+                pos = p + self.engine.bias[None]
+                P = ifloor(pos)
                 if all(0 <= P < self.res):
-                    pos = float(P) + self.engine.bias[None]
                     wei = V(1 - cor, cor) * wscale
                     wei /= wei.x + wei.y
                     depth_f = wei.x * Av.z + wei.y * Bv.z
                     depth = int(depth_f * self.engine.maxdepth)
                     if ti.atomic_min(self.engine.depth[P], depth) > depth:
                         if self.engine.depth[P] >= depth:
+                            # TODO: support real shading...
                             shader.img[P] = self.linecolor[None]
