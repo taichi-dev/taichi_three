@@ -21,25 +21,23 @@ class MPMSolver:
     SNOW = 2
     SAND = 3
 
-    def __init__(self, dim=3, E=400, nu=0.2, gravity=(0, 9.8, 0)):
-        self.dim = dim
-        self.n_grid = 32
-        self.dt = 1.8e-2 / self.n_grid
+    def __init__(self, res, size=1, dt_scale=1, E_scale=1):
+        assert len(res) in [2, 3]
+        self.res = tovector(res)
+        self.dim = len(self.res)
+        self.dx = size / self.res.x
+        self.dt = 2e-2 * self.dx / size * dt_scale
         self.steps = int(1 / (120 * self.dt))
 
-        self.n_particles = self.n_grid ** self.dim // 2**(self.dim - 1)
-        self.dx = 1 / self.n_grid
-
-        self.p_rho = 1
-        self.p_vol = (self.dx * 0.5)**2
+        self.p_rho = 1e3
+        self.p_vol = self.dx**self.dim
         self.p_mass = self.p_vol * self.p_rho
-        self.gravity = tovector(totuple(gravity)[:self.dim])
-        self.bound = 3
-        self.nu = nu
-        self.E = E
+        self.gravity = tovector((0, 9.8, 0)[:self.dim])
+        self.E = 1e5 * size * E_scale
+        self.nu = 0.2
 
-        self.mu_0 = E / (2 * (1 + nu))
-        self.lambda_0 = E * nu / ((1 + nu) * (1 - 2 * nu))
+        self.mu_0 = self.E / (2 * (1 + self.nu))
+        self.lambda_0 = self.E * self.nu / ((1 + self.nu) * (1 - 2 * self.nu))
         sin_phi = ti.sin(np.radians(45))
         self.alpha = ti.sqrt(2 / 3) * 2 * sin_phi / (3 - sin_phi)
 
@@ -74,8 +72,8 @@ class MPMSolver:
                 chunk_size=leaf_block_size**self.dim * 8).place(
                         self.pid, offset=self.offset + (0,))
 
-        max_num_particles = 2**20
-        self.particle = ti.root.dynamic(ti.i, max_num_particles)
+        max_num_particles = 2**27
+        self.particle = ti.root.dynamic(ti.i, max_num_particles, 2**20)
         for c in [self.x, self.v, self.C, self.F, self.material, self.Jp]:
             self.particle.place(c)
         self.particle_num = ti.field(int, ())
@@ -84,7 +82,7 @@ class MPMSolver:
 
     @ti.kernel
     def reset(self):
-        for i in range(self.n_particles):
+        for i in range(8192):
             pos = V(*[ti.random() for i in range(self.dim)]) * 0.3 + 0.5
             vel = ti.Vector.zero(float, self.dim)
             self.seed_particle(i, pos, vel, self.WATER)
@@ -176,9 +174,9 @@ class MPMSolver:
             if self.grid_m[I] > 0:
                 self.grid_v[I] /= self.grid_m[I]
             self.grid_v[I] -= self.dt * self.gravity
-            cond1 = I < self.bound and self.grid_v[I] < 0
-            cond2 = I > self.n_grid - self.bound and self.grid_v[I] > 0
-            self.grid_v[I] = 0 if cond1 or cond2 else self.grid_v[I]
+            #cond1 = I < -self.res and self.grid_v[I] < 0
+            #cond2 = I > self.res and self.grid_v[I] > 0
+            #self.grid_v[I] = 0 if cond1 or cond2 else self.grid_v[I]
 
     @ti.kernel
     def g2p(self):
@@ -254,7 +252,7 @@ class MPMSolver:
 
 def main():
     ti.init(ti.gpu, make_block_local=False, kernel_profiler=True)
-    mpm = MPMSolver(dim=3)
+    mpm = MPMSolver([64] * 3)
 
     scene = tina.Scene()
     pars = tina.SimpleParticles(radius=0.01)
@@ -283,7 +281,7 @@ def main():
 
 def main2():
     ti.init(ti.gpu)
-    mpm = MPMSolver(dim=2)
+    mpm = MPMSolver([128] * 2)
 
     gui = ti.GUI()
     while gui.running:
