@@ -29,7 +29,7 @@ class Scene:
             self.lighting = tina.RTXLighting()
 
         self.image = ti.Vector.field(3, float, self.res)
-        self.default_material = tina.Lambert()
+        self.default_material = tina.Diffuse()
         self.probe_shaders = []
         self.shaders = {}
         self.objects = {}
