@@ -195,6 +195,11 @@ def list_subscript(a, i):
     return ret
 
 
+@ti.func
+def isnan(x):
+    return Vany(not (x >= 0 or x <= 0))
+
+
 def ranprint(*args, **kwargs):
     @ti.func
     def func(r):

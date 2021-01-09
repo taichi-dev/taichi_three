@@ -1,6 +1,19 @@
 from tina.advans import *
 
 
+@ti.func
+def list_subscript(a, i: ti.template()):
+    if ti.static(isinstance(i, ti.Expr)):
+        k = i
+        ret = sum(a) * 0
+        for j in ti.static(range(len(a))):
+            if k == j:
+                ret = a[j]
+        return ret
+    else:
+        return a[i]
+
+
 @ti.data_oriented
 class MPMSolver:
     WATER = 0
@@ -8,13 +21,13 @@ class MPMSolver:
     SNOW = 2
     SAND = 3
 
-    def __init__(self, dim=3, n_grid=32, E=400, nu=0.2, gravity=(0, 9.8, 0)):
+    def __init__(self, dim=3, n_grid=32, E=100, nu=0.2, gravity=(0, 9.8, 0)):
         self.dim = dim
         self.n_grid = n_grid
         self.dt = 1.8e-2 / self.n_grid
         self.steps = int(1 / (120 * self.dt))
 
-        self.n_particles = self.n_grid ** self.dim // 2 ** (self.dim - 1)
+        self.n_particles = self.n_grid ** self.dim // 2**(self.dim - 1)
         self.dx = 1 / self.n_grid
 
         self.p_rho = 1
@@ -38,10 +51,10 @@ class MPMSolver:
         self.grid_v = ti.Vector.field(self.dim, float, (self.n_grid,) * self.dim)
         self.grid_m = ti.field(float, (self.n_grid,) * self.dim)
 
-        ti.materialize_callback(self.init)
+        ti.materialize_callback(self.reset)
 
     @ti.kernel
-    def init(self):
+    def reset(self):
         for i in self.x:
             pos = V(*[ti.random() for i in range(self.dim)]) * 0.3 + 0.5
             self.x[i] = pos
@@ -70,7 +83,7 @@ class MPMSolver:
             h = ti.exp(10 * (1.0 - self.Jp[p]))
             if self.material[p] == self.JELLY:
                 h = 0.3
-            mu, la = self.mu_0, self.lambda_0 * h
+            mu, la = self.mu_0 * h, self.lambda_0 * h
             if self.material[p] == self.WATER:
                 mu = 0.0
             U, sig, V = ti.svd(self.F[p])
@@ -83,12 +96,12 @@ class MPMSolver:
                 sig[d, d] = new_sig
                 J *= new_sig
             if self.material[p] == self.WATER:
-                self.F[p] = ti.Matrix.identity(float, self.dim) * ti.sqrt(J)
+                self.F[p] = ti.Matrix.identity(float, self.dim) * J**(1 / self.dim)
             elif self.material[p] == self.SNOW:
                 self.F[p] = U @ sig @ V.transpose()
             stress = 2 * mu * (self.F[p] - U @ V.transpose()) @ self.F[p].transpose()
             stress += ti.Matrix.identity(float, self.dim) * la * J * (J - 1)
-            stress *= -self.dt * self.p_vol * 4 / self.dx**2
+            stress = (-self.dt * self.p_vol * 4 / self.dx**2) * stress
             affine = stress + self.p_mass * self.C[p]
             for offset in ti.grouped(ti.ndrange(*(3,) * self.dim)):
                 dpos = (offset - fx) * self.dx
@@ -114,16 +127,16 @@ class MPMSolver:
             new_v = ti.Vector.zero(float, self.dim)
             new_C = ti.Matrix.zero(float, self.dim, self.dim)
             for offset in ti.grouped(ti.ndrange(*(3,) * self.dim)):
-                dpos = (offset - fx) * self.dx
+                dpos = offset - fx
                 weight = 1.0
                 for i in ti.static(range(self.dim)):
                     weight *= list_subscript(w, offset[i])[i]
                 g_v = self.grid_v[base + offset]
                 new_v += weight * g_v
-                new_C += 4 * weight * g_v.outer_product(dpos) / self.dx**2
+                new_C += 4 * weight * g_v.outer_product(dpos) / self.dx
             self.v[p] = new_v
-            self.x[p] += self.dt * self.v[p]
             self.C[p] = new_C
+            self.x[p] += self.dt * self.v[p]
 
     def step(self):
         for s in range(self.steps):
@@ -148,6 +161,8 @@ def main():
     gui = ti.GUI()
     while gui.running:
         scene.input(gui)
+        if gui.is_pressed('r'):
+            mpm.reset()
         mpm.step()
         #mciso.clear()
         #voxel.voxelize(mciso.m, mpm.x)
