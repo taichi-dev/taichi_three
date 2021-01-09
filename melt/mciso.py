@@ -1,13 +1,12 @@
-import taichi as ti
-import numpy as np
 from tina.common import *
 
 
 @ti.data_oriented
 class MCISO:
-    def __init__(self, res):
+    def __init__(self, res, size=1):
         self.res = tovector(res)
         self.dim = len(res)
+        self.dx = size / self.res.x
 
         from mciso_data import _et2, _et3
         et = [_et2, _et3][self.dim - 2]
@@ -31,7 +30,8 @@ class MCISO:
         self.grid = ti.root.pointer(indices, grid_size // grid_block_size)
         block = self.grid.pointer(indices, grid_block_size // leaf_block_size)
         block.bitmasked(indices, leaf_block_size
-                ).dense(ti.l, self.dim).place(self.Jtab, offset=self.offset + (0, ))
+                ).dense(ti.indices(self.dim), self.dim
+                        ).place(self.Jtab, offset=self.offset + (0, ))
         block.dense(indices, leaf_block_size
                 ).place(self.m, self.g, offset=self.offset)
 
@@ -53,17 +53,66 @@ class MCISO:
         self.Js_n = ti.field(int, ())
         self.vs_n = ti.field(int, ())
 
-    @ti.kernel
-    def march(self):
-        self.Js_n[None] = 0
-        self.vs_n[None] = 0
+        self.gwei = ti.field(float, 128)
 
+    @ti.kernel
+    def voxelize(self, pos: ti.template(), w0: float):
+        for p in pos:
+            Xp = pos[p] / self.dx
+            base = ifloor(Xp - 0.5)
+            fx = Xp - base
+            w = [0.5 * (1.5 - fx)**2, 0.75 - (fx - 1)**2, 0.5 * (fx - 0.5)**2]
+            for offset in ti.grouped(ti.ndrange(*(3,) * self.dim)):
+                dpos = (offset - fx) * self.dx
+                weight = float(w0)
+                for i in ti.static(range(self.dim)):
+                    weight *= list_subscript(w, offset[i])[i]
+                self.m[base + offset] += weight
+
+    @ti.kernel
+    def sub_blur(self, radius: int, src: ti.template(), dst: ti.template(),
+            axis: ti.template()):
+        for I in ti.grouped(dst):
+            dst[I] = src[I] * self.gwei[0]
+        for I in ti.grouped(src):
+            for i in range(1, radius + 1):
+                dir = ti.Vector.unit(3, axis)
+                wei = src[I] * self.gwei[i]
+                dst[I + i * dir] += wei
+                dst[I - i * dir] += wei
+
+    @ti.kernel
+    def init_gwei(self, radius: int, sigma: float):
+        sum = -1.0
+        for i in range(radius + 1):
+            x = sigma * i / radius
+            y = ti.exp(-x**2)
+            self.gwei[i] = y
+            sum += y * 2
+        for i in range(radius + 1):
+            self.gwei[i] /= sum
+
+    def blur(self, radius, sigma):
+        radius = int(radius)
+        if radius <= 0: return
+        self.init_gwei(radius, sigma)
+        self.sub_blur(radius, self.m, self.g(0), 0)
+        self.sub_blur(radius, self.g(0), self.g(1), 1)
+        self.sub_blur(radius, self.g(1), self.m, 2)
+
+    @ti.kernel
+    def calc_norm(self):
         for I in ti.grouped(self.g):
             r = ti.Vector.zero(float, self.dim)
             for i in ti.static(range(self.dim)):
                 d = ti.Vector.unit(self.dim, i, int)
                 r[i] = self.m[I + d] - self.m[I - d]
             self.g[I] = -r.normalized(1e-5)
+
+    @ti.kernel
+    def gen_mesh(self):
+        self.Js_n[None] = 0
+        self.vs_n[None] = 0
 
         for I in ti.grouped(self.m):
             id = self.get_cubeid(I)
@@ -112,8 +161,12 @@ class MCISO:
             for l in ti.static(range(self.dim)):
                 self.Jts[i][l] = self.Jtab[self.Js[i, l]]
 
-    def clear(self):
+    def march(self, pos, w0, rad, sig):
         self.grid.deactivate_all()
+        self.voxelize(pos, w0)
+        self.blur(rad, sig)
+        self.calc_norm()
+        self.gen_mesh()
 
     @ti.func
     def get_cubeid(self, I):
@@ -136,13 +189,6 @@ class MCISO:
             if self.m[i, j + 1, k + 1] > 1: id |= 128
         return id
 
-    def get_mesh(self):
-        ret = {}
-        ret['f'] = self.Jts.to_numpy()[:self.Js_n[None]][:, ::-1]
-        ret['v'] = (self.vs.to_numpy()[:self.vs_n[None]] + 0.5) / self.res
-        ret['vn'] = self.ns.to_numpy()[:self.vs_n[None]]
-        return ret
-
     @ti.func
     def pre_compute(self):
         pass
@@ -153,9 +199,9 @@ class MCISO:
 
     @ti.func
     def get_face_verts(self, n):
-        a = (self.vs[self.Jts[n][2]] + 0.5) / self.res * 2 - 1
-        b = (self.vs[self.Jts[n][1]] + 0.5) / self.res * 2 - 1
-        c = (self.vs[self.Jts[n][0]] + 0.5) / self.res * 2 - 1
+        a = (self.vs[self.Jts[n][2]] + 0.5) / self.res
+        b = (self.vs[self.Jts[n][1]] + 0.5) / self.res
+        c = (self.vs[self.Jts[n][0]] + 0.5) / self.res
         return a, b, c
 
     @ti.func
@@ -170,7 +216,7 @@ class MCISO:
         return ti.Matrix.identity(float, 4)
 
 
-class _MCISO_Example(MCISO):
+class _MCISO_Example1(MCISO):
     @ti.func
     def gauss(self, x):
         return ti.exp(-6 * x**2)
@@ -197,10 +243,37 @@ class _MCISO_Example(MCISO):
         scene.add_object(self)
 
         while gui.running and not gui.get_event(gui.ESCAPE):
-            self.clear()
+            self.grid.deactivate_all()
             self.touch(*gui.get_cursor_pos())
-            self.march()
+            self.calc_norm()
+            self.gen_mesh()
 
+            scene.render()
+            gui.set_image(scene.img)
+            gui.show()
+
+
+class _MCISO_Example2(MCISO):
+    def main(self):
+        gui = ti.GUI('Marching cube')
+
+        scene = tina.Scene(maxfaces=2**20, smoothing=True)
+        scene.add_object(self)
+
+        pos = ti.Vector.field(3, float, 2**12)
+        pos.from_numpy(np.random.rand(pos.shape[0], 3).astype(np.float32) * 0.6 - 0.3)
+
+        w0 = gui.slider('w0', 0, 100, 0.1)
+        w0.value = 42
+        rad = gui.slider('rad', 0, 12, 1)
+        rad.value = 3
+        sig = gui.slider('sig', 0, 4, 0.1)
+        sig.value = 1.2
+
+        scene.init_control(gui, blendish=True)
+        while gui.running:
+            scene.input(gui)
+            self.march(pos, w0.value, rad.value, sig.value)
             scene.render()
             gui.set_image(scene.img)
             gui.show()
@@ -208,5 +281,5 @@ class _MCISO_Example(MCISO):
 
 if __name__ == '__main__':
     ti.init(ti.cuda, kernel_profiler=True)
-    _MCISO_Example([256] * 3).main()
+    _MCISO_Example2([64] * 3).main()
     ti.kernel_profiler_print()
