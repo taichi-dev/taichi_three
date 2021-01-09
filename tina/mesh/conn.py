@@ -62,14 +62,14 @@ class ConnectiveMesh:
                 self.verts[i][k] = verts[i, k]
 
     @ti.kernel
-    def set_vert_norms(self, verts: ti.ext_arr()):
+    def set_vert_norms(self, norms: ti.ext_arr()):
         nverts = min(norms.shape[0], self.norms.shape[0])
         for i in range(nverts):
             for k in ti.static(range(3)):
                 self.norms[i][k] = norms[i, k]
 
     @ti.kernel
-    def set_vert_coors(self, verts: ti.ext_arr()):
+    def set_vert_coors(self, coors: ti.ext_arr()):
         nverts = min(coors.shape[0], self.coors.shape[0])
         for i in range(nverts):
             for k in ti.static(range(3)):
