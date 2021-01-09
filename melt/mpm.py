@@ -126,7 +126,6 @@ class MPMSolver:
 
 
 if __name__ == '__main__':
-    '''
     ti.init(ti.gpu)
     scene = tina.Scene()
     pars = tina.SimpleParticles()
@@ -153,3 +152,4 @@ if __name__ == '__main__':
         mpm.step()
         gui.circles(mpm.x.to_numpy())
         gui.show()
+    '''
