@@ -25,6 +25,18 @@ class ConnectiveMesh:
         return self.maxverts
 
     @ti.func
+    def get_indiced_vert(self, i):
+        return self.verts[i]
+
+    @ti.func
+    def get_indiced_norm(self, i):
+        return self.norms[i]
+
+    @ti.func
+    def get_indiced_coor(self, i):
+        return self.coors[i]
+
+    @ti.func
     def get_nfaces(self):
         return self.nfaces[None]
 

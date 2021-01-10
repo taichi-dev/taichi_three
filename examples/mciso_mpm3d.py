@@ -101,8 +101,7 @@ def init():
         J[i] = 1
 
 
-mciso = MCISO(int(n_grid * 1))
-voxel = Voxelizer(mciso.N, radius=1, weight=18)
+mciso = MCISO(n_grid * 1)
 
 scene = tina.Scene(smoothing=True, maxfaces=2**18, ibl=True)
 material = tina.PBR(metallic=0.45, roughness=0.12)
@@ -122,15 +121,12 @@ while gui.running:
 
     if gui.is_pressed('r'):
         init()
-
     for s in range(steps):
         substep()
 
-    mciso.clear()
-    voxel.voxelize(mciso.m, x)
-    mciso.march()
+    mciso.march(x, w0=2, rad=0, sig=0)
 
-    # tina.writeobj(f'/tmp/{gui.frame:04d}.obj', mciso.get_mesh())
+    # tina.writeobj(f'/tmp/{gui.frame:04d}.obj', export_connective_mesh())
     # np.save(f'/tmp/{gui.frame:04d}.npy', x.to_numpy())
 
     scene.render()
