@@ -17,8 +17,6 @@ class RTXLighting:
             self.color.fill(2.0)
             self.rad.fill(0.1)
 
-        self.skybox = tina.Atomsphere()
-
     @ti.kernel
     def set_lights(self, pos: ti.ext_arr()):
         self.nlights[None] = pos.shape[0]

@@ -126,7 +126,7 @@ while gui.running:
 
     mciso.march(x, w0=2, rad=0, sig=0)
 
-    # tina.writeobj(f'/tmp/{gui.frame:04d}.obj', export_connective_mesh())
+    # tina.writeobj(f'/tmp/{gui.frame:04d}.obj', tina.export_connective_mesh())
     # np.save(f'/tmp/{gui.frame:04d}.npy', x.to_numpy())
 
     scene.render()

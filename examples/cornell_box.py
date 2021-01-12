@@ -8,6 +8,7 @@ scene = tina.PTScene(smoothing=True, texturing=True)
 scene.load_gltf('assets/cornell.gltf')
 
 if isinstance(scene, tina.PTScene):
+    del scene.lighting.skybox
     scene.lighting.set_lights(np.array([
         [0, 3.9, 0],
     ], dtype=np.float32))
@@ -15,7 +16,7 @@ if isinstance(scene, tina.PTScene):
         0.09,
     ], dtype=np.float32))
     scene.lighting.set_light_colors(np.array([
-        [1.0, 1.0, 1.0],
+        [2.0, 2.0, 2.0],
     ], dtype=np.float32))
 
 if isinstance(scene, tina.PTScene):
@@ -32,3 +33,5 @@ while gui.running:
         scene.render()
     gui.set_image(scene.img)
     gui.show()
+
+ti.imwrite(scene.img, 'cornell.png')
