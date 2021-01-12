@@ -40,7 +40,7 @@ class Scene:
             self.geom = self.tracer.tree
 
         if self.pp:
-            self.postp = tina.PostProcessor(self.image, self.res)
+            self.postp = tina.ToneMapping(self.image, self.res)
 
         if self.taa:
             self.accum = tina.Accumator(self.res)

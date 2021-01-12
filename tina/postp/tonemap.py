@@ -2,7 +2,7 @@ from .advans import *
 
 
 @ti.data_oriented
-class PostProcessor:
+class ToneMapping:
     def __init__(self, inp, res):
         self.inp = inp
         self.out = ti.Vector.field(3, float, res)
