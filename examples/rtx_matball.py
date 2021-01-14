@@ -18,7 +18,6 @@ roughness.make_slider(gui, 'roughness')
 metallic.make_slider(gui, 'metallic')
 
 scene.update()
-scene.init_control(gui, blendish=True)
 while gui.running:
     scene.input(gui)
     scene.render()

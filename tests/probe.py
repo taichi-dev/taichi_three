@@ -22,7 +22,6 @@ def ontouch(probe, I, r):
         mesh.coors[e, i].x = 1.0
 
 gui = ti.GUI()
-scene.init_control(gui, blendish=True)
 while gui.running:
     scene.input(gui)
     if gui.is_pressed(gui.LMB):

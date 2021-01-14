@@ -27,7 +27,6 @@ if 'shineness' in globals():
 if 'specular' in globals():
     specular.make_slider(gui, 'specular')
 
-scene.init_control(gui, blendish=True)
 while gui.running:
     scene.input(gui)
     scene.render()

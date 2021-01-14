@@ -2,8 +2,6 @@ import taichi as ti
 import numpy as np
 import tina
 
-from tina.util.mciso import MCISO, Voxelizer
-
 ti.init(arch=ti.gpu)
 
 
@@ -101,7 +99,7 @@ def init():
         J[i] = 1
 
 
-mciso = MCISO(n_grid * 1)
+mciso = tina.MCISO((n_grid, n_grid, n_grid))
 
 scene = tina.Scene(smoothing=True, maxfaces=2**18, ibl=True)
 material = tina.PBR(metallic=0.45, roughness=0.12)
@@ -126,10 +124,9 @@ while gui.running:
 
     mciso.march(x, w0=2, rad=0, sig=0)
 
-    # tina.writeobj(f'/tmp/{gui.frame:04d}.obj', tina.export_connective_mesh())
+    # tina.writeobj(f'/tmp/{gui.frame:04d}.obj', tina.export_connective_mesh(mciso))
     # np.save(f'/tmp/{gui.frame:04d}.npy', x.to_numpy())
 
     scene.render()
-
     gui.set_image(scene.img)
     gui.show()

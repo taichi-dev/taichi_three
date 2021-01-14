@@ -1,11 +1,11 @@
 from ..common import *
 
 
-print('[Tina] Hint: LMB to orbit, RMB to pan, wheel to zoom')
+print('[Tina] Hint: MMB to orbit, Shift+MMB to pan, wheel to zoom')
 
 
 class Control:
-    def __init__(self, gui, fov=60, is_ortho=False, blendish=False):
+    def __init__(self, gui, fov=60, is_ortho=False, blendish=True):
         self.gui = gui
         self.center = np.array([0, 0, 0], dtype=float)
         #self.up = np.array([0, 1, 1e-12], dtype=float)
