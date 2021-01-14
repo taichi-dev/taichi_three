@@ -3,7 +3,7 @@ from .geometry import *
 
 
 @ti.data_oriented
-class RTXLighting:
+class PathLighting:
     def __init__(self, maxlights=16):
         self.maxlights = maxlights
         self.pos = ti.Vector.field(3, float, maxlights)

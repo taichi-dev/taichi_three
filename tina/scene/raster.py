@@ -15,19 +15,15 @@ class Scene:
         self.res = self.engine.res
         self.options = options
         self.pp = options.get('pp', True)
-        self.rtx = options.get('rtx', False)
         self.taa = options.get('taa', False)
         self.ibl = options.get('ibl', False)
         self.bgcolor = options.get('bgcolor', 0)
 
-        if not self.rtx:
-            if not self.ibl:
-                self.lighting = tina.Lighting()
-            else:
-                skybox = tina.Skybox(512).cook_from(tina.Atomsphere())
-                self.lighting = tina.SkyboxLighting(skybox)
+        if not self.ibl:
+            self.lighting = tina.Lighting()
         else:
-            self.lighting = tina.RTXLighting()
+            skybox = tina.Skybox(512).cook_from(tina.Atomsphere())
+            self.lighting = tina.SkyboxLighting(skybox)
 
         self.image = ti.Vector.field(3, float, self.res)
         self.default_material = tina.Diffuse()
@@ -35,39 +31,24 @@ class Scene:
         self.shaders = {}
         self.objects = {}
 
-        if self.rtx:
-            self.stack = tina.Stack()
-            self.tracer = tina.TriangleTracer(**options, multimtl=False)
-            self.geom = self.tracer.tree
-
         if self.pp:
             self.postp = tina.ToneMapping(self.image, self.res)
 
         if self.taa:
             self.accum = tina.Accumator(self.res)
 
-        if self.rtx or self.ibl:
+        if self.ibl:
             self.background_shader = tina.BackgroundShader(self.image, self.lighting)
 
-        if not self.rtx and not self.ibl:
+        if not self.ibl:
             @ti.materialize_callback
             def add_default_lights():
                     self.lighting.add_light(dir=[1, 2, 3], color=[0.9, 0.9, 0.9])
                     self.lighting.set_ambient_light([0.1, 0.1, 0.1])
 
-    def update(self):
-        if self.rtx:
-            self.tracer.clear_objects()
-            for object in self.objects:
-                self.tracer.add_object(object, 0)
-            self.tracer.update()
-
     def _ensure_material_shader(self, material):
         if material not in self.shaders:
-            if not self.rtx:
-                shader = tina.Shader(self.image, self.lighting, material)
-            else:
-                shader = tina.RTXShader(self.image, self.lighting, self.geom, material)
+            shader = tina.Shader(self.image, self.lighting, material)
             self.shaders[material] = shader
 
     def add_object(self, object, material=None, raster=None):
@@ -101,8 +82,6 @@ class Scene:
                 raster = self.volume_raster
             else:
                 raise ValueError(f'cannot determine raster type of object: {object}')
-            if self.rtx:
-                raster.stack = self.stack
 
         self._ensure_material_shader(material)
 

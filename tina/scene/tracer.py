@@ -3,7 +3,7 @@ from .raster import Scene
 
 
 class MixedGeometryTracer:
-    def __init__(self, **extra_options):
+    def __init__(self):
         self.tracers = []
 
     @ti.func
@@ -47,9 +47,9 @@ class MixedGeometryTracer:
 class PTScene(Scene):
     def __init__(self, res=512, **options):
         self.mtltab = tina.MaterialTable()
-        self.lighting = tina.RTXLighting()
-        self.geom = MixedGeometryTracer(**options)
-        self.engine = tina.PathEngine(self.geom, self.lighting, self.mtltab, res=res)
+        self.lighting = tina.PathLighting()
+        self.geom = MixedGeometryTracer()
+        self.engine = tina.PathEngine(self.geom, self.lighting, self.mtltab, res)
         self.res = self.engine.res
         self.options = options
 
