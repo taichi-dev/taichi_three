@@ -1,5 +1,4 @@
 import taichi as ti
-import taichi_glsl as tl
 import numpy as np
 import tina
 
@@ -13,7 +12,7 @@ W = 1
 L = W / N
 gravity = 0.5
 stiffness = 1600
-ball_pos = tl.vec(+0.0, +0.2, -0.0)
+ball_pos = ti.Vector([+0.0, +0.2, -0.0])
 ball_radius = 0.4
 damping = 2
 steps = 30
@@ -28,25 +27,29 @@ v = ti.Vector.field(3, float, NN)
 @ti.kernel
 def init():
     for i in ti.grouped(x):
-        x[i] = tl.vec((i + 0.5) * L - 0.5, 0.8).xzy
+        u, v = (i + 0.5) * L - 0.5
+        x[i] = ti.Vector([u, 0.8, v])
 
 
 links = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)]
-links = [tl.vec(*_) for _ in links]
-
+links = [ti.Vector(_) for _ in links]
 
 @ti.kernel
 def substep():
     for i in ti.grouped(x):
         acc = x[i] * 0
         for d in ti.static(links):
-            disp = x[tl.clamp(i + d, 0, tl.vec(*NN) - 1)] - x[i]
+            disp = x[min(max(i + d, 0), ti.Vector(NN) - 1)] - x[i]
             length = L * float(d).norm()
             acc += disp * (disp.norm() - length) / length**2
         v[i] += stiffness * acc * dt
     for i in ti.grouped(x):
         v[i].y -= gravity * dt
-        v[i] = tl.ballBoundReflect(x[i], v[i], ball_pos, ball_radius, 6)
+        disp = x[i] - ball_pos
+        disp2 = disp.norm_sqr()
+        if disp2 <= ball_radius**2:
+            NoV = v[i].dot(disp)
+            if NoV < 0: v[i] -= NoV * disp / disp2
     for i in ti.grouped(x):
         v[i] *= ti.exp(-damping * dt)
         x[i] += dt * v[i]

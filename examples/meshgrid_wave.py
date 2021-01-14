@@ -9,6 +9,7 @@ ti.init(ti.gpu)
 def Z(xy, t):
     return 0.1 * ti.sin(10 * xy.norm() - ti.tau * t)
 
+
 @ti.kernel
 def deform_mesh(t: float):
     for i, j in mesh.pos:

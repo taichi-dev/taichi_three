@@ -124,7 +124,7 @@ matr/        # material and shading nodes
 util/        # some useful utilities for Tina and your project
 blend/       # Blender addon module (WIP)
 cli/         # command line interface (WIP)
-postp.py     # post-processing, mainly about tone mapping
+postp/       # post-processing, mainly about tone mapping
 skybox.py    # implementing cube map and spherical map for skybox
 common.py    # some common functions that might be used by Tina or your project
 advans.py    # some advanced functions that might be used by Tina or your project
