@@ -24,7 +24,8 @@ class Scene:
             if not self.ibl:
                 self.lighting = tina.Lighting()
             else:
-                self.lighting = tina.SkyboxLighting(tina.Atomsphere())
+                skybox = tina.Skybox(512).cook_from(tina.Atomsphere())
+                self.lighting = tina.SkyboxLighting(skybox)
         else:
             self.lighting = tina.RTXLighting()
 

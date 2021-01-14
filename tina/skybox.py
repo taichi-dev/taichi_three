@@ -40,6 +40,7 @@ def unspheremap(coor):
 class Skybox:
     def __init__(self, path, scale=None, cubic=False):
         shape = path
+        self.cubic = cubic
         if isinstance(shape, int):
             if cubic:
                 shape = shape * 3 // 4, shape
@@ -49,11 +50,14 @@ class Skybox:
             shape = self._from_raw(shape)
         elif isinstance(shape, str):
             shape = self._from_image(shape)
+        elif isinstance(shape, int):
+            if self.cubic:
+                shape = shape * 4, shape * 3
+            else:
+                shape = 2 * shape, shape
         else:
             assert isinstance(shape, (list, tuple)), shape
-        img = ti.Vector.field(3, float, shape)
-        self.img = img
-        self.cubic = cubic
+        self.img = ti.Vector.field(3, float, shape)
         if self.cubic:
             self.resolution = shape[1] * 2 // 3
         else:
@@ -66,6 +70,22 @@ class Skybox:
             def scale_skybox():
                 for I in ti.grouped(self.img):
                     self.img[I] *= scale
+
+    def cook_from(self, src, nsamples=128):
+        @ti.materialize_callback
+        @ti.kernel
+        def cook_skybox():
+            ti.static_print('[Tina] Cooking skybox '
+                    f'({"x".join(map(str, self.shape))} {nsamples} spp)...')
+            for I in ti.grouped(self.img):
+                res = V(0., 0., 0.)
+                for i in range(nsamples):
+                    J = I + V(ti.random(), ti.random())
+                    dir = self.unmapcoor(J)
+                    res += src.sample(dir)
+                self.img[I] = res / nsamples
+
+        return self
 
     def _from_raw(self, img):
         @ti.materialize_callback
@@ -126,7 +146,7 @@ class Skybox:
 
 
 
-def _get_incident_light():
+def _get_sample_sky():
     g = 0.76;
 
     @ti.func
@@ -255,32 +275,26 @@ def _get_incident_light():
 
         return ret
 
-    return get_incident_light
+    @ti.func
+    def sample_sky(dir):
+        org = V(0., 0., earth_radius + 1.)
+        sun_dir = V(0., 0., 1.)
+        ret = get_incident_light(org, dir, sun_dir)
+        return ret
+
+    return sample_sky
 
 
 # https://www.shadertoy.com/view/XtBXDz
 @ti.data_oriented
 class Atomsphere:
-    def __init__(self, scale=1):
-        self.img = texture_as_field('assets/atms.png')
-        self.res = tovector(self.img._dense_shape)
-        self.resolution = self.res.x // 2
-        self.scale = scale
-        #self.resolution = 256
-        #self.get_incident_light = _get_incident_light()
-
-    #@ti.func
-    #def sample_sky(self, dir):
-        #org = V(0., 0., earth_radius + 1.)
-        #sun_dir = V(0., 0., 1.)
-        #ret = self.get_incident_light(org, dir, sun_dir)
-        #return ret
+    def __init__(self):
+        self.resolution = 256
+        self.sample_sky = _get_sample_sky()
 
     @ti.func
     def sample(self, dir):
         dir.y, dir.z = -dir.z, dir.y
-        I = self.res * (dir.xy * 0.49 + 0.5)
-        sky = ce_untonemap(bilerp(self.img, I)) * self.scale
-        #sky = self.sample_sky(dir)
+        sky = self.sample_sky(dir)
         ground = lerp((dir.xy / dir.z // 4).sum() % 2, 0.2, 0.7)
         return lerp(clamp(dir.z * 32, -1, 1) * 0.5 + 0.5, ground, sky)

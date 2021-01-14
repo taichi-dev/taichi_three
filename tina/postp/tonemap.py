@@ -1,4 +1,4 @@
-from .advans import *
+from ..advans import *
 
 
 @ti.data_oriented

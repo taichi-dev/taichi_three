@@ -58,8 +58,6 @@ class PTScene(Scene):
         self.objects = []
         self.tracers = []
 
-        self.lighting.skybox = tina.Atomsphere()
-
         @ti.materialize_callback
         def init_mtltab():
             self.mtltab.clear_materials()

@@ -8,7 +8,6 @@ scene = tina.PTScene(smoothing=True, texturing=True)
 scene.load_gltf('assets/cornell.gltf')
 
 if isinstance(scene, tina.PTScene):
-    del scene.lighting.skybox
     scene.lighting.set_lights(np.array([
         [0, 3.9, 0],
     ], dtype=np.float32))
