@@ -280,7 +280,7 @@ def _get_sample_sky():
     @ti.func
     def sample_sky(dir):
         org = V(0., 0., earth_radius + 1.)
-        sun_dir = V(0., 3., 1.).normalized()
+        sun_dir = V(0., -2., 1.).normalized()
         ret = get_incident_light(org, dir, sun_dir)
         return ret
 
