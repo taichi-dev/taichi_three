@@ -3,7 +3,7 @@ from ..common import *
 
 @ti.data_oriented
 class SimpleMesh:
-    def __init__(self, maxfaces=65536, npolygon=3):
+    def __init__(self, maxfaces=MAX, npolygon=3):
         '''
         :param maxfaces: (int) the maximum amount of faces to be supported
         :param npolygon: (int) number of polygon edges, 3 for triangles

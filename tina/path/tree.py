@@ -4,7 +4,7 @@ from .geometry import *
 
 @ti.data_oriented
 class BVHTree:
-    def __init__(self, geom, N_tree=65536*16, dim=3):
+    def __init__(self, geom, N_tree=MAX, dim=3):
         self.geom = geom
         self.N_tree = N_tree
         self.dim = dim

@@ -9,7 +9,8 @@ roughness = tina.Param(float, initial=0)#.15)
 metallic = tina.Param(float, initial=0)#.25)
 material = tina.PBR(metallic=metallic, roughness=roughness)
 
-model = tina.PrimitiveMesh.sphere()
+#model = tina.PrimitiveMesh.sphere()
+model = tina.MeshModel('assets/bunny.obj')
 scene.add_object(model, material)
 
 gui = ti.GUI('matball')

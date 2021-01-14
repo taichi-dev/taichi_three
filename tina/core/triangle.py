@@ -3,7 +3,7 @@ from ..common import *
 
 @ti.data_oriented
 class TriangleRaster:
-    def __init__(self, engine, maxfaces=65536, smoothing=False, texturing=False,
+    def __init__(self, engine, maxfaces=MAX, smoothing=False, texturing=False,
             culling=True, clipping=True, **extra_options):
         self.engine = engine
         self.res = self.engine.res

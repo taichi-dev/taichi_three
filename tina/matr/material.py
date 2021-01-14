@@ -377,7 +377,6 @@ class Lambert(IMaterial):
             denoise.knn()
             ibl.img.copy_from(denoise.dst)
             print('[Tina] Baking IBL map for Lambert done')
-            ti.imshow(ibl.img)
 
         tab['diff'] = ibl
 

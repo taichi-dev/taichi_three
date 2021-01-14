@@ -3,7 +3,7 @@ from ..common import *
 
 @ti.data_oriented
 class ConnectiveMesh:
-    def __init__(self, maxfaces=65536, maxverts=65536, npolygon=3):
+    def __init__(self, maxfaces=MAX, maxverts=MAX, npolygon=3):
         self.faces = ti.Vector.field(npolygon, int, maxfaces)
         self.verts = ti.Vector.field(3, float, maxverts)
         self.coors = ti.Vector.field(2, float, maxverts)

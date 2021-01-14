@@ -65,7 +65,7 @@ def ce_untonemap(color):
 
 
 @eval('lambda x: x()')
-def get_image():
+def get_tonemap_image():
     @ti.kernel
     def _get_image(out: ti.ext_arr(), img: ti.template(), tonemap: ti.template()):
         for I in ti.grouped(img):

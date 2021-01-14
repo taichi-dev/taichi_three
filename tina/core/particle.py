@@ -3,7 +3,7 @@ from ..common import *
 
 @ti.data_oriented
 class ParticleRaster:
-    def __init__(self, engine, maxpars=65536, coloring=True,
+    def __init__(self, engine, maxpars=MAX, coloring=True,
             clipping=True, **extra_options):
         self.engine = engine
         self.res = self.engine.res

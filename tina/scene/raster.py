@@ -90,7 +90,7 @@ class Scene:
         self.objects[object] = namespace(material=material, raster=raster)
 
     def init_control(self, gui, center=None, theta=None, phi=None, radius=None,
-                     fov=60, is_ortho=False, blendish=False):
+                     fov=60, is_ortho=False, blendish=True):
         '''
         :param gui: (GUI) the GUI to bind with
         :param center: (3 * [float]) the target (lookat) position

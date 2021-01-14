@@ -4,6 +4,9 @@ import numpy as np
 from .hacker import *
 
 
+MAX = 2**20
+
+
 def V(*xs):
     return ti.Vector(xs)
 

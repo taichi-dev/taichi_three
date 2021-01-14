@@ -3,7 +3,7 @@ from ..common import *
 
 @ti.data_oriented
 class WireframeRaster:
-    def __init__(self, engine, maxwires=65536, linewidth=1.5,
+    def __init__(self, engine, maxwires=MAX, linewidth=1.5,
                   linecolor=(.9, .6, 0), clipping=False, **extra_options):
         self.engine = engine
         self.res = self.engine.res

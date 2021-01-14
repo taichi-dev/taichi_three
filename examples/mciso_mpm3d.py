@@ -102,7 +102,7 @@ def init():
 mciso = tina.MCISO((n_grid, n_grid, n_grid))
 
 scene = tina.Scene(smoothing=True, maxfaces=2**18, ibl=True)
-material = tina.PBR(metallic=0.45, roughness=0.12)
+material = tina.PBR(metallic=0.45, roughness=0.15)
 scene.add_object(mciso, material)
 
 gui = ti.GUI('mciso_mpm3d', scene.res)
