@@ -102,8 +102,11 @@ def init():
 mciso = tina.MCISO((n_grid, n_grid, n_grid))
 
 scene = tina.Scene(smoothing=True, maxfaces=2**18, ibl=True)
-material = tina.PBR(metallic=0.45, roughness=0.15)
+material = tina.PBR(metallic=0.15, roughness=0.0)
 scene.add_object(mciso, material)
+
+#boundbox = tina.MeshToWire(tina.MeshTransform(tina.MeshModel('assets/cube.obj'), tina.scale(0.5) @ tina.translate(1)))
+#scene.add_object(boundbox)
 
 gui = ti.GUI('mciso_mpm3d', scene.res)
 scene.init_control(gui, center=[0.5, 0.5, 0.5], radius=1.5)

@@ -54,7 +54,7 @@ def substep():
 
 ### Rendering GUI
 
-scene = tina.Scene((1024, 768), smoothing=True, texturing=True)
+scene = tina.Scene((1024, 768), smoothing=True, texturing=True, ibl=True)
 
 mesh = tina.MeshNoCulling(tina.MeshGrid((N, N)))
 ball = tina.MeshTransform(tina.PrimitiveMesh.sphere())
@@ -72,9 +72,9 @@ scene.init_control(gui,
         theta=np.pi / 2 - np.radians(30),
         radius=1.5)
 
-scene.lighting.clear_lights()
-scene.lighting.add_light(dir=[0, 1, 1], color=[0.9, 0.9, 0.9])
-scene.lighting.set_ambient_light([0.1, 0.1, 0.1])
+#scene.lighting.clear_lights()
+#scene.lighting.add_light(dir=[0, 1, 1], color=[0.9, 0.9, 0.9])
+#scene.lighting.set_ambient_light([0.1, 0.1, 0.1])
 
 ball.set_transform(tina.translate(ball_pos) @ tina.scale(ball_radius))
 
