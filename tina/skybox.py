@@ -187,8 +187,8 @@ def _get_sample_sky():
     atmosphere_radius = 6420e3;
     atmosphere = [V(0, 0, 0), atmosphere_radius, 0];
 
-    num_samples = 32;
-    num_samples_light = 16;
+    num_samples = 16;
+    num_samples_light = 8;
 
 
     @ti.func
@@ -220,7 +220,8 @@ def _get_sample_sky():
 
 
 
-    sun_power = 32.0;
+    sun_power = 30.0;
+    #sun_size = np.radians(4)
 
     @ti.func
     def get_incident_light(ray_origin, ray_direction, sun_dir):
@@ -229,12 +230,10 @@ def _get_sample_sky():
         hit, t0, t1 = isect_sphere(ray_origin, ray_direction, atmosphere)
 
         ret = V3(0.)
-        #ret = V(1., 0., 1.)
         if hit:
+            mu = ray_direction.dot(sun_dir);
 
             march_step = t1 / float(num_samples);
-
-            mu = ray_direction.dot(sun_dir);
 
             phaseR = rayleigh_phase_func(mu);
             phaseM = henyey_greenstein_phase_func(mu);
@@ -271,14 +270,17 @@ def _get_sample_sky():
 
                 march_pos += march_step;
 
-            ret = sun_power * (sumR * phaseR * betaR + sumM * phaseM * betaM);
+            ret = sun_power * (sumR * phaseR * betaR + sumM * phaseM * betaM)
+
+            #if mu >= ti.cos(sun_size):
+            #    ret += V(4.1, 4.0, 3.8) * sun_power
 
         return ret
 
     @ti.func
     def sample_sky(dir):
         org = V(0., 0., earth_radius + 1.)
-        sun_dir = V(0., 1., 1.).normalized()
+        sun_dir = V(0., 3., 1.).normalized()
         ret = get_incident_light(org, dir, sun_dir)
         return ret
 

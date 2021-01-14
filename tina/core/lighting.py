@@ -8,8 +8,8 @@ class SkyboxLighting:
         if ibltab is None:
             precision = 32
             ibltab = {'env': skybox}
-            tina.CookTorrance.cook_for_ibl(ibltab, precision)
             tina.Lambert.cook_for_ibl(ibltab, precision)
+            tina.CookTorrance.cook_for_ibl(ibltab, precision)
         self.ibltab = ibltab
 
     @ti.func

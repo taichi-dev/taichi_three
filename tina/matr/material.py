@@ -351,8 +351,8 @@ class Lambert(IMaterial):
     def cook_for_ibl(cls, tab, precision):
         env = tab['env']
         ibl = tina.Skybox(env.resolution // 6)
-        tmp = ti.Vector.field(3, float, ibl.shape)
-        nsamples = 256 * precision
+        denoise = tina.Denoise(ibl.shape)
+        nsamples = 128 * precision
 
         @ti.kernel
         def bake():
@@ -366,20 +366,16 @@ class Lambert(IMaterial):
                     wei = env.sample(odir)
                     res += wei * u
                     dem += u
-                tmp[I] = res / dem
-            for I in ti.grouped(ibl.img):
-                res = tmp[I]
-                if not any(I == 0 or I == V(*ibl.shape) - 1):
-                    res *= 4
-                    for i in ti.static(range(2)):
-                        res += tmp[I + U2(i)] + tmp[I - U2(i)]
-                    res /= 8
-                ibl.img[I] = res
+                ibl.img[I] = res / dem
 
         @ti.materialize_callback
         def init_ibl():
             print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for Lambert...')
             bake()
+            print('[Tina] Denoising IBL map with KNN for Lambert...')
+            denoise.src.copy_from(ibl.img)
+            denoise.knn()
+            ibl.img.copy_from(denoise.dst)
             print('[Tina] Baking IBL map for Lambert done')
             ti.imshow(ibl.img)
 
