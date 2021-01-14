@@ -187,8 +187,8 @@ def _get_sample_sky():
     atmosphere_radius = 6420e3;
     atmosphere = [V(0, 0, 0), atmosphere_radius, 0];
 
-    num_samples = 16;
-    num_samples_light = 8;
+    num_samples = 32;
+    num_samples_light = 16;
 
 
     @ti.func
@@ -220,7 +220,7 @@ def _get_sample_sky():
 
 
 
-    sun_power = 20.0;
+    sun_power = 32.0;
 
     @ti.func
     def get_incident_light(ray_origin, ray_direction, sun_dir):
@@ -278,7 +278,7 @@ def _get_sample_sky():
     @ti.func
     def sample_sky(dir):
         org = V(0., 0., earth_radius + 1.)
-        sun_dir = V(0., 0., 1.)
+        sun_dir = V(0., 1., 1.).normalized()
         ret = get_incident_light(org, dir, sun_dir)
         return ret
 
@@ -289,7 +289,7 @@ def _get_sample_sky():
 @ti.data_oriented
 class Atomsphere:
     def __init__(self):
-        self.resolution = 256
+        self.resolution = 512
         self.sample_sky = _get_sample_sky()
 
     @ti.func
@@ -298,3 +298,14 @@ class Atomsphere:
         sky = self.sample_sky(dir)
         ground = lerp((dir.xy / dir.z // 4).sum() % 2, 0.2, 0.7)
         return lerp(clamp(dir.z * 32, -1, 1) * 0.5 + 0.5, ground, sky)
+
+
+@ti.data_oriented
+class PlainSkybox:
+    def __init__(self, color=(1., 1., 1.)):
+        self.resolution = 64
+        self.color = tovector(color)
+
+    @ti.func
+    def sample(self, dir):
+        return self.color

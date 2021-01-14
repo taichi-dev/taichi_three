@@ -233,7 +233,7 @@ class CookTorrance(IMaterial):
             # https://zhuanlan.zhihu.com/p/261005894
             for I in ti.grouped(ibl.img):
                 dir = ibl.unmapcoor(I)
-                res = V(0., 0., 0.)
+                res, dem = V(0., 0., 0.), 0.
                 alpha2 = max(0, roughness**2)
                 for s in range(nsamples):
                     u, v = ti.random(), ti.random()
@@ -241,9 +241,10 @@ class CookTorrance(IMaterial):
                     odir = tangentspace(dir) @ spherical(u, v)
                     wei = env.sample(odir)
                     res += wei * u
-                ibl.img[I] = res / nsamples
+                    dem += u
+                ibl.img[I] = res / dem
 
-        lut = texture_as_field('assets/lut.jpg')
+        lut = texture_as_field('assets/lut.jpg')  # TODO: bake LUT?
 
         ibls = [env]
         resolution = env.resolution
@@ -254,7 +255,7 @@ class CookTorrance(IMaterial):
 
         @ti.materialize_callback
         def init_ibl():
-            nsamples = 6 * precision
+            nsamples = 8 * precision
             for ibl, (roughness, rough_step) in zip(ibls[1:], cls.rough_levels):
                 print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for CookTorrance with roughness {roughness}...')
                 bake(ibl, roughness, nsamples)
@@ -351,20 +352,21 @@ class Lambert(IMaterial):
         env = tab['env']
         ibl = tina.Skybox(env.resolution // 6)
         tmp = ti.Vector.field(3, float, ibl.shape)
-        nsamples = 128 * precision
+        nsamples = 256 * precision
 
         @ti.kernel
         def bake():
             # https://zhuanlan.zhihu.com/p/261005894
             for I in ti.grouped(ibl.img):
                 dir = ibl.unmapcoor(I)
-                res = V(0., 0., 0.)
+                res, dem = V(0., 0., 0.), 0.
                 for s in range(nsamples):
                     u, v = ti.random(), ti.random()
                     odir = tangentspace(dir) @ spherical(u, v)
                     wei = env.sample(odir)
                     res += wei * u
-                tmp[I] = res / nsamples
+                    dem += u
+                tmp[I] = res / dem
             for I in ti.grouped(ibl.img):
                 res = tmp[I]
                 if not any(I == 0 or I == V(*ibl.shape) - 1):
@@ -379,6 +381,7 @@ class Lambert(IMaterial):
             print(f'[Tina] Baking IBL map ({"x".join(map(str, ibl.shape))} {nsamples} spp) for Lambert...')
             bake()
             print('[Tina] Baking IBL map for Lambert done')
+            ti.imshow(ibl.img)
 
         tab['diff'] = ibl
 

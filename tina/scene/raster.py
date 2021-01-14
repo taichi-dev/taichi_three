@@ -22,7 +22,9 @@ class Scene:
         if not self.ibl:
             self.lighting = tina.Lighting()
         else:
-            skybox = tina.Skybox(512).cook_from(tina.Atomsphere())
+            skybox = tina.Atomsphere()
+            skybox = tina.Skybox(skybox.resolution).cook_from(skybox)
+            #skybox = tina.Skybox('assets/skybox.jpg', cubic=True)
             self.lighting = tina.SkyboxLighting(skybox)
 
         self.image = ti.Vector.field(3, float, self.res)
