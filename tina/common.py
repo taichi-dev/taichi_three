@@ -47,6 +47,20 @@ def Vall(u):
         return u
 
 
+def Vlen2(u):
+    if isinstance(u, ti.Matrix):
+        return u.norm_sqr()
+    else:
+        return u**2
+
+
+def Vlen(u):
+    if isinstance(u, ti.Matrix):
+        return u.norm()
+    else:
+        return u2
+
+
 def Vany(u):
     if isinstance(u, ti.Matrix):
         return u.any()
@@ -182,6 +196,12 @@ def refract(I, N, ior):
     else:
         T *= 0
     return has_r, T
+
+
+@ti.pyfunc
+def smoothstep(x, a, b):
+    t = clamp((x - a) / (b - a))
+    return t * t * (3 - 2 * t)
 
 
 @ti.pyfunc

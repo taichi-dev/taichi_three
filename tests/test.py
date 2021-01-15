@@ -13,6 +13,10 @@ scene.add_object(model)
 ssao = tina.SSAOShader(ti.field(float, scene.res))
 scene.post_shaders.append(ssao)
 
+denoise = tina.Denoise(scene.res)
+denoise.src = ssao.img
+denoise.dst = ti.field(float, scene.res)
+
 scene.lighting.clear_lights()
 scene.lighting.set_ambient_light([1, 1, 1])
 
@@ -20,5 +24,6 @@ gui = ti.GUI()
 while gui.running:
     scene.input(gui)
     scene.render()
-    gui.set_image(ssao.img)
+    denoise.knn()
+    gui.set_image(denoise.dst)
     gui.show()

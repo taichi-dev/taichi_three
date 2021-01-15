@@ -25,7 +25,7 @@ class Denoise:
         for x, y in self.src:
             cnt = 0.0
             wei = 0.0
-            clr = ti.Vector([0.0, 0.0, 0.0])
+            clr = ti.zero(self.src[x, y])
 
             noise = 1 / max(1e-5, noiseness**2)
             inv_area = 1 / (2 * radius + 1)**2
@@ -33,7 +33,7 @@ class Denoise:
             clr00 = self.src[x, y]
             for i, j in ti.ndrange((-radius, radius + 1), (-radius, radius + 1)):
                 clrij = self.src[x + i, y + j]
-                disij = (clr00 - clrij).norm_sqr()
+                disij = Vlen2(clr00 - clrij)
 
                 wij = ti.exp(-(disij * noise + (i**2 + j**2) * inv_area))
                 cnt += inv_area if wij > wei_thres else 0
@@ -50,7 +50,7 @@ class Denoise:
         for x, y in self.src:
             cnt = 0.0
             wei = 0.0
-            clr = ti.Vector([0.0, 0.0, 0.0])
+            clr = ti.zero(self.src[x, y])
 
             noise = 1 / max(1e-5, noiseness**2)
             inv_area = 1 / (2 * radius + 1)**2
@@ -60,7 +60,7 @@ class Denoise:
                 for m, n in ti.ndrange((-radius, radius + 1), (-radius, radius + 1)):
                     clr00 = self.src[x + m, y + n]
                     clrij = self.src[x + i + m, y + j + n]
-                    wij += (clr00 - clrij).norm_sqr()
+                    wij += Vlen2(clr00 - clrij)
 
                 wij = ti.exp(-(wij * noise + (i**2 + j**2) * inv_area))
                 cnt += inv_area if wij > wei_thres else 0

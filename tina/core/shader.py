@@ -48,7 +48,7 @@ class Normal2DShader(IShader):
 class SSAOShader(IShader):
     def __init__(self, img, nsamples=64):
         super().__init__(img)
-        self.samples = ti.Vector.field(2, float, nsamples)
+        self.samples = ti.Vector.field(3, float, nsamples)
         self.rotations = ti.Vector.field(2, float, (4, 4))
 
         @ti.materialize_callback
@@ -60,37 +60,39 @@ class SSAOShader(IShader):
                 t = ti.tau * ti.random()
                 self.rotations[i, j] = V(ti.cos(t), ti.sin(t))
 
-        self.radius = 1.0
-
     @ti.func
     def make_sample(self):
-        t = ti.tau * ti.random()
-        r = ti.random()**2
-        return V(ti.cos(t), ti.sin(t)) * r
+        u, v = ti.random(), ti.random()
+        r = lerp(ti.random()**1.5, 0.01, 1.0)
+        u = lerp(u, 0.01, 1.0)
+        return spherical(u, v) * r
 
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         vnormal = mapply_dir(engine.W2V[None], normal).normalized()
         vpos = engine.to_viewspace(pos)
 
-        occ = 0.
+        occ = 0.0
+        radius = 0.8
         for i in range(self.samples.shape[0]):
             #samp = self.samples[i]
             #rotr = self.rotations[P % self.rotations.shape[0]]
             samp = self.make_sample()
-            sample = tangentspace(normal) @ V23(samp, 0.1)
-            sample = pos + sample * self.radius
+            sample = tangentspace(normal) @ samp
+            sample = pos + sample * radius
             sample = engine.to_viewspace(sample)
-            D = int(engine.to_viewport(sample))
-            #D = int(P + 16 * samp)
+            D = engine.to_viewport(sample)
             if vnormal.xy.dot(D - P) <= 0:
                 D = 2 * P - D
-            depth = engine.depth[D] / engine.maxdepth
-            if depth < vpos.z - eps:
-                occ += 1
+            depth = engine.depth[int(D)] / engine.maxdepth
+            #if depth < vpos.z - eps:
+            #    occ += 1.0
+            if depth < sample.z:
+                rc = smoothstep(radius / (sample.z - depth), 0, 1)
+                occ += rc
 
         ao = occ / self.samples.shape[0]
-        self.img[P] = 1 - max(0, ao - 0.16)
+        self.img[P] = 1 - ao#max(0, ao - 0.16)
 
 
 class TexcoordShader(IShader):
