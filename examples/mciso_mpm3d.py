@@ -101,7 +101,7 @@ def init():
 
 mciso = tina.MCISO((n_grid, n_grid, n_grid))
 
-scene = tina.Scene(smoothing=True, maxfaces=2**18, ibl=True)
+scene = tina.Scene(smoothing=True, maxfaces=2**18, ibl=True, ssao=True)
 material = tina.PBR(metallic=0.15, roughness=0.0)
 scene.add_object(mciso, material)
 
