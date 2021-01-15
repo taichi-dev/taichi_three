@@ -265,7 +265,7 @@ def main():
     scene = tina.Scene(maxfaces=2**18, smoothing=True)
     if use_mciso:
         mciso = tina.MCISO(mpm.res)
-        scene.add_object(mciso)
+        scene.add_object(mciso, tina.Classic())
     else:
         pars = tina.SimpleParticles(radius=0.01)
         scene.add_object(pars, tina.Classic())

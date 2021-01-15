@@ -63,8 +63,11 @@ class WireframeRaster:
             pos = src + k * i
             yield pos, i / siz
 
+    def render_occup(self):
+        pass
+
     @ti.kernel
-    def render(self, shader: ti.template()):
+    def render_color(self, shader: ti.template()):
         for f in ti.smart(self.get_wires_range()):
             Al, Bl = self.get_wire_vertices(f)
             Av, Bv = [self.engine.to_viewspace(p) for p in [Al, Bl]]
