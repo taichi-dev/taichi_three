@@ -17,6 +17,7 @@ class Scene:
         self.pp = options.get('pp', True)
         self.taa = options.get('taa', False)
         self.ibl = options.get('ibl', False)
+        self.ssao = options.get('ssao', False)
         self.bgcolor = options.get('bgcolor', 0)
 
         if not self.ibl:
@@ -31,9 +32,14 @@ class Scene:
         self.default_material = tina.Diffuse()
         self.post_shaders = []
         self.pre_shaders = []
-        self.post_pp = None
         self.shaders = {}
         self.objects = {}
+
+        if self.ssao:
+            self.norm_buffer = ti.Vector.field(3, float, self.res)
+            self.norm_shader = tina.NormalShader(self.norm_buffer)
+            self.pre_shaders.append(self.norm_shader)
+            self.ssao = tina.SSAO(self.res, self.norm_buffer)
 
         if self.pp:
             self.postp = tina.ToneMapping(self.image, self.res)
@@ -142,8 +148,12 @@ class Scene:
         if hasattr(self, 'background_shader'):
             self.engine.render_background(self.background_shader)
 
-        if self.post_pp is not None:
-            self.post_pp(self.image)
+        if self.ssao:
+            if self.taa:
+                self.ssao.seed_samples()
+            self.ssao.render(self.engine)
+            self.ssao.apply(self.image)
+
         if self.pp:
             self.postp.process()
         if self.taa:

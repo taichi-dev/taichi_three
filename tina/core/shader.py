@@ -48,9 +48,10 @@ class ViewNormalShader(IShader):
             self.img[P] = vnormal
 
 
-class SSAOShader(IShader):
+@ti.data_oriented
+class SSAO:
     def __init__(self, res, norm, nsamples=64, thresh=0.0,
-            radius=0.2, factor=1.0, blur_rad=2, rot_rad=3):
+            radius=0.2, factor=1.0, blur_rad=2, rot_rad=4):
         self.res = tovector(res)
         self.blur_rad = blur_rad
         self.img = ti.field(float, self.res)
@@ -102,8 +103,13 @@ class SSAOShader(IShader):
         u = lerp(u, 0.01, 1.0)
         return spherical(u, v) * r
 
+    @ti.kernel
+    def render(self, engine: ti.template()):
+        for P in ti.grouped(engine.depth):
+            self.render_at(engine, P)
+
     @ti.func
-    def shade_color(self, engine, P, p_, f_, pos_, normal_, texcoord_, color_):
+    def render_at(self, engine, P):
         normal = self.norm[P]
         p = P + engine.bias[None]
         vpos = V23(engine.from_viewport(p), engine.depth[P] / engine.maxdepth)
