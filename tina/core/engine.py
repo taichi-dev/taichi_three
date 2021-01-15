@@ -3,23 +3,6 @@ from ..common import *
 
 @ti.data_oriented
 class Engine:
-    @ti.func
-    def draw_line(self, src, dst):
-        dlt = dst - src
-        adlt = abs(dlt)
-        k, siz = V(1.0, 1.0), 0
-        if adlt.x >= adlt.y:
-            k.x = 1.0 if dlt.x >= 0 else -1.0
-            k.y = k.x * dlt.y / dlt.x
-            siz = int(adlt.x)
-        else:
-            k.y = 1.0 if dlt.y >= 0 else -1.0
-            k.x = k.y * dlt.x / dlt.y
-            siz = int(adlt.y)
-        for i in range(siz + 1):
-            pos = src + k * i
-            yield pos, i / siz
-
     def __init__(self, res=512):
         self.res = tovector((res, res) if isinstance(res, int) else res)
 

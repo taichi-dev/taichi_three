@@ -130,35 +130,24 @@ class TriangleRaster:
             self.coo[f] = c
             self.wsc[f] = wscale
 
-    @ti.func
-    def screen_range(self):
-        if ti.static(hasattr(self, 'stack')):
-            for I in ti.smart(self.stack.ndrange(self.res)):
-                yield I
-        else:
-            for I in ti.grouped(self.occup):
-                yield I
-
     @ti.kernel
     def render_color(self, shader: ti.template()):
-        for P in ti.smart(self.screen_range()):
+        for P in ti.grouped(self.occup):
             f = self.occup[P]
-            if f != -1:
-                Al, Bl, Cl = self.get_face_vertices(f)
+            if f == -1:
+                continue
 
-                bcn = self.bcn[f]
-                can = self.can[f]
-                b = self.boo[f]
-                c = self.coo[f]
-                wscale = self.wsc[f]
-                p = float(P) + self.engine.bias[None]
-                w_bc = (p - b).cross(bcn)
-                w_ca = (p - c).cross(can)
-                wei = V(w_bc, w_ca, 1 - w_bc - w_ca) * wscale
-                wei /= wei.x + wei.y + wei.z
+            Al, Bl, Cl = self.get_face_vertices(f)
 
-                self.interpolate(shader, P, p, f, wei, Al, Bl, Cl)
+            bcn = self.bcn[f]
+            can = self.can[f]
+            b = self.boo[f]
+            c = self.coo[f]
+            wscale = self.wsc[f]
+            p = float(P) + self.engine.bias[None]
+            w_bc = (p - b).cross(bcn)
+            w_ca = (p - c).cross(can)
+            wei = V(w_bc, w_ca, 1 - w_bc - w_ca) * wscale
+            wei /= wei.x + wei.y + wei.z
 
-    def render(self, shader):
-        self.render_occup()
-        self.render_color(shader)
+            self.interpolate(shader, P, p, f, wei, Al, Bl, Cl)

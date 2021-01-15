@@ -146,7 +146,3 @@ class ParticleRaster:
             color = self.get_particle_color(f)
 
             shader.shade_color(self.engine, P, p, f, pos, normal, texcoord, color)
-
-    def render(self, shader):
-        self.render_occup()
-        self.render_color(shader)

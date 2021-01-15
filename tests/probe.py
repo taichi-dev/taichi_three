@@ -11,7 +11,7 @@ material = tina.Diffuse(color=texture)
 scene.add_object(mesh, material)
 
 probe = tina.ProbeShader(scene.res)
-scene.probe_shaders.append(probe)
+scene.post_shaders.append(probe)
 
 mesh.set_face_verts(verts[faces])
 

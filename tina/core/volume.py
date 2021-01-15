@@ -66,7 +66,7 @@ class VolumeRaster:
         self.dens.from_numpy(dens)
 
     @ti.kernel
-    def render_occup(self):
+    def _render_occup(self):
         uniq = ti.Vector([0 for i in range(4)]).cast(ti.u32)
         if ti.static(self.taa):
             uniq = ti.Vector([ti.random(ti.u32) for i in range(4)])
@@ -126,9 +126,8 @@ class VolumeRaster:
             fac = 1 - ti.exp(-rho)
             shader.img[P] = shader.img[P] * (1 - fac) + fac
 
-    def render(self, shader):
-        self.render_occup()
+    def render_occup(self):
+        self._render_occup()
         if self.radius:
             self.blur(self.occup, self.tmcup, 0)
             self.blur(self.tmcup, self.occup, 1)
-        self.render_color(shader)

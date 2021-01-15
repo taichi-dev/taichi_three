@@ -2,69 +2,112 @@ from ..advans import *
 
 
 @ti.data_oriented
-class MagentaShader:
+class IShader:
     def __init__(self, img):
         self.img = img
 
+    def clear_buffer(self):
+        self.img.fill(0)
+
+    @ti.func
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
+        raise NotImplementedError
+
+
+class MagentaShader(IShader):
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = V(1.0, 0.0, 1.0)
 
 
-@ti.data_oriented
-class PositionShader:
-    def __init__(self, img):
-        self.img = img
-
+class PositionShader(IShader):
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = pos
 
 
-@ti.data_oriented
-class DepthShader:
-    def __init__(self, img):
-        self.img = img
-
+class DepthShader(IShader):
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = engine.depth[P]
 
 
-@ti.data_oriented
-class NormalShader:
-    def __init__(self, img):
-        self.img = img
+class NormalShader(IShader):
+    @ti.func
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
+        self.img[P] = normal
+
+
+class Normal2DShader(IShader):
+    @ti.func
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
+        normal = mapply_dir(engine.W2V[None], normal).normalized()
+        self.img[P] = normal.xy
+
+
+class SSAOShader(IShader):
+    def __init__(self, img, nsamples=64):
+        super().__init__(img)
+        self.samples = ti.Vector.field(2, float, nsamples)
+        self.rotations = ti.Vector.field(2, float, (4, 4))
+
+        @ti.materialize_callback
+        @ti.kernel
+        def init_ssao():
+            for i in self.samples:
+                self.samples[i] = self.make_sample()
+            for i, j in self.rotations:
+                t = ti.tau * ti.random()
+                self.rotations[i, j] = V(ti.cos(t), ti.sin(t))
+
+        self.radius = 1.0
+
+    @ti.func
+    def make_sample(self):
+        t = ti.tau * ti.random()
+        r = ti.random()**2
+        return V(ti.cos(t), ti.sin(t)) * r
 
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
-        self.img[P] = normal * 0.5 + 0.5
+        vnormal = mapply_dir(engine.W2V[None], normal).normalized()
+        vpos = engine.to_viewspace(pos)
+
+        occ = 0.
+        for i in range(self.samples.shape[0]):
+            #samp = self.samples[i]
+            #rotr = self.rotations[P % self.rotations.shape[0]]
+            samp = self.make_sample()
+            sample = tangentspace(normal) @ V23(samp, 0.1)
+            sample = pos + sample * self.radius
+            sample = engine.to_viewspace(sample)
+            D = int(engine.to_viewport(sample))
+            #D = int(P + 16 * samp)
+            if vnormal.xy.dot(D - P) <= 0:
+                D = 2 * P - D
+            depth = engine.depth[D] / engine.maxdepth
+            if depth < vpos.z - eps:
+                occ += 1
+
+        ao = occ / self.samples.shape[0]
+        self.img[P] = 1 - max(0, ao - 0.16)
 
 
-@ti.data_oriented
-class TexcoordShader:
-    def __init__(self, img):
-        self.img = img
-
+class TexcoordShader(IShader):
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = V23(texcoord, 0.0)
 
 
-@ti.data_oriented
-class ColorShader:
-    def __init__(self, img):
-        self.img = img
-
+class ColorShader(IShader):
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         self.img[P] = color
 
 
-@ti.data_oriented
-class ChessboardShader:
+class ChessboardShader(IShader):
     def __init__(self, img, size=8):
-        self.img = img
+        super().__init__(img)
         self.size = size
 
     @ti.func
@@ -82,10 +125,7 @@ def calc_viewdir(engine, p):
 
 
 @ti.data_oriented
-class ViewdirShader:
-    def __init__(self, img):
-        self.img = img
-
+class ViewdirShader(IShader):
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         viewdir = calc_viewdir(engine, p)
@@ -93,20 +133,16 @@ class ViewdirShader:
 
 
 @ti.data_oriented
-class SimpleShader:
-    def __init__(self, img):
-        self.img = img
-
+class SimpleShader(IShader):
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         viewdir = calc_viewdir(engine, p)
         self.img[P] = abs(normal.dot(viewdir))
 
 
-@ti.data_oriented
-class Shader:
+class Shader(IShader):
     def __init__(self, img, lighting, material):
-        self.img = img
+        super().__init__(img)
         self.lighting = lighting
         self.material = material
 
@@ -126,10 +162,9 @@ class Shader:
         tina.Input.clear_g_pars()
 
 
-@ti.data_oriented
-class RTXShader:
+class RTXShader(IShader):
     def __init__(self, img, lighting, geom, material):
-        self.img = img
+        super().__init__(img)
         self.lighting = lighting
         self.material = material
         self.geom = geom
@@ -151,9 +186,9 @@ class RTXShader:
 
 
 @ti.data_oriented
-class BackgroundShader:
+class BackgroundShader(IShader):
     def __init__(self, img, lighting):
-        self.img = img
+        super().__init__(img)
         self.lighting = lighting
 
     @ti.func

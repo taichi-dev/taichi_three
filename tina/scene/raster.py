@@ -29,7 +29,8 @@ class Scene:
 
         self.image = ti.Vector.field(3, float, self.res)
         self.default_material = tina.Diffuse()
-        self.probe_shaders = []
+        self.post_shaders = []
+        self.pre_shaders = []
         self.shaders = {}
         self.objects = {}
 
@@ -122,16 +123,20 @@ class Scene:
 
         self.image.fill(self.bgcolor)
         self.engine.clear_depth()
-        for shader in self.probe_shaders:
-            if hasattr(shader, 'clear_buffer'):
-                shader.clear_buffer()
+        for s in self.pre_shaders:
+            s.clear_buffer()
+        for s in self.post_shaders:
+            s.clear_buffer()
 
         for object, oinfo in self.objects.items():
             shader = self.shaders[oinfo.material]
             oinfo.raster.set_object(object)
-            oinfo.raster.render(shader)
-            for shader in self.probe_shaders:
-                oinfo.raster.render_color(shader)
+            oinfo.raster.render_occup()
+            for s in self.pre_shaders:
+                oinfo.raster.render_color(s)
+            oinfo.raster.render_color(shader)
+            for s in self.post_shaders:
+                oinfo.raster.render_color(s)
 
         if hasattr(self, 'background_shader'):
             self.engine.render_background(self.background_shader)
