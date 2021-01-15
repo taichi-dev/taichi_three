@@ -38,25 +38,29 @@ class NormalShader(IShader):
         self.img[P] = normal
 
 
-class Normal2DShader(IShader):
+class ViewNormalShader(IShader):
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
-        normal = mapply_dir(engine.W2V[None], normal).normalized()
-        self.img[P] = normal.xy
+        vnormal = mapply_dir(engine.W2V[None], normal).normalized()
+        if ti.static(self.img.n == 2):
+            self.img[P] = vnormal.xy
+        else:
+            self.img[P] = vnormal
 
 
 class SSAOShader(IShader):
-    def __init__(self, res, nsamples=64, thresh=0.02,
+    def __init__(self, res, norm, nsamples=64, thresh=0.0,
             radius=0.2, factor=1.0, blur_rad=2, rot_rad=3):
         self.res = tovector(res)
         self.blur_rad = blur_rad
         self.img = ti.field(float, self.res)
         self.out = ti.field(float, self.res)
         self.samples = ti.Vector.field(3, float, nsamples)
-        self.rotations = ti.Vector.field(2, float, (rot_rad, rot_rad, 1))
+        self.rotations = ti.Vector.field(2, float, (rot_rad, rot_rad))
         self.radius = ti.field(float, ())
         self.thresh = ti.field(float, ())
         self.factor = ti.field(float, ())
+        self.norm = norm
 
         @ti.materialize_callback
         def init_params():
@@ -99,18 +103,19 @@ class SSAOShader(IShader):
         return spherical(u, v) * r
 
     @ti.func
-    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
-        vnormal = mapply_dir(engine.W2V[None], normal).normalized()
+    def shade_color(self, engine, P, p_, f_, pos_, normal_, texcoord_, color_):
+        normal = self.norm[P]
+        p = P + engine.bias[None]
+        vpos = V23(engine.from_viewport(p), engine.depth[P] / engine.maxdepth)
+        pos = mapply_pos(engine.V2W[None], vpos)
         viewdir = calc_viewdir(engine, p)
-        vpos = engine.to_viewspace(pos)
 
         occ = 0.0
         radius = self.radius[None]
         vradius = engine.to_viewspace(pos - radius * viewdir).z - vpos.z
         for i in range(self.samples.shape[0]):
             samp = self.samples[i]
-            rot = self.rotations[P % self.rotations.shape[0],
-                    i % self.rotations.shape[2]]
+            rot = self.rotations[P % self.rotations.shape[0]]
             rotmat = ti.Matrix([[rot.x, rot.y], [-rot.x, rot.y]])
             samp.x, samp.y = rotmat @ samp.xy
             #samp = self.make_sample()
@@ -118,8 +123,6 @@ class SSAOShader(IShader):
             sample = pos + sample * radius
             sample = engine.to_viewspace(sample)
             D = engine.to_viewport(sample)
-            #if vnormal.xy.dot(D - P) <= 0:
-                #D = 2 * P - D
             if all(0 <= D < engine.res):
                 depth = engine.depth[int(D)] / engine.maxdepth
                 if depth < sample.z:
@@ -155,12 +158,19 @@ class ChessboardShader(IShader):
 
 
 @ti.func
-def calc_viewdir(engine, p):
+def calc_view_ray(engine, p):
     p = p / engine.res * 2 - 1
     ro = mapply_pos(engine.V2W[None], V23(p, -1.))
     ro1 = mapply_pos(engine.V2W[None], V23(p, 1.))
-    dir = (ro - ro1).normalized()
-    return dir
+    rd = (ro1 - ro).normalized()
+    return ro, rd
+
+
+@ti.func
+def calc_viewdir(engine, p):
+    ro, rd = calc_view_ray(engine, p)
+    return -rd
+
 
 
 @ti.data_oriented
