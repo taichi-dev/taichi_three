@@ -31,6 +31,7 @@ class Scene:
         self.default_material = tina.Diffuse()
         self.post_shaders = []
         self.pre_shaders = []
+        self.post_pp = None
         self.shaders = {}
         self.objects = {}
 
@@ -141,6 +142,8 @@ class Scene:
         if hasattr(self, 'background_shader'):
             self.engine.render_background(self.background_shader)
 
+        if self.post_pp is not None:
+            self.post_pp(self.image)
         if self.pp:
             self.postp.process()
         if self.taa:
