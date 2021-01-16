@@ -179,9 +179,6 @@ class Scene:
             oinfo.raster.render_occup()
             oinfo.raster.render_color(shader)
 
-        if hasattr(self, 'background_shader'):
-            self.engine.render_background(self.background_shader)
-
         if self.ssao:
             self.ssao.render(self.engine)
             self.ssao.apply(self.image)
@@ -189,6 +186,9 @@ class Scene:
         if self.ssr:
             self.ssr.render(self.engine, self.image)
             self.ssr.apply(self.image)
+
+        if hasattr(self, 'background_shader'):
+            self.engine.render_background(self.background_shader)
 
         if self.blooming:
             self.blooming.process()

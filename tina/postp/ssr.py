@@ -7,12 +7,23 @@ class SSR:
     def __init__(self, res, norm, mtlid, mtltab, debug=False):
         self.res = tovector(res)
         self.img = ti.Vector.field(3, float, self.res)
+        self.nsamples = ti.field(int, ())
+        self.nsteps = ti.field(int, ())
+        self.stepsize = ti.field(float, ())
+        self.tolerance = ti.field(float, ())
+        self.blurring = ti.field(int, ())
         self.norm = norm
         self.mtlid = mtlid
         self.mtltab = mtltab
         self.debug = debug
-        #self.denoise = tina.Denoise(self.res)
-        #self.denoise.src = self.img
+
+        @ti.materialize_callback
+        def init_params():
+            self.nsamples[None] = 32
+            self.nsteps[None] = 32
+            self.stepsize[None] = 2
+            self.tolerance[None] = 15
+            self.blurring[None] = 4
 
     @ti.kernel
     def apply(self, image: ti.template()):
@@ -20,7 +31,7 @@ class SSR:
             if ti.static(self.debug):
                 image[i, j] += self.img[i, j]
             else:
-                rad = 6
+                rad = self.blurring[None]
                 offs = rad // 2
                 r = V(0., 0., 0.)
                 for k, l in ti.ndrange(rad, rad):
@@ -53,22 +64,19 @@ class SSR:
                 'normal': normal,
             })
 
-        nsamples = 10
+        nsamples = self.nsamples[None]
+        nsteps = self.nsteps[None]
         for i in range(nsamples):
             odir, wei = material.sample(viewdir, normal, 1)
             odir = -odir
 
-            nsteps = 128
-            step = 10 * (mapply_pos(engine.W2V[None], pos + odir / nsteps)
-                    - mapply_pos(engine.W2V[None], pos)).xy.norm()
-
-            vtol = 32 * (mapply_pos(engine.W2V[None], pos - viewdir / nsteps
+            step = self.stepsize[None] / (
+                    ti.sqrt(1 - odir.dot(viewdir)**2) * nsteps)
+            vtol = self.tolerance[None] * (
+                    mapply_pos(engine.W2V[None], pos - viewdir / nsteps
                     ).z - mapply_pos(engine.W2V[None], pos).z)
 
-            hit = 0
-            D = float(P)
-            ro = pos + normal * 5e-3 * (ti.random() + .5)
-            ro -= odir * ti.random() * step
+            ro = pos - (odir) * ti.random() * step
             for j in range(nsteps):
                 ro -= odir * step
                 vro = mapply_pos(engine.W2V[None], ro)
@@ -77,12 +85,9 @@ class SSR:
                 D = engine.to_viewport(vro)
                 depth = engine.depth[int(D)] / engine.maxdepth
                 if vro.z - vtol < depth < vro.z:
-                    hit = 1
+                    res += bilerp(image, D) * wei
                     break
-
-            if hit:
-                res += bilerp(image, D) / nsamples
 
         tina.Input.clear_g_pars()
 
-        self.img[P] = res
+        self.img[P] = res / nsamples

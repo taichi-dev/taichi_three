@@ -32,6 +32,7 @@ Here's a list of important features currently Tina have:
 * transforming models - `docs/transform.py`
 * image-based lighting, IBL - `examples/ibl_matball.py`
 * screen space ambient occlusion, SSAO - `tests/ssao.py`
+* screen space reflection, SSR - `tests/ssr.py`
 * real-time rendering volume - `docs/volume.py`
 * loading OBJ models - `docs/monkey.py`
 * path tracing mode - `docs/pathtrace.py`
