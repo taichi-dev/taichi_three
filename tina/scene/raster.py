@@ -60,11 +60,10 @@ class Scene:
             self.ssr = tina.SSR(self.res,
                     self.norm_buffer, self.mtlid_buffer, self.mtltab)
 
-        self.pp_img = self.image
-
         if self.blooming:
-            self.blooming = tina.Blooming(self.pp_img, self.res)
-            self.pp_img = self.blooming.out
+            self.blooming = tina.Blooming(self.res)
+
+        self.pp_img = self.image
 
         if self.tonemap:
             self.tonemap = tina.ToneMapping(self.pp_img, self.res)
@@ -191,7 +190,7 @@ class Scene:
             self.engine.render_background(self.background_shader)
 
         if self.blooming:
-            self.blooming.process()
+            self.blooming.apply(self.image)
         if self.tonemap:
             self.tonemap.process()
         if self.taa:
