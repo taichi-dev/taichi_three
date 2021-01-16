@@ -15,7 +15,7 @@ scene = tina.Scene()
 # 2. Model - the model to be displayed
 #
 # here we use `tina.MeshModel` which can load models from OBJ format files
-model = tina.MeshModel('assets/bunny.obj')
+model = tina.MeshModel('assets/monkey.obj')
 # and, don't forget to add the model into the scene so that it gets displayed
 scene.add_object(model)
 

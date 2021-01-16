@@ -14,10 +14,11 @@ class Scene:
         self.engine = tina.Engine(res)
         self.res = self.engine.res
         self.options = options
-        self.pp = options.get('pp', True)
         self.taa = options.get('taa', False)
         self.ibl = options.get('ibl', False)
         self.ssao = options.get('ssao', False)
+        self.tonemap = options.get('tonemap', True)
+        self.blooming = options.get('blooming', False)
         self.bgcolor = options.get('bgcolor', 0)
 
         if not self.ibl:
@@ -41,8 +42,15 @@ class Scene:
             self.pre_shaders.append(self.norm_shader)
             self.ssao = tina.SSAO(self.res, self.norm_buffer)
 
-        if self.pp:
-            self.postp = tina.ToneMapping(self.image, self.res)
+        self.pp_img = self.image
+
+        if self.blooming:
+            self.blooming = tina.Blooming(self.pp_img, self.res)
+            self.pp_img = self.blooming.out
+
+        if self.tonemap:
+            self.tonemap = tina.ToneMapping(self.pp_img, self.res)
+            self.pp_img = self.tonemap.out
 
         if self.taa:
             self.accum = tina.Accumator(self.res)
@@ -154,8 +162,10 @@ class Scene:
             self.ssao.render(self.engine)
             self.ssao.apply(self.image)
 
-        if self.pp:
-            self.postp.process()
+        if self.blooming:
+            self.blooming.process()
+        if self.tonemap:
+            self.tonemap.process()
         if self.taa:
             self.accum.update(self.pp_img)
 
@@ -165,10 +175,6 @@ class Scene:
         The final image to be displayed in GUI
         '''
         return self.accum.img if self.taa else self.pp_img
-
-    @property
-    def pp_img(self):
-        return self.postp.out if self.pp else self.image
 
     def input(self, gui):
         '''
