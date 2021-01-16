@@ -14,10 +14,14 @@ class IShader:
         raise NotImplementedError
 
 
-class MagentaShader(IShader):
+class ConstShader(IShader):
+    def __init__(self, img, value):
+        super().__init__(img)
+        self.value = value
+
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
-        self.img[P] = V(1.0, 0.0, 1.0)
+        self.img[P] = self.value
 
 
 class PositionShader(IShader):
@@ -122,6 +126,15 @@ class Shader(IShader):
         self.img[P] = res
 
         tina.Input.clear_g_pars()
+
+
+class ShaderGroup(IShader):
+    def __init__(self, shaders=()):
+        self.shaders = shaders
+
+    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
+        for shader in self.shaders:
+            shader.shade_color(engine, P, p, f, pos, normal, texcoord, color)
 
 
 class RTXShader(IShader):

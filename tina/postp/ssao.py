@@ -38,7 +38,7 @@ class SSAO:
             if ti.static(self.debug):
                 out[i, j] *= 1 - self.img[i, j]
             else:
-                r, w = 0.0, 0.0
+                r = 0.0
                 rad = self.rotations.shape[0]
                 offs = rad // 2
                 for k, l in ti.ndrange(rad, rad):

@@ -4,10 +4,28 @@ from ..core.shader import calc_viewdir
 
 @ti.data_oriented
 class SSR:
-    def __init__(self, res, norm):
+    def __init__(self, res, norm, mtlid, mtltab, debug=False):
         self.res = tovector(res)
         self.img = ti.Vector.field(3, float, self.res)
         self.norm = norm
+        self.mtlid = mtlid
+        self.mtltab = mtltab
+        self.debug = debug
+        #self.denoise = tina.Denoise(self.res)
+        #self.denoise.src = self.img
+
+    @ti.kernel
+    def apply(self, image: ti.template()):
+        for i, j in self.img:
+            if ti.static(self.debug):
+                image[i, j] += self.img[i, j]
+            else:
+                rad = 6
+                offs = rad // 2
+                r = V(0., 0., 0.)
+                for k, l in ti.ndrange(rad, rad):
+                    r += self.img[i + k - offs, j + l - offs]
+                image[i, j] += r / rad**2
 
     @ti.kernel
     def render(self, engine: ti.template(), image: ti.template()):
@@ -16,42 +34,55 @@ class SSR:
                 self.img[P] = 0
             else:
                 self.render_at(engine, image, P)
-        for P in ti.grouped(image):
-            image[P] = lerp(0.5, self.img[P], image[P])
 
     @ti.func
     def render_at(self, engine, image: ti.template(), P):
         normal = self.norm[P]
+        mtlid = self.mtlid[P]
+
         p = P + engine.bias[None]
         vpos = V23(engine.from_viewport(p), engine.depth[P] / engine.maxdepth)
         pos = mapply_pos(engine.V2W[None], vpos)
         viewdir = calc_viewdir(engine, p)
+        material = self.mtltab.get(mtlid)
+        res = V(0., 0., 0.)
 
-        material = tina.Mirror()
-        odir, wei = material.sample(-viewdir, normal, 1)
+        tina.Input.spec_g_pars({
+                'pos': pos,
+                'color': V(1., 1., 1.),
+                'normal': normal,
+            })
 
-        nsteps = 512
+        nsamples = 10
+        for i in range(nsamples):
+            odir, wei = material.sample(viewdir, normal, 1)
+            odir = -odir
 
-        step = 10 * (
-                mapply_pos(engine.W2V[None], pos + odir / nsteps)
-                - mapply_pos(engine.W2V[None], pos)).xy.norm()
+            nsteps = 128
+            step = 10 * (mapply_pos(engine.W2V[None], pos + odir / nsteps)
+                    - mapply_pos(engine.W2V[None], pos)).xy.norm()
 
-        vtol = 32 * (mapply_pos(engine.W2V[None], pos - viewdir / nsteps
-                ).z - mapply_pos(engine.W2V[None], pos).z)
+            vtol = 32 * (mapply_pos(engine.W2V[None], pos - viewdir / nsteps
+                    ).z - mapply_pos(engine.W2V[None], pos).z)
 
-        hit = 0
-        D = float(P)
-        pos += normal * 6e-3 - odir * noise(P) * step
-        for i in range(nsteps):
-            pos -= odir * step
-            vpos = mapply_pos(engine.W2V[None], pos)
-            if not all(-1 <= vpos <= 1):
-                break
-            D = engine.to_viewport(vpos)
-            depth = engine.depth[int(D)] / engine.maxdepth
-            if vpos.z - vtol < depth < vpos.z:
-                hit = 1
-                break
+            hit = 0
+            D = float(P)
+            ro = pos + normal * 5e-3 * (ti.random() + .5)
+            ro -= odir * ti.random() * step
+            for j in range(nsteps):
+                ro -= odir * step
+                vro = mapply_pos(engine.W2V[None], ro)
+                if not all(-1 <= vro <= 1):
+                    break
+                D = engine.to_viewport(vro)
+                depth = engine.depth[int(D)] / engine.maxdepth
+                if vro.z - vtol < depth < vro.z:
+                    hit = 1
+                    break
 
-        res = bilerp(image, D) if hit else 0
+            if hit:
+                res += bilerp(image, D) / nsamples
+
+        tina.Input.clear_g_pars()
+
         self.img[P] = res

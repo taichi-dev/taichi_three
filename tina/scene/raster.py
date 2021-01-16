@@ -34,8 +34,18 @@ class Scene:
         self.default_material = tina.Diffuse()
         self.post_shaders = []
         self.pre_shaders = []
+        self.materials = []
         self.shaders = {}
         self.objects = {}
+
+        if self.ssr:
+            self.mtltab = tina.MaterialTable()
+
+            @ti.materialize_callback
+            def init_mtltab():
+                self.mtltab.clear_materials()
+                for material in self.materials:
+                    self.mtltab.add_material(material)
 
         if self.ssao or self.ssr:
             self.norm_buffer = ti.Vector.field(3, float, self.res)
@@ -46,7 +56,9 @@ class Scene:
             self.ssao = tina.SSAO(self.res, self.norm_buffer)
 
         if self.ssr:
-            self.ssr = tina.SSR(self.res, self.norm_buffer)
+            self.mtlid_buffer = ti.field(int, self.res)
+            self.ssr = tina.SSR(self.res,
+                    self.norm_buffer, self.mtlid_buffer, self.mtltab)
 
         self.pp_img = self.image
 
@@ -71,9 +83,21 @@ class Scene:
                     self.lighting.set_ambient_light([0.1, 0.1, 0.1])
 
     def _ensure_material_shader(self, material):
-        if material not in self.shaders:
-            shader = tina.Shader(self.image, self.lighting, material)
-            self.shaders[material] = shader
+        if material in self.materials:
+            return
+
+        shader = tina.Shader(self.image, self.lighting, material)
+
+        base_shaders = [shader]
+        if self.ssr:
+            mtlid = len(self.materials)
+            mtlid_shader = tina.ConstShader(self.mtlid_buffer, mtlid)
+            base_shaders.append(mtlid_shader)
+        shader = tina.ShaderGroup(self.pre_shaders
+                + base_shaders + self.post_shaders)
+
+        self.materials.append(material)
+        self.shaders[material] = shader
 
     def add_object(self, object, material=None, raster=None):
         '''
@@ -153,11 +177,7 @@ class Scene:
             shader = self.shaders[oinfo.material]
             oinfo.raster.set_object(object)
             oinfo.raster.render_occup()
-            for s in self.pre_shaders:
-                oinfo.raster.render_color(s)
             oinfo.raster.render_color(shader)
-            for s in self.post_shaders:
-                oinfo.raster.render_color(s)
 
         if hasattr(self, 'background_shader'):
             self.engine.render_background(self.background_shader)
@@ -168,6 +188,7 @@ class Scene:
 
         if self.ssr:
             self.ssr.render(self.engine, self.image)
+            self.ssr.apply(self.image)
 
         if self.blooming:
             self.blooming.process()
