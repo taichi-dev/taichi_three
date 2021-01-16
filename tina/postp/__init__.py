@@ -3,3 +3,4 @@ if __import__('tina').lazyguard:
     from .denoise import *
     from .blooming import *
     from .ssao import *
+    from .ssr import *

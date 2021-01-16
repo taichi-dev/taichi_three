@@ -22,7 +22,7 @@ class MeshModel:
             faces = obj['f']
             if len(faces.shape) == 2:
                 faces = np.stack([faces, faces, faces], axis=2)
-            self.faces.from_numpy(faces)
+            self.faces.from_numpy(faces.astype(np.uint32))
             self.verts.from_numpy(obj['v'])
             self.coors.from_numpy(obj['vt'])
             self.norms.from_numpy(obj['vn'])

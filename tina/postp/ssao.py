@@ -8,7 +8,6 @@ class SSAO:
             radius=0.2, factor=1.0, noise_size=4, debug=False):
         self.res = tovector(res)
         self.img = ti.field(float, self.res)
-        self.out = ti.field(float, self.res)
         self.samples = ti.Vector.field(3, float, nsamples)
         self.rotations = ti.Vector.field(2, float, (noise_size, noise_size))
         self.radius = ti.field(float, ())

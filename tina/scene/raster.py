@@ -16,6 +16,7 @@ class Scene:
         self.options = options
         self.taa = options.get('taa', False)
         self.ibl = options.get('ibl', False)
+        self.ssr = options.get('ssr', False)
         self.ssao = options.get('ssao', False)
         self.tonemap = options.get('tonemap', True)
         self.blooming = options.get('blooming', False)
@@ -36,11 +37,16 @@ class Scene:
         self.shaders = {}
         self.objects = {}
 
-        if self.ssao:
+        if self.ssao or self.ssr:
             self.norm_buffer = ti.Vector.field(3, float, self.res)
             self.norm_shader = tina.NormalShader(self.norm_buffer)
             self.pre_shaders.append(self.norm_shader)
+
+        if self.ssao:
             self.ssao = tina.SSAO(self.res, self.norm_buffer)
+
+        if self.ssr:
+            self.ssr = tina.SSR(self.res, self.norm_buffer)
 
         self.pp_img = self.image
 
@@ -157,10 +163,11 @@ class Scene:
             self.engine.render_background(self.background_shader)
 
         if self.ssao:
-            if self.taa:
-                self.ssao.seed_samples()
             self.ssao.render(self.engine)
             self.ssao.apply(self.image)
+
+        if self.ssr:
+            self.ssr.render(self.engine, self.image)
 
         if self.blooming:
             self.blooming.process()
