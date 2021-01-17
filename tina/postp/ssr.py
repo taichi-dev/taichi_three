@@ -64,6 +64,8 @@ class SSR:
                 'normal': normal,
             })
 
+        rng = tina.WangHashRNG(P % self.blurring[None])
+
         nsamples = self.nsamples[None]
         nsteps = self.nsteps[None]
         for i in range(nsamples):

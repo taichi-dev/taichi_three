@@ -131,12 +131,14 @@ blend/       # Blender addon module (WIP)
 cli/         # command line interface (WIP)
 postp/       # post-processing, mainly about tone mapping
 skybox.py    # implementing cube map and spherical map for skybox
+random.py    # random number generators, e.g., Taichi built-in, Wang's hash
 common.py    # some common functions that might be used by Tina or your project
 advans.py    # some advanced functions that might be used by Tina or your project
 hacker.py    # some dirty hacks into Taichi to make Tina easier to maintain
 lazimp.py    # lazy importing infrastructure to reduce import time
+inject.py    # profiling Taichi JIT compilation time (WIP)
 shield.py    # make Taichi fields to support pickle (WIP)
-inject.py    # profiling JIT compilation time (WIP)
+probe.py     # inspect geometry from screen space (WIP)
 ```
 
 # Legacy

@@ -97,6 +97,7 @@ def tangentspace(nrm):
     return ti.Matrix.cols([tan, bitan, nrm])
 
 
+
 @ti.func
 def spherical(h, p):
     unit = V(ti.cos(p * ti.tau), ti.sin(p * ti.tau))
@@ -108,31 +109,3 @@ def spherical(h, p):
 def unspherical(dir):
     p = ti.atan2(dir.y, dir.x) / ti.tau
     return dir.z, p % 1
-
-
-@ti.func
-def _inoise(x):
-    value = ti.cast(x, ti.u32)
-    value = (value ^ 61) ^ (value >> 16)
-    value *= 9
-    value ^= value << 4
-    value *= 0x27d4eb2d
-    value ^= value >> 15
-    return value
-
-
-@ti.func
-def inoise(x):
-    if ti.static(not isinstance(x, ti.Matrix)):
-        return _inoise(x)
-    index = ti.cast(x, ti.u32)
-    value = _inoise(index.entries[0])
-    for i in ti.static(index.entries[1:]):
-        value = _inoise(i ^ value)
-    return value
-
-
-@ti.func
-def noise(x):
-    u = inoise(x) >> 1
-    return u * (2 / 4294967296)

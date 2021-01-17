@@ -75,7 +75,7 @@ class VolumeRaster:
         for I in ti.grouped(self.dens):
             bias = V(0., 0., 0.)
             if ti.static(self.taa):
-                bias = ti.Vector([noise(V34(I, uniq[i])) for i in range(3)])
+                bias = ti.Vector([tina.noise(V34(I, uniq[i])) for i in range(3)])
             Pll = (I + bias) / self.N * 2 - 1
             Pl = mapply_pos(self.L2W[None], Pll)
             Pv = self.engine.to_viewspace(Pl)
@@ -90,7 +90,7 @@ class VolumeRaster:
             if ti.static(self.taa):
                 DZl = mapply_dir(self.engine.V2W[None], V(0., 0., 1.)).normalized()
                 Rvz = self.engine.to_viewspace(Pl + DZl * Rl).z - Pv.z
-                depth_f += Rvz * noise(V34(I, uniq[3]))
+                depth_f += Rvz * tina.noise(V34(I, uniq[3]))
 
             depth = int(depth_f * self.engine.maxdepth)
             if self.engine.depth[P] >= depth:
