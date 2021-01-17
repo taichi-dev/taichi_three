@@ -18,6 +18,7 @@ class Scene:
         self.ibl = options.get('ibl', False)
         self.ssr = options.get('ssr', False)
         self.ssao = options.get('ssao', False)
+        self.fxaa = options.get('fxaa', False)
         self.tonemap = options.get('tonemap', True)
         self.blooming = options.get('blooming', False)
         self.bgcolor = options.get('bgcolor', 0)
@@ -66,8 +67,10 @@ class Scene:
         self.pp_img = self.image
 
         if self.tonemap:
-            self.tonemap = tina.ToneMapping(self.pp_img, self.res)
-            self.pp_img = self.tonemap.out
+            self.tonemap = tina.ToneMapping(self.res)
+
+        if self.fxaa:
+            self.fxaa = tina.FXAA(self.res)
 
         if self.taa:
             self.accum = tina.Accumator(self.res)
@@ -192,7 +195,9 @@ class Scene:
         if self.blooming:
             self.blooming.apply(self.image)
         if self.tonemap:
-            self.tonemap.process()
+            self.tonemap.apply(self.image)
+        if self.fxaa:
+            self.fxaa.apply(self.image)
         if self.taa:
             self.accum.update(self.pp_img)
 
