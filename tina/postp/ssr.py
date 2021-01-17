@@ -67,7 +67,7 @@ class SSR:
         nsamples = self.nsamples[None]
         nsteps = self.nsteps[None]
         for i in range(nsamples):
-            odir, wei = material.sample(viewdir, normal, 1)
+            odir, wei = material.sample(viewdir, normal, 1, rng)
             odir = -odir
 
             step = self.stepsize[None] / (
@@ -76,7 +76,7 @@ class SSR:
                     mapply_pos(engine.W2V[None], pos - viewdir / nsteps
                     ).z - mapply_pos(engine.W2V[None], pos).z)
 
-            ro = pos - (odir) * ti.random() * step
+            ro = pos - (odir) * rng.random() * step
             for j in range(nsteps):
                 ro -= odir * step
                 vro = mapply_pos(engine.W2V[None], ro)

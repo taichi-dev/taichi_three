@@ -93,8 +93,9 @@ class PathEngine:
             rd = self.rd[I]
             rc = self.rc[I]
             rl = self.rl[I]
+            rng = tina.TaichiRNG()
             if not Vall(rc < eps):
-                ro, rd, rc, rl = self.transmit(ro, rd, rc, rl)
+                ro, rd, rc, rl = self.transmit(ro, rd, rc, rl, rng)
                 self.ro[I] = ro
                 self.rd[I] = rd
                 self.rc[I] = rc
@@ -117,7 +118,7 @@ class PathEngine:
         self.V2W.from_numpy(np.array(V2W, dtype=np.float32))
 
     @ti.func
-    def transmit(self, ro, rd, rc, rl):
+    def transmit(self, ro, rd, rc, rl, rng):
         near, ind, gid, uv = self.geom.hit(ro, rd)
         if gid == -1:
             # no hit
@@ -158,7 +159,7 @@ class PathEngine:
                 li_clr += li_wei
 
             # sample indirect light
-            rd, ir_wei = material.sample(-rd, nrm, sign)
+            rd, ir_wei = material.sample(-rd, nrm, sign, rng)
             if rd.dot(nrm) < 0:
                 # refract into / outof
                 ro -= nrm * eps * 16

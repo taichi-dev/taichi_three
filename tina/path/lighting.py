@@ -77,8 +77,9 @@ class PathLighting:
                 res += lwei / N_li
 
         if ti.static(hasattr(self, 'skybox')):
+            rng = tina.TaichiRNG()
             for s in range(N_sky):
-                ldir, lwei = material.sample(viewdir, normal, 1)
+                ldir, lwei = material.sample(viewdir, normal, 1, rng)
                 occdis, occind, occuv = geom.hit(ro, ldir)
                 if occdis >= inf:
                     lclr = lwei * self.background(ldir)

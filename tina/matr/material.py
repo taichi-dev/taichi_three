@@ -21,8 +21,8 @@ class IMaterial(Node):
     # cu = f(u, v), cv = g(u, v)
     # pdf = |df/du dg/dv - df/dv dg/du|
     @ti.func
-    def sample(self, idir, nrm, sign):
-        u, v = ti.random(), ti.random()
+    def sample(self, idir, nrm, sign, rng):
+        u, v = rng.random(), rng.random()
         axes = tangentspace(nrm)
         odir = axes @ spherical(u, v)
         odir = odir.normalized()
@@ -92,16 +92,16 @@ class MixMaterial(IMaterial):
         return (1 - fac) * wei1 + fac * wei2
 
     @ti.func
-    def sample(self, idir, nrm, sign):
+    def sample(self, idir, nrm, sign, rng):
         fac = self.param('factor')
         odir = V(0., 0., 0.)
         wei = V(0., 0., 0.)
         factor = lerp(Vavg(fac), eps * 3, 1 - eps * 3)
-        if ti.random() < factor:
-            odir, wei = self.mat2.sample(idir, nrm, sign)
+        if rng.random() < factor:
+            odir, wei = self.mat2.sample(idir, nrm, sign, rng)
             wei *= fac / factor
         else:
-            odir, wei = self.mat1.sample(idir, nrm, sign)
+            odir, wei = self.mat1.sample(idir, nrm, sign, rng)
             wei *= (1 - fac) / (1 - factor)
         return odir, wei
 
@@ -134,10 +134,10 @@ class ScaleMaterial(IMaterial):
         return fac * wei
 
     @ti.func
-    def sample(self, idir, nrm, sign):
+    def sample(self, idir, nrm, sign, rng):
         fac = self.param('factor')
         wei = V(0., 0., 0.)
-        odir, wei = self.mat.sample(idir, nrm, sign)
+        odir, wei = self.mat.sample(idir, nrm, sign, rng)
         wei *= fac
         return odir, wei
 
@@ -172,14 +172,14 @@ class AddMaterial(IMaterial):
         return wei1 + wei2
 
     @ti.func
-    def sample(self, idir, nrm, sign):
+    def sample(self, idir, nrm, sign, rng):
         odir = V(0., 0., 0.)
         wei = V(0., 0., 0.)
-        if ti.random(int) % 2 == 0:
-            odir, wei = self.mat1.sample(idir, nrm, sign)
+        if rng.random_int() % 2 == 0:
+            odir, wei = self.mat1.sample(idir, nrm, sign, rng)
             wei *= 2
         else:
-            odir, wei = self.mat2.sample(idir, nrm, sign)
+            odir, wei = self.mat2.sample(idir, nrm, sign, rng)
             wei *= 2
         return odir, wei
 
@@ -305,13 +305,13 @@ class CookTorrance(IMaterial):
         return fdf * vdf * ndf
 
     @ti.func
-    def sample(self, idir, nrm, sign):
+    def sample(self, idir, nrm, sign, rng):
         roughness = self.param('roughness')  # TODO: param duplicate evaluation?
         alpha2 = max(0, roughness**2)
         EPS = 1e-10
 
         # https://zhuanlan.zhihu.com/p/95865910
-        u, v = ti.random(), ti.random()
+        u, v = rng.random(), rng.random()
         u = ti.sqrt((1 - u) / (1 - u * (1 - alpha2)))
         rdir = reflect(-idir, nrm)
         axes = tangentspace(rdir)
@@ -340,8 +340,8 @@ class Lambert(IMaterial):
         return 1.0
 
     @ti.func
-    def sample(self, idir, nrm, sign):
-        u, v = ti.random(), ti.random()
+    def sample(self, idir, nrm, sign, rng):
+        u, v = rng.random(), rng.random()
         axes = tangentspace(nrm)
         odir = axes @ spherical(u, v)
         odir = odir.normalized()
@@ -401,10 +401,10 @@ class Phong(IMaterial):
         return 1.0
 
     @ti.func
-    def sample(self, idir, nrm, sign):
+    def sample(self, idir, nrm, sign, rng):
         # https://developer.nvidia.com/gpugems/gpugems3/part-iii-rendering/chapter-20-gpu-based-importance-sampling
         m = self.param('shineness')
-        u, v = ti.random(), ti.random()
+        u, v = rng.random(), rng.random()
         u = u**(1 / (m + 1))
         rdir = reflect(-idir, nrm)
         axes = tangentspace(rdir)
@@ -428,7 +428,7 @@ class Glass(IMaterial):
         return 0.0
 
     @ti.func
-    def sample(self, idir, nrm, sign):
+    def sample(self, idir, nrm, sign, rng):
         ior = self.param('ior')
         if sign >= 0:
             ior = 1 / ior
@@ -442,7 +442,7 @@ class Glass(IMaterial):
         wei = 1.0
         odir = V(0., 0., 0.)
         factor = lerp(fdf, 0.08, 0.92)
-        if ti.random() < factor:
+        if rng.random() < factor:
             odir = rdir
             wei *= fdf / factor
         else:
@@ -474,7 +474,7 @@ class Mirror(IMaterial):
         return tab['env'].sample(odir)
 
     @ti.func
-    def sample(self, idir, nrm, sign):
+    def sample(self, idir, nrm, sign, rng):
         odir = reflect(-idir, nrm)
         return odir, 1.0
 
@@ -495,11 +495,11 @@ class VirtualMaterial(IMaterial):
         return wei
 
     @ti.func
-    def sample(self, idir, nrm, sign):
+    def sample(self, idir, nrm, sign, rng):
         odir, wei = V(0., 0., 0.), V(0., 0., 0.)
         for i, mat in ti.static(enumerate(self.materials)):
             if i == self.mid:
-                odir, wei = mat.sample(idir, nrm, sign)
+                odir, wei = mat.sample(idir, nrm, sign, rng)
         return odir, wei
 
 
