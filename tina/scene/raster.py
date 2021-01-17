@@ -53,13 +53,21 @@ class Scene:
             self.norm_shader = tina.NormalShader(self.norm_buffer)
             self.pre_shaders.append(self.norm_shader)
 
+        if self.ssr:
+            self.mtlid_buffer = ti.field(int, self.res)
+            if 'texturing' in options:
+                self.coor_buffer = ti.Vector.field(2, float, self.res)
+                self.coor_shader = tina.TexcoordShader(self.coor_buffer)
+                self.pre_shaders.append(self.coor_shader)
+            else:
+                self.coor_buffer = ti.Vector.field(2, float, (1, 1))
+
         if self.ssao:
             self.ssao = tina.SSAO(self.res, self.norm_buffer)
 
         if self.ssr:
-            self.mtlid_buffer = ti.field(int, self.res)
-            self.ssr = tina.SSR(self.res,
-                    self.norm_buffer, self.mtlid_buffer, self.mtltab)
+            self.ssr = tina.SSR(self.res, self.norm_buffer,
+                    self.coor_buffer, self.mtlid_buffer, self.mtltab)
 
         if self.blooming:
             self.blooming = tina.Blooming(self.res)

@@ -55,7 +55,7 @@ class ViewNormalShader(IShader):
 class TexcoordShader(IShader):
     @ti.func
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
-        self.img[P] = V23(texcoord, 0.0)
+        self.img[P] = texcoord
 
 
 class ColorShader(IShader):

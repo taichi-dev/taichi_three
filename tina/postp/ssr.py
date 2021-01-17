@@ -4,7 +4,7 @@ from ..core.shader import calc_viewdir
 
 @ti.data_oriented
 class SSR:
-    def __init__(self, res, norm, mtlid, mtltab, debug=False):
+    def __init__(self, res, norm, coor, mtlid, mtltab, debug=False):
         self.res = tovector(res)
         self.img = ti.Vector.field(3, float, self.res)
         self.nsamples = ti.field(int, ())
@@ -13,6 +13,7 @@ class SSR:
         self.tolerance = ti.field(float, ())
         self.blurring = ti.field(int, ())
         self.norm = norm
+        self.coor = coor
         self.mtlid = mtlid
         self.mtltab = mtltab
         self.debug = debug
@@ -49,6 +50,7 @@ class SSR:
     @ti.func
     def render_at(self, engine, image: ti.template(), P):
         normal = self.norm[P]
+        texcoord = self.coor[P]
         mtlid = self.mtlid[P]
 
         p = P + engine.bias[None]
@@ -62,6 +64,7 @@ class SSR:
                 'pos': pos,
                 'color': V(1., 1., 1.),
                 'normal': normal,
+                'texcoord': texcoord,
             })
 
         rng = tina.WangHashRNG(P % self.blurring[None])
