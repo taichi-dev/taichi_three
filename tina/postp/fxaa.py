@@ -11,20 +11,23 @@ def luminance(c):
 class FXAA:
     def __init__(self, res):
         self.res = res
+        self.lumi = ti.field(float, self.res)
+        self.img = ti.Vector.field(3, float, self.res)
         self.abs_thresh = ti.field(float, ())
         self.rel_thresh = ti.field(float, ())
-        self.lumi = ti.field(float, self.res)
+        self.factor = ti.field(float, ())
 
         @ti.materialize_callback
         def init_params():
             self.abs_thresh[None] = 0.0625
-            self.rel_thresh[None] = 0.166
+            self.rel_thresh[None] = 0.063
+            self.factor[None] = 1
 
     @ti.kernel
     def apply(self, image: ti.template()):
         for I in ti.grouped(image):
             self.lumi[I] = clamp(luminance(image[I]), 0, 1)
-            image[I] *= 0
+            self.img[I] = image[I]
         for I in ti.grouped(image):
             m = self.lumi[I]
             n = self.lumi[I + V(0, 1)]
@@ -43,4 +46,23 @@ class FXAA:
             filt = 2 * (n + e + s + w)
             filt += ne + nw + se + sw
             filt = abs(filt / 12 - m)
-            image[I] = filt
+            filt = clamp(filt / c, 0, 1)
+            blend = smoothstep(filt, 0, 1)**2 * self.factor[None]
+            hori = abs(n + s - 2 * m) * 2
+            hori += abs(ne + se - 2 * e)
+            hori += abs(nw + sw - 2 * w)
+            vert = abs(e + w - 2 * m) * 2
+            vert += abs(ne + nw - 2 * n)
+            vert += abs(se + sw - 2 * s)
+            is_hori = hori >= vert
+
+            plumi = n if is_hori else e
+            nlumi = s if is_hori else w
+            pgrad = abs(plumi - m)
+            ngrad = abs(nlumi - m)
+
+            if pgrad < ngrad:
+                blend = -blend
+            dir = V(0, 1) if is_hori else V(1, 0)
+
+            image[I] = bilerp(self.img, I + blend * dir)

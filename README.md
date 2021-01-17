@@ -31,6 +31,8 @@ Here's a list of important features currently Tina have:
 * loading GLTF scene - `docs/gltf.py`
 * transforming models - `docs/transform.py`
 * screen blooming effect - `tests/blooming.py`
+* temporal anti-aliasing, TAA - `docs/options.py`
+* fast approximate anti-aliasing, FXAA - `tests/fxaa.py`
 * image-based lighting, IBL - `examples/ibl_matball.py`
 * screen space ambient occlusion, SSAO - `tests/ssao.py`
 * screen space reflection, SSR - `tests/ssr.py`
