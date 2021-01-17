@@ -6,7 +6,7 @@ from ..core.shader import calc_viewdir
 class SSR:
     def __init__(self, res, norm, coor, mtlid, mtltab, debug=False):
         self.res = tovector(res)
-        self.img = ti.Vector.field(3, float, self.res)
+        self.img = ti.Vector.field(4, float, self.res)
         self.nsamples = ti.field(int, ())
         self.nsteps = ti.field(int, ())
         self.stepsize = ti.field(float, ())
@@ -29,15 +29,17 @@ class SSR:
     @ti.kernel
     def apply(self, image: ti.template()):
         for i, j in self.img:
+            res = V(0., 0., 0., 0.)
             if ti.static(self.debug):
-                image[i, j] += self.img[i, j]
+                res = self.img[i, j]
             else:
                 rad = self.blurring[None]
                 offs = rad // 2
-                r = V(0., 0., 0.)
                 for k, l in ti.ndrange(rad, rad):
-                    r += self.img[i + k - offs, j + l - offs]
-                image[i, j] += r / rad**2
+                    res += self.img[i + k - offs, j + l - offs]
+                res /= rad**2
+            image[i, j] *= 1 - res.w
+            image[i, j] += res.xyz
 
     @ti.kernel
     def render(self, engine: ti.template(), image: ti.template()):
@@ -58,7 +60,7 @@ class SSR:
         pos = mapply_pos(engine.V2W[None], vpos)
         viewdir = calc_viewdir(engine, p)
         material = self.mtltab.get(mtlid)
-        res = V(0., 0., 0.)
+        res = V(0., 0., 0., 0.)
 
         tina.Input.spec_g_pars({
                 'pos': pos,
@@ -68,12 +70,12 @@ class SSR:
             })
 
         rng = tina.WangHashRNG(P % self.blurring[None])
+        #rng = tina.TaichiRNG()
 
         nsamples = self.nsamples[None]
         nsteps = self.nsteps[None]
         for i in range(nsamples):
             odir, wei = material.sample(viewdir, normal, 1, rng)
-            odir = -odir
 
             step = self.stepsize[None] / (
                     ti.sqrt(1 - odir.dot(viewdir)**2) * nsteps)
@@ -81,16 +83,17 @@ class SSR:
                     mapply_pos(engine.W2V[None], pos - viewdir / nsteps
                     ).z - mapply_pos(engine.W2V[None], pos).z)
 
-            ro = pos - (odir) * rng.random() * step
+            ro = pos + odir * rng.random() * step
             for j in range(nsteps):
-                ro -= odir * step
+                ro += odir * step
                 vro = mapply_pos(engine.W2V[None], ro)
                 if not all(-1 <= vro <= 1):
                     break
                 D = engine.to_viewport(vro)
                 depth = engine.depth[int(D)] / engine.maxdepth
                 if vro.z - vtol < depth < vro.z:
-                    res += bilerp(image, D) * wei
+                    clr = bilerp(image, D) * wei
+                    res += V34(clr, 1.0)
                     break
 
         tina.Input.clear_g_pars()

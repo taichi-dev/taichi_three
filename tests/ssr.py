@@ -4,7 +4,7 @@ import tina
 ti.init(ti.gpu)
 
 
-scene = tina.Scene((640, 480), smoothing=True, ssr=True)#, taa=True)
+scene = tina.Scene((640, 480), smoothing=True, ssr=True)#, ibl=True)
 monkey_material = tina.PBR(metallic=0.0, roughness=0.4)
 monkey = tina.MeshModel('assets/monkey.obj')
 scene.add_object(monkey, monkey_material)
