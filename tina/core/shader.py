@@ -13,6 +13,10 @@ class IShader:
     def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
         raise NotImplementedError
 
+    @ti.func
+    def blend_color(self, engine, P, p, factor):
+        pass
+
 
 class ConstShader(IShader):
     def __init__(self, img, value):
@@ -89,7 +93,6 @@ def calc_viewdir(engine, p):
     return -rd
 
 
-
 @ti.data_oriented
 class ViewdirShader(IShader):
     @ti.func
@@ -127,14 +130,22 @@ class Shader(IShader):
 
         tina.Input.clear_g_pars()
 
+    @ti.func
+    def blend_color(self, engine, P, p, factor, color):
+        self.img[P] = lerp(factor, self.img[P], color)
+
 
 class ShaderGroup(IShader):
     def __init__(self, shaders=()):
         self.shaders = shaders
 
-    def shade_color(self, engine, P, p, f, pos, normal, texcoord, color):
+    def shade_color(self, *args):
         for shader in self.shaders:
-            shader.shade_color(engine, P, p, f, pos, normal, texcoord, color)
+            shader.shade_color(*args)
+
+    def blend_color(self, *args):
+        for shader in self.shaders:
+            shader.blend_color(*args)
 
 
 class RTXShader(IShader):
