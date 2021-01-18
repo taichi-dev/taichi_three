@@ -91,5 +91,5 @@ class WireframeRaster:
                     depth = int(depth_f * self.engine.maxdepth)
                     if ti.atomic_min(self.engine.depth[P], depth) > depth:
                         if self.engine.depth[P] >= depth:
-                            # TODO: support real shading...
-                            shader.img[P] = self.linecolor[None]
+                            color = self.linecolor[None]
+                            shader.blend_color(self.engine, P, pos, 1, color)
