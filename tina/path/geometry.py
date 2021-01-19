@@ -5,7 +5,6 @@ from ..advans import *
 def ray_aabb_hit(bmin, bmax, ro, rd):
     near = -inf
     far = inf
-    hit = 1
 
     for i in ti.static(range(bmin.n)):
         if abs(rd[i]) < eps:
@@ -18,10 +17,7 @@ def ray_aabb_hit(bmin, bmax, ro, rd):
             far = min(far, max(i1, i2))
             near = max(near, min(i1, i2))
 
-    if near > far:
-        hit = 0
-
-    return hit, near
+    return near, far
 
 '''
 @ti.func

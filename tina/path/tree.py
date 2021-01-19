@@ -121,8 +121,8 @@ class BVHTree:
                 continue
 
             bmin, bmax = self.min[curr], self.max[curr]
-            hit, depth = ray_aabb_hit(bmin, bmax, ro, rd)
-            if hit == 0:
+            bnear, bfar = ray_aabb_hit(bmin, bmax, ro, rd)
+            if bnear > bfar:
                 continue
 
             ntimes += 1

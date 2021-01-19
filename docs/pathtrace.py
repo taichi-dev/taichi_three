@@ -1,11 +1,11 @@
 import taichi as ti
 import numpy as np
-import taichi_inject
 import tina
 
 ti.init(ti.gpu)
 
 scene = tina.PTScene(smoothing=True, texturing=True)
+scene.lighting.skybox = tina.Atomsphere()
 material = tina.Phong()
 mesh = tina.MeshModel('assets/monkey.obj')
 scene.add_object(mesh, material)

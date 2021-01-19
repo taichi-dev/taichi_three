@@ -225,7 +225,7 @@ class Scene:
 
         if not hasattr(self, 'control'):
             self.control = tina.Control(gui)
-        changed = self.control.get_camera(self.engine)
+        changed = self.control.apply_camera(self.engine)
         if changed:
             self.clear()
         return changed

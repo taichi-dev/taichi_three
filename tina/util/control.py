@@ -104,9 +104,7 @@ class Control:
         else:
             self.on_zoom(delta, origin)
 
-    def get_camera(self, engine):
-        ret = self.process_events()
-
+    def get_camera(self):
         from .matrix import lookat, orthogonal, perspective
 
         aspect = self.gui.res[0] / self.gui.res[1]
@@ -117,6 +115,11 @@ class Control:
             view = lookat(self.center, self.back, self.up)
             proj = perspective(self.fov, aspect)
 
+        return view, proj
+
+    def apply_camera(self, engine):
+        ret = self.process_events()
+        view, proj = self.get_camera()
         engine.set_camera(view, proj)
         return ret
 
