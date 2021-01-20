@@ -46,7 +46,7 @@ def lam_to_rgb(lam):
         r = 1.0;
         g = -1.0 * (lam - 645.0) / (645.0 - 580.0);
         b = 0.0;
-    elif(lam >= 645.0 and lam <= 780.0):
+    elif(lam >= 645.0 and lam < 780.0):
         # 1, 0, 0
         r = 1.0;
         g = 0.0;
@@ -75,12 +75,13 @@ def lam_to_rgb(lam):
 @ti.func
 def rgb_at_lam(rgb, lam):
     ret = 0.0
-    if 380 <= lam < 490:
-        ret += rgb.z / 3
-    if 490 <= lam < 580:
-        ret += rgb.y / 3
-    if 580 <= lam <= 780:
-        ret += rgb.x / 3
+    r, g, b = rgb
+    if 645 <= lam < 780:
+        ret += r / (0.3041293 * 1.179588 * 1.0081447)
+    if 500 <= lam < 540:
+        ret += g / (0.3092271 * 1.0824629 * 0.9944099)
+    if 420 <= lam < 460:
+        ret += b / (0.3240771 * 1.1763208 * 1.0136887)
     return ret
 
 
@@ -119,11 +120,11 @@ def render():
 
         hit, depth = ray_sphere_hit(V(0., 0., 0.), 1., ro, rd)
         if hit:
-            color = V(1., 1., 1.)
+            color = V(0., 0., 0.)
             radiance = rgb_at_lam(color, lam)
             img[i, j] = lam_to_rgb(lam) * radiance
         else:
-            img[i, j] = 0.0
+            img[i, j] = 0
 
 
 
@@ -136,5 +137,7 @@ while gui.running:
     IMVP[None] = np.linalg.inv(proj @ view).tolist()
     render()
     accum.update(img)
-    gui.set_image(aces_tonemap(accum.img.to_numpy()))
+    res = accum.img.to_numpy()
+    print(np.average(res, axis=(0, 1)))
+    gui.set_image(aces_tonemap(res))
     gui.show()
