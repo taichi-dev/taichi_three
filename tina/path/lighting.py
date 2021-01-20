@@ -7,7 +7,7 @@ class PathLighting:
     def __init__(self, maxlights=16):
         self.maxlights = maxlights
         self.pos = ti.Vector.field(3, float, maxlights)
-        self.color = ti.Vector.field(3, float, maxlights)
+        self.color = ti.field(float, maxlights)
         self.rad = ti.field(float, maxlights)
         self.nlights = ti.field(int, ())
 
@@ -51,38 +51,8 @@ class PathLighting:
         return toli, wei, ti.sqrt(dis2)
 
     @ti.func
-    def background(self, rd):
+    def background(self, rd, rw):
         if ti.static(hasattr(self, 'skybox')):
-            return self.skybox.sample(rd)
+            return self.skybox.wav_sample(rd, rw)
         else:
             return 0.0
-
-    @ti.func
-    def shade_color(self, material, geom, pos, normal, viewdir):
-        N_li, N_sky = 1, 1
-
-        res = V(0.0, 0.0, 0.0)
-        ro = pos + normal * eps * 8
-        for lind in range(self.get_nlights()):
-            for s in range(N_li):
-                # cast shadow ray to lights
-                ldir, lwei, ldis = self.redirect(pos, lind)
-                lwei *= max(0, ldir.dot(normal))
-                if Vall(lwei <= 0):
-                    continue
-                occdis, occind, occuv = geom.hit(ro, ldir)
-                if occdis < ldis:  # shadow occlusion
-                    continue
-                lwei *= material.brdf(normal, ldir, viewdir)
-                res += lwei / N_li
-
-        if ti.static(hasattr(self, 'skybox')):
-            rng = tina.TaichiRNG()
-            for s in range(N_sky):
-                ldir, lwei = material.sample(viewdir, normal, 1, rng)
-                occdis, occind, occuv = geom.hit(ro, ldir)
-                if occdis >= inf:
-                    lclr = lwei * self.background(ldir)
-                    res += lclr / N_sky
-
-        return res

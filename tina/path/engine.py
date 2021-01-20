@@ -9,13 +9,16 @@ class PathEngine:
 
         self.ro = ti.Vector.field(3, float, self.res)
         self.rd = ti.Vector.field(3, float, self.res)
-        self.rc = ti.Vector.field(3, float, self.res)
-        self.rl = ti.Vector.field(3, float, self.res)
+        self.rc = ti.field(float, self.res)
+        self.rl = ti.field(float, self.res)
+        self.rw = ti.field(float, self.res)
 
         #self.rays = ti.root.dense(ti.ij, self.res)
         #self.rays.place(self.ro)
         #self.rays.place(self.rd)
         #self.rays.place(self.rc)
+        #self.rays.place(self.rl)
+        #self.rays.place(self.rw)
 
         self.img = ti.Vector.field(3, float, self.res)
         self.cnt = ti.field(int, self.res)
@@ -81,10 +84,12 @@ class PathEngine:
             ro = mapply_pos(self.V2W[None], V(uv.x, uv.y, -1.0))
             ro1 = mapply_pos(self.V2W[None], V(uv.x, uv.y, +1.0))
             rd = (ro1 - ro).normalized()
+            rw = tina.random_wav()
             self.ro[I] = ro
             self.rd[I] = rd
             self.rc[I] = 1.0
             self.rl[I] = 0.0
+            self.rw[I] = rw
 
     @ti.kernel
     def step_rays(self):
@@ -93,22 +98,25 @@ class PathEngine:
             rd = self.rd[I]
             rc = self.rc[I]
             rl = self.rl[I]
+            rw = self.rw[I]
             rng = tina.TaichiRNG()
-            if not Vall(rc < eps):
-                ro, rd, rc, rl = self.transmit(ro, rd, rc, rl, rng)
+            if not Vall(rc <= 0):
+                ro, rd, rc, rl, rw = self.transmit(ro, rd, rc, rl, rw, rng)
                 self.ro[I] = ro
                 self.rd[I] = rd
                 self.rc[I] = rc
                 self.rl[I] = rl
+                self.rw[I] = rw
 
     @ti.kernel
     def update_image(self, strict: ti.template()):
         for I in ti.grouped(ti.ndrange(*self.res)):
             rc = self.rc[I]
             rl = self.rl[I]
+            rw = self.rw[I]
             if strict and not Vall(rc < eps):
                 continue
-            self.img[I] += rl
+            self.img[I] += rl * tina.wav_to_rgb(rw)
             self.cnt[I] += 1
 
     def set_camera(self, view, proj):
@@ -118,11 +126,11 @@ class PathEngine:
         self.V2W.from_numpy(np.array(V2W, dtype=np.float32))
 
     @ti.func
-    def transmit(self, ro, rd, rc, rl, rng):
+    def transmit(self, ro, rd, rc, rl, rw, rng):
         near, ind, gid, uv = self.geom.hit(ro, rd)
         if gid == -1:
             # no hit
-            rl += rc * self.lighting.background(rd)
+            rl += rc * self.lighting.background(rd, rw)
             rc *= 0
         else:
             # hit object
@@ -136,7 +144,7 @@ class PathEngine:
 
             tina.Input.spec_g_pars({
                 'pos': ro,
-                'color': V(1., 1., 1.),
+                'color': 1.,
                 'normal': nrm,
                 'texcoord': tex,
             })
@@ -145,7 +153,7 @@ class PathEngine:
             material = self.mtltab.get(mtlid)
 
             ro += nrm * eps * 8
-            li_clr = V(0., 0., 0.)
+            li_clr = 0.
             for li_ind in range(self.lighting.get_nlights()):
                 # cast shadow ray to lights
                 new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
@@ -155,11 +163,11 @@ class PathEngine:
                 occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, new_rd)
                 if occ_gid != -1 and occ_near < li_dis:  # shadow occlusion
                     continue  # but what if it's glass?
-                li_wei *= material.brdf(nrm, -rd, new_rd)
+                li_wei *= material.wav_brdf(nrm, -rd, new_rd, rw)
                 li_clr += li_wei
 
             # sample indirect light
-            rd, ir_wei = material.sample(-rd, nrm, sign, rng)
+            rd, ir_wei = material.wav_sample(-rd, nrm, sign, rng, rw)
             if rd.dot(nrm) < 0:
                 # refract into / outof
                 ro -= nrm * eps * 16
@@ -169,4 +177,4 @@ class PathEngine:
             rl += rc * li_clr
             rc *= ir_wei
 
-        return ro, rd, rc, rl
+        return ro, rd, rc, rl, rw

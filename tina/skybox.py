@@ -144,6 +144,11 @@ class Skybox:
             I = (V(*self.shape) - 1) * spheremap(dir)
             return bilerp(self.img, I)
 
+    @ti.func
+    def wav_sample(self, dir, rw):
+        color = self.sample(dir)
+        return tina.rgb_at_wav(color, rw)
+
 
 
 def _get_sample_sky():
@@ -300,6 +305,11 @@ class Atomsphere:
         sky = self.sample_sky(dir)
         ground = lerp((dir.xy / dir.z // 4).sum() % 2, 0.2, 0.7)
         return lerp(clamp(dir.z * 32, -1, 1) * 0.5 + 0.5, ground, sky)
+
+    @ti.func
+    def wav_sample(self, dir, rw):
+        color = self.sample(dir)
+        return tina.rgb_at_wav(color, rw)
 
 
 @ti.data_oriented

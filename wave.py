@@ -1,7 +1,7 @@
 from tina.advans import *
 from tina.path.geometry import *
 
-ti.init(ti.opengl)
+ti.init(ti.gpu)
 
 
 @ti.func
@@ -9,7 +9,7 @@ def blackbody(temp, wave):
     wave *= 1e-9
     HCC2 = 1.1910429723971884140794892e-29
     HKC = 1.438777085924334052222404423195819240925e-2
-    return wave**-5 * HCC2 / (ti.exp(HKC / (wave * temp)) - 1)
+    return wave ** -5 * HCC2 / (ti.exp(HKC / (wave * temp)) - 1)
 
 
 @ti.func
@@ -20,51 +20,51 @@ def lam_to_rgb(lam):
     b = 0.0
     alpha = 0.0
 
-    #     3, 3, 2.5
-    if (lam >= 380.0 and lam < 440.0):
+    # 3, 3, 2.5
+    if 380.0 <= lam < 440.0:
         # .5, 0, 1
-        r = -1.0 * (lam - 440.0) / (440.0 - 380.0);
-        g = 0.0;
-        b = 1.0;
-    elif(lam >= 440.0 and lam < 490.0):
+        r = -1.0 * (lam - 440.0) / (440.0 - 380.0)
+        g = 0.0
+        b = 1.0
+    elif 440.0 <= lam < 490.0:
         # 0, .5, 1
-        r = 0.0;
-        g = (lam - 440.0) / (490.0 - 440.0);
-        b = 1.0;
-    elif(lam >= 490.0 and lam < 510.0):
+        r = 0.0
+        g = (lam - 440.0) / (490.0 - 440.0)
+        b = 1.0
+    elif 490.0 <= lam < 510.0:
         # 0, 1, .5
-        r = 0.0;
-        g = 1.0;
-        b = -1.0 * (lam - 510.0) / (510.0 - 490.0);
-    elif(lam >= 510.0 and lam < 580.0):
+        r = 0.0
+        g = 1.0
+        b = -1.0 * (lam - 510.0) / (510.0 - 490.0)
+    elif 510.0 <= lam < 580.0:
         # .5, 1, 0
-        r = (lam - 510.0) / (580.0 - 510.0);
-        g = 1.0;
-        b = 0.0;
-    elif(lam >= 580.0 and lam < 645.0):
+        r = (lam - 510.0) / (580.0 - 510.0)
+        g = 1.0
+        b = 0.0
+    elif 580.0 <= lam < 645.0:
         # 1, .5, 0
-        r = 1.0;
-        g = -1.0 * (lam - 645.0) / (645.0 - 580.0);
-        b = 0.0;
-    elif(lam >= 645.0 and lam < 780.0):
+        r = 1.0
+        g = -1.0 * (lam - 645.0) / (645.0 - 580.0)
+        b = 0.0
+    elif 645.0 <= lam < 780.0:
         # 1, 0, 0
-        r = 1.0;
-        g = 0.0;
-        b = 0.0;
+        r = 1.0
+        g = 0.0
+        b = 0.0
     else:
-        r = 0.0;
-        g = 0.0;
-        b = 0.0;
+        r = 0.0
+        g = 0.0
+        b = 0.0
 
-    #在可见光谱的边缘处强度较低。
-    if (lam >= 380.0 and lam < 420.0):
-        alpha = 0.30 + 0.70 * (lam - 380.0) / (420.0 - 380.0);
-    elif(lam >= 420.0 and lam < 701.0):
-        alpha = 1.0;
-    elif(lam >= 701.0 and lam < 780.0):
-        alpha = 0.30 + 0.70 * (780.0 - lam) / (780.0 - 700.0);
+    # 在可见光谱的边缘处强度较低。
+    if 380.0 <= lam < 420.0:
+        alpha = 0.30 + 0.70 * (lam - 380.0) / (420.0 - 380.0)
+    elif 420.0 <= lam < 701.0:
+        alpha = 1.0
+    elif 701.0 <= lam < 780.0:
+        alpha = 0.30 + 0.70 * (780.0 - lam) / (780.0 - 700.0)
     else:
-        alpha = 0.0;
+        alpha = 0.0
 
     r *= 1.0 / 0.43511572
     g *= 1.0 / 0.5000342
@@ -86,7 +86,7 @@ def rgb_at_lam(rgb, lam):
 
 
 @ti.func
-def randomLam():
+def random_lam():
     cho = ti.random(int) % 6
     ret = ti.random()
     if cho == 0:
@@ -109,6 +109,7 @@ img = ti.Vector.field(3, float, res)
 IMVP = ti.Matrix.field(4, 4, float, ())
 accum = tina.Accumator(res)
 
+
 @ti.kernel
 def render():
     for i, j in img:
@@ -116,7 +117,7 @@ def render():
         ro = mapply_pos(IMVP[None], V(uv.x, uv.y, -1.0))
         ro1 = mapply_pos(IMVP[None], V(uv.x, uv.y, 1.0))
         rd = (ro1 - ro).normalized()
-        lam = randomLam()
+        lam = random_lam()
 
         hit, depth = ray_sphere_hit(V(0., 0., 0.), 1., ro, rd)
         if hit:
@@ -125,7 +126,6 @@ def render():
             img[i, j] = lam_to_rgb(lam) * radiance
         else:
             img[i, j] = 0
-
 
 
 gui = ti.GUI(res=res)

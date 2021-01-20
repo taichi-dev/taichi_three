@@ -8,11 +8,9 @@ class IMaterial(Node):
         raise NotImplementedError(type(self))
 
     @ti.func
-    def safe_brdf(self, nrm, idir, odir):
-        ret = V(0., 0., 0.)
-        if nrm.dot(idir) < 0 < nrm.dot(odir):
-            ret = self.brdf(nrm, idir, odir)
-        return ret
+    def wav_brdf(self, nrm, idir, odir, wav):
+        color = self.brdf(nrm, idir, odir)
+        return tina.rgb_at_wav(color, wav)
 
     @ti.func
     def ambient(self):
@@ -28,6 +26,11 @@ class IMaterial(Node):
         odir = odir.normalized()
         brdf = self.brdf(nrm, idir, odir)
         return odir, brdf
+
+    @ti.func
+    def wav_sample(self, idir, nrm, sign, rng, wav):
+        odir, wei = self.sample(idir, nrm, sign, rng)
+        return odir, tina.rgb_at_wav(wei, wav)
 
     @classmethod
     def cook_for_ibl(cls, tab, precision):
@@ -317,7 +320,7 @@ class CookTorrance(IMaterial):
         axes = tangentspace(rdir)
         odir = axes @ spherical(u, v)
 
-        pdf = V(1., 1., 1.)
+        pdf = 1.0
         if odir.dot(nrm) < 0:
             odir = -odir
             pdf = 0.0  # TODO: fix energy loss on border
@@ -500,6 +503,22 @@ class VirtualMaterial(IMaterial):
         for i, mat in ti.static(enumerate(self.materials)):
             if i == self.mid:
                 odir, wei = mat.sample(idir, nrm, sign, rng)
+        return odir, wei
+
+    @ti.func
+    def wav_brdf(self, nrm, idir, odir, wav):
+        wei = 0.
+        for i, mat in ti.static(enumerate(self.materials)):
+            if i == self.mid:
+                wei = mat.wav_brdf(nrm, idir, odir, wav)
+        return wei
+
+    @ti.func
+    def wav_sample(self, idir, nrm, sign, rng, wav):
+        odir, wei = V(0., 0., 0.), 0.
+        for i, mat in ti.static(enumerate(self.materials)):
+            if i == self.mid:
+                odir, wei = mat.wav_sample(idir, nrm, sign, rng, wav)
         return odir, wei
 
 
