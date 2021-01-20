@@ -109,6 +109,20 @@ class MixMaterial(IMaterial):
         return odir, wei
 
     @ti.func
+    def wav_sample(self, idir, nrm, sign, rng, wav):
+        fac = self.param('factor')
+        odir = V(0., 0., 0.)
+        wei = 0.
+        factor = lerp(Vavg(fac), eps * 3, 1 - eps * 3)
+        if rng.random() < factor:
+            odir, wei = self.mat2.wav_sample(idir, nrm, sign, rng, wav)
+            wei *= fac / factor
+        else:
+            odir, wei = self.mat1.wav_sample(idir, nrm, sign, rng, wav)
+            wei *= (1 - fac) / (1 - factor)
+        return odir, wei
+
+    @ti.func
     def sample_ibl(self, ibltab, idir, nrm):
         fac = self.param('factor')
         wei1 = self.mat1.sample_ibl(ibltab, idir, nrm)
@@ -139,8 +153,14 @@ class ScaleMaterial(IMaterial):
     @ti.func
     def sample(self, idir, nrm, sign, rng):
         fac = self.param('factor')
-        wei = V(0., 0., 0.)
         odir, wei = self.mat.sample(idir, nrm, sign, rng)
+        wei *= fac
+        return odir, wei
+
+    @ti.func
+    def wav_sample(self, idir, nrm, sign, rng, wav):
+        fac = self.param('factor')
+        odir, wei = self.mat.wav_sample(idir, nrm, sign, rng, wav)
         wei *= fac
         return odir, wei
 
@@ -183,6 +203,18 @@ class AddMaterial(IMaterial):
             wei *= 2
         else:
             odir, wei = self.mat2.sample(idir, nrm, sign, rng)
+            wei *= 2
+        return odir, wei
+
+    @ti.func
+    def wav_sample(self, idir, nrm, sign, rng, wav):
+        odir = V(0., 0., 0.)
+        wei = 0.
+        if rng.random_int() % 2 == 0:
+            odir, wei = self.mat1.wav_sample(idir, nrm, sign, rng, wav)
+            wei *= 2
+        else:
+            odir, wei = self.mat2.wav_sample(idir, nrm, sign, rng, wav)
             wei *= 2
         return odir, wei
 
@@ -420,8 +452,8 @@ class Phong(IMaterial):
 
 
 class Glass(IMaterial):
-    arguments = ['ior']
-    defaults = [1.45]
+    arguments = ['ior', 'ior0', 'ior1']
+    defaults = [1.52, 1.51, 1.53]
 
     @ti.func
     def brdf(self, nrm, idir, odir):
@@ -431,8 +463,7 @@ class Glass(IMaterial):
         return 0.0
 
     @ti.func
-    def sample(self, idir, nrm, sign, rng):
-        ior = self.param('ior')
+    def _sample(self, idir, nrm, sign, rng, ior):
         if sign >= 0:
             ior = 1 / ior
 
@@ -454,6 +485,17 @@ class Glass(IMaterial):
                 odir = rdir
             wei *= (1 - fdf) / (1 - factor)
         return odir, wei
+
+    @ti.func
+    def sample(self, idir, nrm, sign, rng):
+        ior = self.param('ior')
+        return self._sample(idir, nrm, sign, rng, ior)
+
+    @ti.func
+    def wav_sample(self, idir, nrm, sign, rng, rw):
+        ior0, ior1 = self.param('ior0'), self.param('ior1')
+        ior = lerp(unlerp(rw, 780, 380), ior0, ior1)
+        return self._sample(idir, nrm, sign, rng, ior)
 
 
 class Mirror(IMaterial):

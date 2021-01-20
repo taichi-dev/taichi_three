@@ -209,6 +209,11 @@ def lerp(fac, src, dst):
     return src * (1 - fac) + dst * fac
 
 
+@ti.pyfunc
+def unlerp(val, src, dst):
+    return (val - src) / (dst - src)
+
+
 @ti.func
 def list_subscript(a, i):
     ret = sum(a) * 0
