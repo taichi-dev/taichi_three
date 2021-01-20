@@ -1,4 +1,7 @@
 from tina.advans import *
+from tina.path.geometry import *
+
+ti.init(ti.opengl)
 
 
 @ti.func
@@ -10,7 +13,7 @@ def blackbody(temp, wave):
 
 
 @ti.func
-def lamToColor(lam):
+def lam_to_rgb(lam):
     # https://blog.csdn.net/tanmx219/article/details/91658415
     r = 0.0
     g = 0.0
@@ -70,6 +73,18 @@ def lamToColor(lam):
 
 
 @ti.func
+def rgb_at_lam(rgb, lam):
+    ret = 0.0
+    if 380 <= lam < 490:
+        ret += rgb.z / 3
+    if 490 <= lam < 580:
+        ret += rgb.y / 3
+    if 580 <= lam <= 780:
+        ret += rgb.x / 3
+    return ret
+
+
+@ti.func
 def randomLam():
     cho = ti.random(int) % 6
     ret = ti.random()
@@ -88,20 +103,38 @@ def randomLam():
     return ret
 
 
-
-res = 512, 128
+res = 512, 512
 img = ti.Vector.field(3, float, res)
+IMVP = ti.Matrix.field(4, 4, float, ())
 accum = tina.Accumator(res)
 
 @ti.kernel
 def render():
     for i, j in img:
+        uv = V(i + ti.random(), j + ti.random()) / tovector(img.shape) * 2 - 1
+        ro = mapply_pos(IMVP[None], V(uv.x, uv.y, -1.0))
+        ro1 = mapply_pos(IMVP[None], V(uv.x, uv.y, 1.0))
+        rd = (ro1 - ro).normalized()
         lam = randomLam()
-        radiance = blackbody(lerp(i / res[0], 1200, 3000), lam) * 1024
-        img[i, j] = lamToColor(lam) * radiance
+
+        hit, depth = ray_sphere_hit(V(0., 0., 0.), 1., ro, rd)
+        if hit:
+            color = V(1., 1., 1.)
+            radiance = rgb_at_lam(color, lam)
+            img[i, j] = lam_to_rgb(lam) * radiance
+        else:
+            img[i, j] = 0.0
 
 
-for i in range(32):
+
+gui = ti.GUI(res=res)
+ctrl = tina.Control(gui)
+while gui.running:
+    if ctrl.process_events():
+        accum.clear()
+    view, proj = ctrl.get_camera()
+    IMVP[None] = np.linalg.inv(proj @ view).tolist()
     render()
     accum.update(img)
-ti.imshow(aces_tonemap(accum.img.to_numpy()))
+    gui.set_image(aces_tonemap(accum.img.to_numpy()))
+    gui.show()
