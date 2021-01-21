@@ -6,19 +6,14 @@ class PathEngine:
     def __init__(self, geom, lighting, mtltab, res=512):
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)
+        self.nrays = self.res.x * self.res.y
 
-        self.ro = ti.Vector.field(3, float, self.res)
-        self.rd = ti.Vector.field(3, float, self.res)
-        self.rc = ti.field(float, self.res)
-        self.rl = ti.field(float, self.res)
-        self.rw = ti.field(float, self.res)
-
-        #self.rays = ti.root.dense(ti.ij, self.res)
-        #self.rays.place(self.ro)
-        #self.rays.place(self.rd)
-        #self.rays.place(self.rc)
-        #self.rays.place(self.rl)
-        #self.rays.place(self.rw)
+        self.ro = ti.Vector.field(3, float, self.nrays)
+        self.rd = ti.Vector.field(3, float, self.nrays)
+        self.rc = ti.field(float, self.nrays)
+        self.rl = ti.field(float, self.nrays)
+        self.rw = ti.field(float, self.nrays)
+        self.rI = ti.Vector.field(2, int, self.nrays)
 
         self.img = ti.Vector.field(3, float, self.res)
         self.cnt = ti.field(int, self.res)
@@ -26,7 +21,7 @@ class PathEngine:
         self.geom = geom
         self.lighting = lighting
         self.mtltab = mtltab
-        self.stack = tina.Stack()
+        self.stack = tina.Stack(N_mt=self.nrays)
 
         self.W2V = ti.Matrix.field(4, 4, float, ())
         self.V2W = ti.Matrix.field(4, 4, float, ())
@@ -80,41 +75,44 @@ class PathEngine:
     def load_rays(self):
         self.uniqid[None] += 1
         for I in ti.grouped(ti.ndrange(*self.res)):
+            i = I.dot(V(1, self.res.x))
             bias = ti.Vector([ti.random(), ti.random()])
             uv = (I + bias) / self.res * 2 - 1
             ro = mapply_pos(self.V2W[None], V(uv.x, uv.y, -1.0))
             ro1 = mapply_pos(self.V2W[None], V(uv.x, uv.y, +1.0))
             rd = (ro1 - ro).normalized()
             rw = tina.random_wav(self.uniqid[None] + I.y)
-            self.ro[I] = ro
-            self.rd[I] = rd
-            self.rc[I] = 1.0
-            self.rl[I] = 0.0
-            self.rw[I] = rw
+            self.ro[i] = ro
+            self.rd[i] = rd
+            self.rc[i] = 1.0
+            self.rl[i] = 0.0
+            self.rw[i] = rw
+            self.rI[i] = I
 
     @ti.kernel
     def step_rays(self):
-        for I in ti.smart(self.stack.ndrange(self.res)):
-            ro = self.ro[I]
-            rd = self.rd[I]
-            rc = self.rc[I]
-            rl = self.rl[I]
-            rw = self.rw[I]
+        for i in ti.smart(self.stack):
+            ro = self.ro[i]
+            rd = self.rd[i]
+            rc = self.rc[i]
+            rl = self.rl[i]
+            rw = self.rw[i]
             rng = tina.TaichiRNG()
             if not Vall(rc <= 0):
                 ro, rd, rc, rl, rw = self.transmit(ro, rd, rc, rl, rw, rng)
-                self.ro[I] = ro
-                self.rd[I] = rd
-                self.rc[I] = rc
-                self.rl[I] = rl
-                self.rw[I] = rw
+                self.ro[i] = ro
+                self.rd[i] = rd
+                self.rc[i] = rc
+                self.rl[i] = rl
+                self.rw[i] = rw
 
     @ti.kernel
     def update_image(self, strict: ti.template()):
-        for I in ti.grouped(ti.ndrange(*self.res)):
-            rc = self.rc[I]
-            rl = self.rl[I]
-            rw = self.rw[I]
+        for i in self.ro:
+            I = self.rI[i]
+            rc = self.rc[i]
+            rl = self.rl[i]
+            rw = self.rw[i]
             if strict and not Vall(rc < eps):
                 continue
             self.img[I] += rl * tina.wav_to_rgb(rw)
@@ -172,7 +170,6 @@ class PathEngine:
             rd, ir_wei = material.wav_sample(-rd, nrm, sign, rng, rw)
             if rd.dot(nrm) < 0:
                 # refract into / outof
-                ranprint('into', ro, rd)
                 ro -= nrm * eps * 16
 
             tina.Input.clear_g_pars()

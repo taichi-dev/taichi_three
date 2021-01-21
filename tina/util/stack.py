@@ -3,15 +3,15 @@ from ..common import *
 
 @ti.data_oriented
 class Stack:
-    def __init__(self, N_mt=(512, 512), N_len=32, field=None):
+    def __init__(self, N_mt=512 * 512, N_len=32, field=None):
         if ti.cfg.arch == ti.cpu and ti.cfg.cpu_max_num_threads == 1 or ti.cfg.arch == ti.cc:
-            N_mt = 1, 1
-        print('[Tina] Using', 'x'.join(map(str, N_mt)), 'threads')
+            N_mt = 1
+        print('[Tina] Using', N_mt, 'threads')
         self.N_mt = N_mt
         self.N_len = N_len
         self.val = ti.field(int) if field is None else field
-        self.blk1 = ti.root.dense(ti.ij, N_mt)
-        self.blk2 = self.blk1.dense(ti.k, N_len)
+        self.blk1 = ti.root.dense(ti.i, N_mt)
+        self.blk2 = self.blk1.dense(ti.j, N_len)
         self.blk2.place(self.val)
         self.len = ti.field(int, N_mt)
 
@@ -20,18 +20,11 @@ class Stack:
         return Stack.g_stack
 
     @ti.func
-    def ndrange(self, shape):
-        for i, j in ti.ndrange(*self.N_mt):
-            stack = self.Proxy(self, V(i, j))
+    def __iter__(self):
+        for i in range(self.N_mt):
+            stack = self.Proxy(self, i)
             setattr(Stack, 'g_stack', stack)
-            x = i
-            while x < shape[0]:
-                y = j
-                while y < shape[1]:
-                    I = V(x, y)
-                    yield I
-                    y += self.N_mt[1]
-                x += self.N_mt[0]
+            yield i
             delattr(Stack, 'g_stack')
 
     @ti.data_oriented

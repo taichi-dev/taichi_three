@@ -8,9 +8,9 @@ scene = tina.PTScene(smoothing=True)
 #scene.lighting.skybox = tina.Atomsphere()
 #scene.lighting.skybox = tina.Skybox('assets/grass.jpg')
 
-scene.add_object(tina.MeshModel('assets/plane.obj'), tina.Transparent())
+scene.add_object(tina.MeshModel('assets/sphere.obj'), tina.Lambert())
 scene.add_object(tina.MeshTransform(tina.MeshModel('assets/cube.obj'),
-        tina.translate([0, -3, 0]) @ tina.scale(2)), tina.Lambert())
+        tina.translate([0, -3, 0]) @ tina.scale(2)), tina.PBR(metallic=1.0, roughness=0.1))
 
 scene.lighting.set_lights(np.array([
     [0, 6, 0],
