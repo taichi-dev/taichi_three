@@ -85,8 +85,9 @@ def rgb_at_wav(rgb, wav):
 
 
 @ti.func
-def random_wav():
-    cho = ti.random(int) % 6
+def random_wav(cho):
+    #cho = ti.random(int) % 6
+    cho = cho % 6
     ret = ti.random()
     if cho == 0:
         ret = lerp(ret, 645, 780)

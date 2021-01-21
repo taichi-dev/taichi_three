@@ -498,6 +498,23 @@ class Glass(IMaterial):
         return self._sample(idir, nrm, sign, rng, ior)
 
 
+class Transparent(IMaterial):
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        return 0.0
+
+    def ambient(self):
+        return 0.0
+
+    @ti.func
+    def sample(self, idir, nrm, sign, rng):
+        return -idir, 1.
+
+    @ti.func
+    def wav_sample(self, idir, nrm, sign, rng, rw):
+        return -idir, 1.
+
+
 class Mirror(IMaterial):
     arguments = []
     defaults = []

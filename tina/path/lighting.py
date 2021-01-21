@@ -7,7 +7,7 @@ class PathLighting:
     def __init__(self, maxlights=16):
         self.maxlights = maxlights
         self.pos = ti.Vector.field(3, float, maxlights)
-        self.color = ti.field(float, maxlights)
+        self.color = ti.Vector.field(3, float, maxlights)
         self.rad = ti.field(float, maxlights)
         self.nlights = ti.field(int, ())
 
@@ -40,14 +40,21 @@ class PathLighting:
         return self.nlights[None]
 
     @ti.func
-    def redirect(self, ro, ind):
-        lirad = self.rad[ind]
-        lipos = self.pos[ind]
-        lirip = spherical(ti.random() * 2 - 1, ti.random()) * lirad + lipos
-        toli = lirip - ro
+    def emit_light(self, ind):
+        dir = spherical(ti.random() * 2 - 1, ti.random())
+        ro = dir * self.rad[ind] + self.pos[ind]
+        rd = tangentspace(dir) @ spherical(ti.random(), ti.random())
+        return ro, rd
+
+    @ti.func
+    def redirect(self, ro, ind, wav):
+        dir = spherical(ti.random() * 2 - 1, ti.random())
+        pos = dir * self.rad[ind] + self.pos[ind]
+        toli = pos - ro
         dis2 = toli.norm_sqr()
         toli = toli.normalized()
-        wei = self.color[ind] / dis2
+        color = tina.rgb_at_wav(self.color[ind], wav)
+        wei = color / dis2
         return toli, wei, ti.sqrt(dis2)
 
     @ti.func

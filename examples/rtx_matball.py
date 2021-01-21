@@ -4,7 +4,8 @@ import tina
 ti.init(ti.gpu)
 
 scene = tina.PTScene(smoothing=True)
-scene.lighting.skybox = tina.Atomsphere()
+#scene.lighting.skybox = tina.Atomsphere()
+scene.lighting.skybox = tina.Skybox('assets/grass.jpg')
 
 roughness = tina.Param(float, initial=0.15)
 metallic = tina.Param(float, initial=1.0)

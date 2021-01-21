@@ -30,6 +30,7 @@ class PathEngine:
 
         self.W2V = ti.Matrix.field(4, 4, float, ())
         self.V2W = ti.Matrix.field(4, 4, float, ())
+        self.uniqid = ti.field(int, ())
 
         @ti.materialize_callback
         @ti.kernel
@@ -77,14 +78,14 @@ class PathEngine:
 
     @ti.kernel
     def load_rays(self):
+        self.uniqid[None] += 1
         for I in ti.grouped(ti.ndrange(*self.res)):
             bias = ti.Vector([ti.random(), ti.random()])
             uv = (I + bias) / self.res * 2 - 1
-            # TODO: support customizing camera
             ro = mapply_pos(self.V2W[None], V(uv.x, uv.y, -1.0))
             ro1 = mapply_pos(self.V2W[None], V(uv.x, uv.y, +1.0))
             rd = (ro1 - ro).normalized()
-            rw = tina.random_wav()
+            rw = tina.random_wav(self.uniqid[None] + I.y)
             self.ro[I] = ro
             self.rd[I] = rd
             self.rc[I] = 1.0
@@ -153,10 +154,11 @@ class PathEngine:
             material = self.mtltab.get(mtlid)
 
             ro += nrm * eps * 8
+
             li_clr = 0.
             for li_ind in range(self.lighting.get_nlights()):
                 # cast shadow ray to lights
-                new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
+                new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind, rw)
                 li_wei *= max(0, new_rd.dot(nrm))
                 if Vall(li_wei <= 0):
                     continue
@@ -170,6 +172,7 @@ class PathEngine:
             rd, ir_wei = material.wav_sample(-rd, nrm, sign, rng, rw)
             if rd.dot(nrm) < 0:
                 # refract into / outof
+                ranprint('into', ro, rd)
                 ro -= nrm * eps * 16
 
             tina.Input.clear_g_pars()
