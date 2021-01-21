@@ -10,7 +10,7 @@ scene = tina.PTScene(smoothing=True)
 
 scene.add_object(tina.MeshModel('assets/sphere.obj'), tina.Lambert())
 scene.add_object(tina.MeshTransform(tina.MeshModel('assets/cube.obj'),
-        tina.translate([0, -3, 0]) @ tina.scale(2)), tina.PBR(metallic=1.0, roughness=0.1))
+        tina.translate([0, -3, 0]) @ tina.scale(2)), tina.Lambert())#tina.PBR(metallic=1.0, roughness=0.1))
 
 scene.lighting.set_lights(np.array([
     [0, 6, 0],
@@ -28,6 +28,6 @@ scene.update()
 while gui.running:
     if scene.input(gui):
         scene.clear()
-    scene.render(nsteps=6)
+    scene.render(nsteps=8)
     gui.set_image(scene.img)
     gui.show()

@@ -98,9 +98,11 @@ class PTScene(Scene):
         for tracer in self.geom.tracers:
             tracer.update()
 
-    def render(self, nsteps=5, strict=True):
+    def render(self, nsteps=8, strict=True, russian=True):
         self.engine.load_rays()
         for step in range(nsteps):
+            if russian:
+                self.engine.kill_rays()
             self.engine.step_rays()
         self.engine.update_image(strict)
 

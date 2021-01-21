@@ -25,11 +25,13 @@ class PathEngine:
 
         self.W2V = ti.Matrix.field(4, 4, float, ())
         self.V2W = ti.Matrix.field(4, 4, float, ())
+        self.surate = ti.field(float, ())
         self.uniqid = ti.field(int, ())
 
         @ti.materialize_callback
         @ti.kernel
         def init_engine():
+            self.surate[None] = 2
             self.W2V[None] = ti.Matrix.identity(float, 4)
             self.W2V[None][2, 2] = -1
             self.V2W[None] = ti.Matrix.identity(float, 4)
@@ -89,16 +91,41 @@ class PathEngine:
             self.rw[i] = rw
             self.rI[i] = I
 
+    @ti.func
+    def ray_alive(self, i):
+        return Vany(self.rc[i] > 0)
+
+    @ti.kernel
+    def kill_rays(self):
+        for i in self.ro:
+            rc = self.rc[i]
+            if not self.ray_alive(i):
+                continue
+            rate = lerp(ti.tanh(Vavg(rc) * self.surate[None]), 0.04, 0.95)
+            if ti.random() >= rate:
+                self.rc[i] = 0.0
+            else:
+                self.rc[i] = rc / rate
+
+    @ti.kernel
+    def count_rays(self) -> int:
+        count = 0
+        for i in self.ro:
+            rc = self.rc[i]
+            if self.ray_alive(i):
+                count += 1
+        return count
+
     @ti.kernel
     def step_rays(self):
         for i in ti.smart(self.stack):
-            ro = self.ro[i]
-            rd = self.rd[i]
-            rc = self.rc[i]
-            rl = self.rl[i]
-            rw = self.rw[i]
-            rng = tina.TaichiRNG()
-            if not Vall(rc <= 0):
+            if self.ray_alive(i):
+                rng = tina.TaichiRNG()
+                ro = self.ro[i]
+                rd = self.rd[i]
+                rc = self.rc[i]
+                rl = self.rl[i]
+                rw = self.rw[i]
                 ro, rd, rc, rl, rw = self.transmit(ro, rd, rc, rl, rw, rng)
                 self.ro[i] = ro
                 self.rd[i] = rd
@@ -109,12 +136,12 @@ class PathEngine:
     @ti.kernel
     def update_image(self, strict: ti.template()):
         for i in self.ro:
+            if strict and self.ray_alive(i):
+                continue
             I = self.rI[i]
             rc = self.rc[i]
             rl = self.rl[i]
             rw = self.rw[i]
-            if strict and not Vall(rc < eps):
-                continue
             self.img[I] += rl * tina.wav_to_rgb(rw)
             self.cnt[I] += 1
 
