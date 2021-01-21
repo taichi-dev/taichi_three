@@ -106,9 +106,18 @@ class PTScene(Scene):
             self.engine.step_rays()
         self.engine.update_image(strict)
 
+    def render_aov(self, type):
+        self.engine.load_rays()
+        self.engine.step_rays_aov(type)
+        self.engine.update_image_aov()
+
     @property
     def img(self):  # TODO: use postp for this too
         return self.engine.get_image()
+
+    @property
+    def raw_img(self):
+        return self.engine.get_image(notone=True)
 
     @property
     def raw_image(self):

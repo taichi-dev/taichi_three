@@ -58,20 +58,78 @@ class PathEngine:
                 out[I] = val
 
     @ti.kernel
-    def _get_image_e(self, out: ti.ext_arr()):
-        self._f_get_image(out, aces_tonemap, True)
+    def _get_image_e(self, out: ti.ext_arr(), notone: ti.template()):
+        tonemap = ti.static((lambda x: x) if notone else aces_tonemap)
+        self._f_get_image(out, tonemap, True)
 
     @ti.kernel
     def _get_image_f(self, out: ti.template()):
         self._f_get_image(out, lambda x: x, False)
 
-    def get_image(self, out=None):
+    def get_image(self, out=None, notone=False):
         if out is None:
             out = np.zeros((*self.res, 3), dtype=np.float32)
-            self._get_image_e(out)
+            self._get_image_e(out, notone)
         else:
             self._get_image_f(out)
         return out
+
+    @ti.kernel
+    def step_rays_aov(self, type: ti.template()):
+        for i in ti.smart(self.stack):
+            if self.ray_alive(i):
+                ro = self.ro[i]
+                rd = self.rd[i]
+                rc = self.rc[i]
+                rl = self.rl[i]
+                rw = self.rw[i]
+                near, ind, gid, uv = self.geom.hit(ro, rd)
+
+                rc *= 0
+                if gid != -1:
+                    ro += near * rd
+                    nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
+
+                    sign = 1
+                    if nrm.dot(rd) > 0:
+                        sign = -1
+                        nrm = -nrm
+
+                    if ti.static(type == 'normal'):
+                        rd = nrm
+
+                    elif ti.static(type == 'albedo'):
+                        tina.Input.spec_g_pars({
+                            'pos': ro,
+                            'color': 1.,
+                            'normal': nrm,
+                            'texcoord': tex,
+                        })
+
+                        mtlid = self.geom.get_material_id(ind, gid)
+                        material = self.mtltab.get(mtlid)
+
+                        rd = material.get_albedo(tex)
+
+                    else:
+                        raise NotImplementedError(type)
+
+                self.ro[i] = ro
+                self.rd[i] = rd
+                self.rc[i] = rc
+
+    @ti.kernel
+    def update_image_aov(self):
+        for i in self.ro:
+            I = self.rI[i]
+            rc = self.rd[i]
+            self.img[I] += rc
+            self.cnt[I] += 1
+
+    @ti.kernel
+    def clear_rays(self):
+        for i in self.ro:
+            self.rc[i] = 0.0
 
     @ti.kernel
     def load_rays(self):

@@ -89,9 +89,7 @@ def get_tonemap_image():
 
 
 @ti.func
-def tangentspace(nrm):
-    #up = V(0., 1., 0.)
-    up = V(233., 666., 512.).normalized()
+def tangentspace(nrm, up=V(233., 666., 512.)):
     bitan = nrm.cross(up).normalized()
     tan = bitan.cross(nrm)
     return ti.Matrix.cols([tan, bitan, nrm])
