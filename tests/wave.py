@@ -33,4 +33,4 @@ while gui.running:
     gui.set_image(scene.img)
     gui.show()
 
-tina.pfmwrite('/tmp/a.pfm', scene.img)
+#tina.pfmwrite('/tmp/a.pfm', scene.img)

@@ -7,6 +7,7 @@ class PathEngine:
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)
         self.nrays = self.res.x * self.res.y
+        self.nlays = self.res.x * self.res.y
 
         self.ro = ti.Vector.field(3, float, self.nrays)
         self.rd = ti.Vector.field(3, float, self.nrays)
@@ -14,6 +15,11 @@ class PathEngine:
         self.rl = ti.field(float, self.nrays)
         self.rw = ti.field(float, self.nrays)
         self.rI = ti.Vector.field(2, int, self.nrays)
+
+        self.lo = ti.Vector.field(3, float, self.nlays)
+        self.ld = ti.Vector.field(3, float, self.nlays)
+        self.lc = ti.field(float, self.nlays)
+        self.lw = ti.field(float, self.nrays)
 
         self.img = ti.Vector.field(3, float, self.res)
         self.cnt = ti.field(int, self.res)
@@ -73,59 +79,12 @@ class PathEngine:
         return out
 
     @ti.kernel
-    def step_rays_aov(self, type: ti.template()):
-        for i in ti.smart(self.stack):
-            if self.ray_alive(i):
-                ro = self.ro[i]
-                rd = self.rd[i]
-                rc = self.rc[i]
-                rl = self.rl[i]
-                rw = self.rw[i]
-                near, ind, gid, uv = self.geom.hit(ro, rd)
-
-                rc *= 0
-                if gid != -1:
-                    ro += near * rd
-                    nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
-
-                    sign = 1
-                    if nrm.dot(rd) > 0:
-                        sign = -1
-                        nrm = -nrm
-
-                    if ti.static(type == 'normal'):
-                        rd = nrm
-
-                    elif ti.static(type == 'albedo'):
-                        tina.Input.spec_g_pars({
-                            'pos': ro,
-                            'color': 1.,
-                            'normal': nrm,
-                            'texcoord': tex,
-                        })
-
-                        mtlid = self.geom.get_material_id(ind, gid)
-                        material = self.mtltab.get(mtlid)
-
-                        rd = material.get_albedo(tex)
-
-                    else:
-                        raise NotImplementedError(type)
-
-                self.ro[i] = ro
-                self.rd[i] = rd
-                self.rc[i] = rc
-
-    @ti.kernel
-    def update_image_aov(self):
-        for i in self.ro:
-            I = self.rI[i]
-            rc = self.rd[i]
-            self.img[I] += rc
-            self.cnt[I] += 1
-
-    @ti.kernel
     def clear_rays(self):
+        for i in self.ro:
+            self.rc[i] = 0.0
+
+    @ti.kernel
+    def clear_lays(self):
         for i in self.ro:
             self.rc[i] = 0.0
 
@@ -148,28 +107,30 @@ class PathEngine:
             self.rI[i] = I
 
     @ti.kernel
-    def load_rays_light(self):
-        for i in range(self.nrays):
+    def load_lays(self):
+        for i in range(self.nlays):
             ind = ti.random(int) % self.lighting.get_nlights()
             ro, rd = self.lighting.emit_light(ind)
             rw = tina.random_wav(ti.random(int))
-            self.ro[i] = ro
-            self.rd[i] = rd
-            self.rc[i] = 1.0
-            self.rl[i] = 0.0
-            self.rw[i] = rw
-            self.rI[i] = V(-1, -1)
+            self.lo[i] = ro
+            self.ld[i] = rd
+            self.lc[i] = 1.0
+            self.lw[i] = rw
 
     @ti.func
     def ray_alive(self, i):
         return Vany(self.rc[i] > 0)
 
+    @ti.func
+    def lay_alive(self, i):
+        return Vany(self.lc[i] > 0)
+
     @ti.kernel
     def kill_rays(self, surate: float):
         for i in self.ro:
-            rc = self.rc[i]
             if not self.ray_alive(i):
                 continue
+            rc = self.rc[i]
             rate = lerp(ti.tanh(Vavg(rc) * surate), 0.04, 0.95)
             if ti.random() >= rate:
                 self.rc[i] = 0.0
@@ -177,11 +138,30 @@ class PathEngine:
                 self.rc[i] = rc / rate
 
     @ti.kernel
+    def kill_lays(self, surate: float):
+        for i in self.lo:
+            if not self.lay_alive(i):
+                continue
+            rc = self.lc[i]
+            rate = lerp(ti.tanh(Vavg(rc) * surate), 0.04, 0.95)
+            if ti.random() >= rate:
+                self.lc[i] = 0.0
+            else:
+                self.lc[i] = rc / rate
+
+    @ti.kernel
     def count_rays(self) -> int:
         count = 0
         for i in self.ro:
-            rc = self.rc[i]
             if self.ray_alive(i):
+                count += 1
+        return count
+
+    @ti.kernel
+    def count_lays(self) -> int:
+        count = 0
+        for i in self.lo:
+            if self.lay_alive(i):
                 count += 1
         return count
 
@@ -195,7 +175,7 @@ class PathEngine:
                 rc = self.rc[i]
                 rl = self.rl[i]
                 rw = self.rw[i]
-                ro, rd, rc, rl, rw = self.transmit(ro, rd, rc, rl, rw, rng)
+                ro, rd, rc, rl, rw = self.transmit_ray(ro, rd, rc, rl, rw, rng)
                 self.ro[i] = ro
                 self.rd[i] = rd
                 self.rc[i] = rc
@@ -203,21 +183,19 @@ class PathEngine:
                 self.rw[i] = rw
 
     @ti.kernel
-    def step_rays_light(self):
+    def step_lays(self):
         for i in ti.smart(self.stack):
-            if self.ray_alive(i):
+            if self.lay_alive(i):
                 rng = tina.TaichiRNG()
-                ro = self.ro[i]
-                rd = self.rd[i]
-                rc = self.rc[i]
-                rl = self.rl[i]
-                rw = self.rw[i]
-                ro, rd, rc, rl, rw = self.transmit_light(ro, rd, rc, rl, rw, rng)
-                self.ro[i] = ro
-                self.rd[i] = rd
-                self.rc[i] = rc
-                self.rl[i] = rl
-                self.rw[i] = rw
+                ro = self.lo[i]
+                rd = self.ld[i]
+                rc = self.lc[i]
+                rw = self.lw[i]
+                ro, rd, rc, rw = self.transmit_lay(ro, rd, rc, rw, rng)
+                self.lo[i] = ro
+                self.ld[i] = rd
+                self.lc[i] = rc
+                self.lw[i] = rw
 
     @ti.kernel
     def update_image(self, strict: ti.template()):
@@ -233,7 +211,7 @@ class PathEngine:
 
     @ti.func
     def update_image_light(self, uv, rc, rw):
-        I = ifloor((uv * 0.5 + 0.5) * self.res + V(ti.random(), ti.random()))
+        I = ifloor((uv * 0.5 + 0.5) * self.res)
         self.img[I] += rc * tina.wav_to_rgb(rw)
         self.cnt[I] += 1
 
@@ -244,7 +222,7 @@ class PathEngine:
         self.V2W.from_numpy(np.array(V2W, dtype=np.float32))
 
     @ti.func
-    def transmit(self, ro, rd, rc, rl, rw, rng):
+    def transmit_ray(self, ro, rd, rc, rl, rw, rng):
         near, ind, gid, uv = self.geom.hit(ro, rd)
         if gid == -1:
             # no hit
@@ -299,11 +277,10 @@ class PathEngine:
         return ro, rd, rc, rl, rw
 
     @ti.func
-    def transmit_light(self, ro, rd, rc, rl, rw, rng):
+    def transmit_lay(self, ro, rd, rc, rw, rng):
         near, ind, gid, uv = self.geom.hit(ro, rd)
         if gid == -1:
             # no hit
-            rl += rc * self.lighting.background(rd, rw)
             rc *= 0
         else:
             # hit object
@@ -317,7 +294,7 @@ class PathEngine:
 
             tina.Input.spec_g_pars({
                 'pos': ro,
-                'color': 1.,
+                'color': 1.0,
                 'normal': nrm,
                 'texcoord': tex,
             })
@@ -329,8 +306,8 @@ class PathEngine:
 
             # cast shadow ray to camera
             vpos = mapply_pos(self.W2V[None], ro)
-            if all(-1 <= vpos <= 1):
-                vpos.z = -1.
+            if all(-1 < vpos <= 1):
+                vpos.z = -1.0
                 ro0 = mapply_pos(self.V2W[None], vpos)
                 new_rd = (ro0 - ro).normalized()
                 li_dis = (ro0 - ro).norm()
@@ -351,4 +328,4 @@ class PathEngine:
 
             rc *= ir_wei
 
-        return ro, rd, rc, rl, rw
+        return ro, rd, rc, rw

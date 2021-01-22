@@ -107,16 +107,11 @@ class PTScene(Scene):
         self.engine.update_image(strict)
 
     def render_light(self, nsteps=8, strict=True, russian=2):
-        self.engine.load_rays_light()
+        self.engine.load_lays()
         for step in range(nsteps):
             if russian:
-                self.engine.kill_rays(russian)
-            self.engine.step_rays_light()
-
-    def render_aov(self, type):
-        self.engine.load_rays()
-        self.engine.step_rays_aov(type)
-        self.engine.update_image_aov()
+                self.engine.kill_lays(russian)
+            self.engine.step_lays()
 
     @property
     def img(self):  # TODO: use postp for this too
