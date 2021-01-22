@@ -8,18 +8,6 @@ class PathEngine:
         self.res = ti.Vector(res)
         self.nrays = self.res.x * self.res.y
 
-        self.ro = ti.Vector.field(3, float, self.nrays)
-        self.rd = ti.Vector.field(3, float, self.nrays)
-        self.rc = ti.field(float, self.nrays)
-        self.rl = ti.field(float, self.nrays)
-        self.rw = ti.field(float, self.nrays)
-        self.rI = ti.Vector.field(2, int, self.nrays)
-
-        self.lo = ti.Vector.field(3, float, self.nrays)
-        self.ld = ti.Vector.field(3, float, self.nrays)
-        self.lc = ti.field(float, self.nrays)
-        self.lw = ti.field(float, self.nrays)
-
         self.img = ti.Vector.field(3, float, self.res)
         self.cnt = ti.field(int, self.res)
 
@@ -78,135 +66,63 @@ class PathEngine:
         return out
 
     @ti.kernel
-    def clear_rays(self):
-        for i in self.ro:
-            self.rc[i] = 0.0
-
-    @ti.kernel
-    def clear_lays(self):
-        for i in self.ro:
-            self.rc[i] = 0.0
-
-    @ti.kernel
-    def load_rays(self):
+    def trace_rays(self, maxdepth: int, surviverate: float):
         self.uniqid[None] += 1
-        for I in ti.grouped(ti.ndrange(*self.res)):
-            i = I.dot(V(1, self.res.x))
-            bias = ti.Vector([ti.random(), ti.random()])
-            uv = (I + bias) / self.res * 2 - 1
-            ro = mapply_pos(self.V2W[None], V(uv.x, uv.y, -1.0))
-            ro1 = mapply_pos(self.V2W[None], V(uv.x, uv.y, +1.0))
-            rd = (ro1 - ro).normalized()
-            rw = tina.random_wav(self.uniqid[None] + I.y)
-            self.ro[i] = ro
-            self.rd[i] = rd
-            self.rc[i] = 1.0
-            self.rl[i] = 0.0
-            self.rw[i] = rw
-            self.rI[i] = I
+        for _ in ti.smart(self.stack):
+            I = V(_ // self.res.x, _ % self.res.x)
+            ro, rd, rc, rl, rw = self.generate_ray(I)
 
-    @ti.kernel
-    def load_lays(self):
-        for i in range(self.nrays):
-            ind = ti.random(int) % self.lighting.get_nlights()
-            ro, rd = self.lighting.emit_light(ind)
-            rw = tina.random_wav(ti.random(int))
-            self.lo[i] = ro
-            self.ld[i] = rd
-            self.lc[i] = 1.0
-            self.lw[i] = rw
-
-    @ti.func
-    def ray_alive(self, i):
-        return Vany(self.rc[i] > 0)
-
-    @ti.func
-    def lay_alive(self, i):
-        return Vany(self.lc[i] > 0)
-
-    @ti.kernel
-    def kill_rays(self, surate: float):
-        for i in self.ro:
-            if not self.ray_alive(i):
-                continue
-            rc = self.rc[i]
-            rate = lerp(ti.tanh(Vavg(rc) * surate), 0.04, 0.95)
-            if ti.random() >= rate:
-                self.rc[i] = 0.0
-            else:
-                self.rc[i] = rc / rate
-
-    @ti.kernel
-    def kill_lays(self, surate: float):
-        for i in self.lo:
-            if not self.lay_alive(i):
-                continue
-            rc = self.lc[i]
-            rate = lerp(ti.tanh(Vavg(rc) * surate), 0.04, 0.95)
-            if ti.random() >= rate:
-                self.lc[i] = 0.0
-            else:
-                self.lc[i] = rc / rate
-
-    @ti.kernel
-    def count_rays(self) -> int:
-        count = 0
-        for i in self.ro:
-            if self.ray_alive(i):
-                count += 1
-        return count
-
-    @ti.kernel
-    def count_lays(self) -> int:
-        count = 0
-        for i in self.lo:
-            if self.lay_alive(i):
-                count += 1
-        return count
-
-    @ti.kernel
-    def step_rays(self):
-        for i in ti.smart(self.stack):
-            if self.ray_alive(i):
-                rng = tina.TaichiRNG()
-                ro = self.ro[i]
-                rd = self.rd[i]
-                rc = self.rc[i]
-                rl = self.rl[i]
-                rw = self.rw[i]
+            rng = tina.TaichiRNG()
+            for depth in range(maxdepth):
                 ro, rd, rc, rl, rw = self.transmit_ray(ro, rd, rc, rl, rw, rng)
-                self.ro[i] = ro
-                self.rd[i] = rd
-                self.rc[i] = rc
-                self.rl[i] = rl
-                self.rw[i] = rw
+                rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.04, 0.95)
+                if ti.random() >= rate:
+                    rc *= 0
+                else:
+                    rc /= rate
+                if not Vany(rc > 0):
+                    break
 
-    @ti.kernel
-    def step_lays(self):
-        for i in ti.smart(self.stack):
-            if self.lay_alive(i):
-                rng = tina.TaichiRNG()
-                ro = self.lo[i]
-                rd = self.ld[i]
-                rc = self.lc[i]
-                rw = self.lw[i]
-                ro, rd, rc, rw = self.transmit_lay(ro, rd, rc, rw, rng)
-                self.lo[i] = ro
-                self.ld[i] = rd
-                self.lc[i] = rc
-                self.lw[i] = rw
-
-    @ti.kernel
-    def update_image(self, strict: ti.template()):
-        for i in self.ro:
-            if strict and self.ray_alive(i):
-                continue
-            I = self.rI[i]
-            rc = self.rc[i]
-            rl = self.rl[i]
-            rw = self.rw[i]
+            #if strict and Vany(rc > 0):
+            #    continue
             self.img[I] += rl * tina.wav_to_rgb(rw)
             self.cnt[I] += 1
+
+    @ti.func
+    def generate_ray(self, I):
+        bias = ti.Vector([ti.random(), ti.random()])
+        uv = (I + bias) / self.res * 2 - 1
+        ro = mapply_pos(self.V2W[None], V(uv.x, uv.y, -1.0))
+        ro1 = mapply_pos(self.V2W[None], V(uv.x, uv.y, +1.0))
+        rd = (ro1 - ro).normalized()
+        rw = tina.random_wav(self.uniqid[None] + I.y)
+        rc = 1.0
+        rl = 0.0
+        return ro, rd, rc, rl, rw
+
+    @ti.kernel
+    def trace_lays(self, maxdepth: int, surviverate: float):
+        for _ in ti.smart(self.stack):
+            ro, rd, rc, rw = self.generate_lay()
+
+            rng = tina.TaichiRNG()
+            for depth in range(maxdepth):
+                ro, rd, rc, rw = self.transmit_lay(ro, rd, rc, rw, rng)
+                rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.04, 0.95)
+                if ti.random() >= rate:
+                    rc *= 0
+                else:
+                    rc /= rate
+                if not Vany(rc > 0):
+                    break
+
+    @ti.func
+    def generate_lay(self):
+        ind = ti.random(int) % self.lighting.get_nlights()
+        ro, rd = self.lighting.emit_light(ind)
+        rw = tina.random_wav(ti.random(int))
+        rc = 1.0
+        return ro, rd, rc, rw
 
     @ti.func
     def update_image_light(self, uv, rc, rw):

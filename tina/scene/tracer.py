@@ -99,19 +99,10 @@ class PTScene(Scene):
             tracer.update()
 
     def render(self, nsteps=8, strict=True, russian=2):
-        self.engine.load_rays()
-        for step in range(nsteps):
-            if russian:
-                self.engine.kill_rays(russian)
-            self.engine.step_rays()
-        self.engine.update_image(strict)
+        self.engine.trace_rays(nsteps, russian)
 
     def render_light(self, nsteps=8, strict=True, russian=2):
-        self.engine.load_lays()
-        for step in range(nsteps):
-            if russian:
-                self.engine.kill_lays(russian)
-            self.engine.step_lays()
+        self.engine.trace_lays(nsteps, russian)
 
     @property
     def img(self):  # TODO: use postp for this too
