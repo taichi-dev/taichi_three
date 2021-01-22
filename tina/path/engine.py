@@ -25,13 +25,11 @@ class PathEngine:
 
         self.W2V = ti.Matrix.field(4, 4, float, ())
         self.V2W = ti.Matrix.field(4, 4, float, ())
-        self.surate = ti.field(float, ())
         self.uniqid = ti.field(int, ())
 
         @ti.materialize_callback
         @ti.kernel
         def init_engine():
-            self.surate[None] = 2
             self.W2V[None] = ti.Matrix.identity(float, 4)
             self.W2V[None][2, 2] = -1
             self.V2W[None] = ti.Matrix.identity(float, 4)
@@ -149,17 +147,30 @@ class PathEngine:
             self.rw[i] = rw
             self.rI[i] = I
 
+    @ti.kernel
+    def load_rays_light(self):
+        for i in range(self.nrays):
+            ind = ti.random(int) % self.lighting.get_nlights()
+            ro, rd = self.lighting.emit_light(ind)
+            rw = tina.random_wav(ti.random(int))
+            self.ro[i] = ro
+            self.rd[i] = rd
+            self.rc[i] = 1.0
+            self.rl[i] = 0.0
+            self.rw[i] = rw
+            self.rI[i] = V(-1, -1)
+
     @ti.func
     def ray_alive(self, i):
         return Vany(self.rc[i] > 0)
 
     @ti.kernel
-    def kill_rays(self):
+    def kill_rays(self, surate: float):
         for i in self.ro:
             rc = self.rc[i]
             if not self.ray_alive(i):
                 continue
-            rate = lerp(ti.tanh(Vavg(rc) * self.surate[None]), 0.04, 0.95)
+            rate = lerp(ti.tanh(Vavg(rc) * surate), 0.04, 0.95)
             if ti.random() >= rate:
                 self.rc[i] = 0.0
             else:
@@ -192,6 +203,23 @@ class PathEngine:
                 self.rw[i] = rw
 
     @ti.kernel
+    def step_rays_light(self):
+        for i in ti.smart(self.stack):
+            if self.ray_alive(i):
+                rng = tina.TaichiRNG()
+                ro = self.ro[i]
+                rd = self.rd[i]
+                rc = self.rc[i]
+                rl = self.rl[i]
+                rw = self.rw[i]
+                ro, rd, rc, rl, rw = self.transmit_light(ro, rd, rc, rl, rw, rng)
+                self.ro[i] = ro
+                self.rd[i] = rd
+                self.rc[i] = rc
+                self.rl[i] = rl
+                self.rw[i] = rw
+
+    @ti.kernel
     def update_image(self, strict: ti.template()):
         for i in self.ro:
             if strict and self.ray_alive(i):
@@ -202,6 +230,12 @@ class PathEngine:
             rw = self.rw[i]
             self.img[I] += rl * tina.wav_to_rgb(rw)
             self.cnt[I] += 1
+
+    @ti.func
+    def update_image_light(self, uv, rc, rw):
+        I = ifloor((uv * 0.5 + 0.5) * self.res + V(ti.random(), ti.random()))
+        self.img[I] += rc * tina.wav_to_rgb(rw)
+        self.cnt[I] += 1
 
     def set_camera(self, view, proj):
         W2V = proj @ view
@@ -260,6 +294,61 @@ class PathEngine:
             tina.Input.clear_g_pars()
 
             rl += rc * li_clr
+            rc *= ir_wei
+
+        return ro, rd, rc, rl, rw
+
+    @ti.func
+    def transmit_light(self, ro, rd, rc, rl, rw, rng):
+        near, ind, gid, uv = self.geom.hit(ro, rd)
+        if gid == -1:
+            # no hit
+            rl += rc * self.lighting.background(rd, rw)
+            rc *= 0
+        else:
+            # hit object
+            ro += near * rd
+            nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
+
+            sign = 1
+            if nrm.dot(rd) > 0:
+                sign = -1
+                nrm = -nrm
+
+            tina.Input.spec_g_pars({
+                'pos': ro,
+                'color': 1.,
+                'normal': nrm,
+                'texcoord': tex,
+            })
+
+            mtlid = self.geom.get_material_id(ind, gid)
+            material = self.mtltab.get(mtlid)
+
+            ro += nrm * eps * 8
+
+            # cast shadow ray to camera
+            vpos = mapply_pos(self.W2V[None], ro)
+            if all(-1 <= vpos <= 1):
+                vpos.z = -1.
+                ro0 = mapply_pos(self.V2W[None], vpos)
+                new_rd = (ro0 - ro).normalized()
+                li_dis = (ro0 - ro).norm()
+                li_clr = rc * max(0, -rd.dot(nrm))
+                if Vany(li_clr > 0):
+                    occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, new_rd)
+                    if occ_gid == -1 or occ_near >= li_dis:  # no shadow occlusion
+                        li_clr *= material.wav_brdf(nrm, -rd, new_rd, rw)
+                        self.update_image_light(vpos.xy, li_clr, rw)
+
+            # sample indirect light
+            rd, ir_wei = material.wav_sample(-rd, nrm, sign, rng, rw)
+            if rd.dot(nrm) < 0:
+                # refract into / outof
+                ro -= nrm * eps * 16
+
+            tina.Input.clear_g_pars()
+
             rc *= ir_wei
 
         return ro, rd, rc, rl, rw

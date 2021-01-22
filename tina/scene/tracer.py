@@ -98,13 +98,20 @@ class PTScene(Scene):
         for tracer in self.geom.tracers:
             tracer.update()
 
-    def render(self, nsteps=8, strict=True, russian=True):
+    def render(self, nsteps=8, strict=True, russian=2):
         self.engine.load_rays()
         for step in range(nsteps):
             if russian:
-                self.engine.kill_rays()
+                self.engine.kill_rays(russian)
             self.engine.step_rays()
         self.engine.update_image(strict)
+
+    def render_light(self, nsteps=8, strict=True, russian=2):
+        self.engine.load_rays_light()
+        for step in range(nsteps):
+            if russian:
+                self.engine.kill_rays(russian)
+            self.engine.step_rays_light()
 
     def render_aov(self, type):
         self.engine.load_rays()
