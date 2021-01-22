@@ -7,7 +7,6 @@ class PathEngine:
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)
         self.nrays = self.res.x * self.res.y
-        self.nlays = self.res.x * self.res.y
 
         self.ro = ti.Vector.field(3, float, self.nrays)
         self.rd = ti.Vector.field(3, float, self.nrays)
@@ -16,9 +15,9 @@ class PathEngine:
         self.rw = ti.field(float, self.nrays)
         self.rI = ti.Vector.field(2, int, self.nrays)
 
-        self.lo = ti.Vector.field(3, float, self.nlays)
-        self.ld = ti.Vector.field(3, float, self.nlays)
-        self.lc = ti.field(float, self.nlays)
+        self.lo = ti.Vector.field(3, float, self.nrays)
+        self.ld = ti.Vector.field(3, float, self.nrays)
+        self.lc = ti.field(float, self.nrays)
         self.lw = ti.field(float, self.nrays)
 
         self.img = ti.Vector.field(3, float, self.res)
@@ -108,7 +107,7 @@ class PathEngine:
 
     @ti.kernel
     def load_lays(self):
-        for i in range(self.nlays):
+        for i in range(self.nrays):
             ind = ti.random(int) % self.lighting.get_nlights()
             ro, rd = self.lighting.emit_light(ind)
             rw = tina.random_wav(ti.random(int))
