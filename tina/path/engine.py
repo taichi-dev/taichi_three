@@ -139,108 +139,159 @@ class PathEngine:
     @ti.func
     def transmit_ray(self, ro, rd, rc, rl, rw, rng):
         near, ind, gid, uv = self.geom.hit(ro, rd)
-        if gid == -1:
-            # no hit
-            rl += rc * self.lighting.background(rd, rw)
-            rc *= 0
-        else:
-            # hit object
-            ro += near * rd
-            nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
 
-            sign = 1
-            if nrm.dot(rd) > 0:
-                sign = -1
-                nrm = -nrm
+        # travel volume
+        vol_near, vol_far = tina.ray_aabb_hit(V3(-1.5), V3(1.5), ro, rd)
+        vol_near = max(vol_near, 0)
+        vol_far = min(vol_far, near)
 
-            tina.Input.spec_g_pars({
-                'pos': ro,
-                'color': 1.,
-                'normal': nrm,
-                'texcoord': tex,
-            })
+        t = vol_near
+        vol_hit = 0
+        int_rho = 0.0
+        ran = -ti.log(ti.random())
+        step = 0.01
+        t += step * ti.random()
+        while t < vol_far:
+            dt = min(step, vol_far - t)
+            pos = ro + t * rd
+            rho = 4.6 if (pos // 0.5).sum() % 2 == 0 else 0.0
+            int_rho += rho * dt
+            if ran < int_rho:
+                new_rd = spherical(ti.random() * 2 - 1, ti.random())
+                t += dt / 2
+                ro += t * rd
+                rd = new_rd
+                rc *= 1.0
+                #rc *= tina.rgb_at_wav(V(1., 0., 0.), rw)
+                vol_hit = 1
+                break
+            t += dt
 
-            mtlid = self.geom.get_material_id(ind, gid)
-            material = self.mtltab.get(mtlid)
+        if vol_hit == 0:
+            if gid == -1:
+                # no hit
+                rl += rc * self.lighting.background(rd, rw)
+                rc *= 0
+            else:
+                # hit object
+                ro += near * rd
+                nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
 
-            ro += nrm * eps * 8
+                sign = 1
+                if nrm.dot(rd) > 0:
+                    sign = -1
+                    nrm = -nrm
 
-            li_clr = 0.
-            for li_ind in range(self.lighting.get_nlights()):
-                # cast shadow ray to lights
-                new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind, rw)
-                li_wei *= max(0, new_rd.dot(nrm))
-                if Vall(li_wei <= 0):
-                    continue
-                occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, new_rd)
-                if occ_gid != -1 and occ_near < li_dis:  # shadow occlusion
-                    continue  # but what if it's glass?
-                li_wei *= material.wav_brdf(nrm, -rd, new_rd, rw)
-                li_clr += li_wei
+                tina.Input.spec_g_pars({
+                    'pos': ro,
+                    'color': 1.,
+                    'normal': nrm,
+                    'texcoord': tex,
+                })
 
-            # sample indirect light
-            rd, ir_wei = material.wav_sample(-rd, nrm, sign, rng, rw)
-            if rd.dot(nrm) < 0:
-                # refract into / outof
-                ro -= nrm * eps * 16
+                mtlid = self.geom.get_material_id(ind, gid)
+                material = self.mtltab.get(mtlid)
 
-            tina.Input.clear_g_pars()
+                ro += nrm * eps * 8
 
-            rl += rc * li_clr
-            rc *= ir_wei
+                li_clr = 0.
+                for li_ind in range(self.lighting.get_nlights()):
+                    # cast shadow ray to lights
+                    new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind, rw)
+                    li_wei *= max(0, new_rd.dot(nrm))
+                    if Vall(li_wei <= 0):
+                        continue
+                    occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, new_rd)
+                    if occ_gid != -1 and occ_near < li_dis:  # shadow occlusion
+                        continue  # but what if it's glass?
+                    li_wei *= material.wav_brdf(nrm, -rd, new_rd, rw)
+                    li_clr += li_wei
+
+                # sample indirect light
+                rd, ir_wei = material.wav_sample(-rd, nrm, sign, rng, rw)
+                if rd.dot(nrm) < 0:
+                    # refract into / outof
+                    ro -= nrm * eps * 16
+
+                tina.Input.clear_g_pars()
+
+                rl += rc * li_clr
+                rc *= ir_wei
 
         return ro, rd, rc, rl, rw
 
     @ti.func
     def transmit_lay(self, ro, rd, rc, rw, rng):
         near, ind, gid, uv = self.geom.hit(ro, rd)
-        if gid == -1:
-            # no hit
-            rc *= 0
-        else:
-            # hit object
-            ro += near * rd
-            nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
 
-            sign = 1
-            if nrm.dot(rd) > 0:
-                sign = -1
-                nrm = -nrm
+        # travel volume
+        vol_near, vol_far = tina.ray_aabb_hit(V3(-1.5), V3(1.5), ro, rd)
+        vol_near = max(vol_near, 0)
+        vol_far = min(vol_far, near)
 
-            tina.Input.spec_g_pars({
-                'pos': ro,
-                'color': 1.0,
-                'normal': nrm,
-                'texcoord': tex,
-            })
+        t = vol_near
+        vol_hit = 0
+        while t < vol_far:
+            dt = min(0.05 * ti.random(), vol_far - t)
+            rho = 0.6
+            if ti.random() >= ti.exp(-dt * rho):
+                new_rd = spherical(ti.random() * 2 - 1, ti.random())
+                t += dt / 2
+                ro += t * rd
+                rd = new_rd
+                vol_hit = 1
+                break
+            t += dt
 
-            mtlid = self.geom.get_material_id(ind, gid)
-            material = self.mtltab.get(mtlid)
+        if vol_hit == 0:
+            if gid == -1:
+                # no hit
+                rc *= 0
+            else:
+                if vol_hit == 0:
+                    # hit object
+                    ro += near * rd
+                    nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
 
-            ro += nrm * eps * 8
+                    sign = 1
+                    if nrm.dot(rd) > 0:
+                        sign = -1
+                        nrm = -nrm
 
-            # cast shadow ray to camera
-            vpos = mapply_pos(self.W2V[None], ro)
-            if all(-1 < vpos <= 1):
-                vpos.z = -1.0
-                ro0 = mapply_pos(self.V2W[None], vpos)
-                new_rd = (ro0 - ro).normalized()
-                li_dis = (ro0 - ro).norm()
-                li_clr = rc * max(0, -rd.dot(nrm))
-                if Vany(li_clr > 0):
-                    occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, new_rd)
-                    if occ_gid == -1 or occ_near >= li_dis:  # no shadow occlusion
-                        li_clr *= material.wav_brdf(nrm, -rd, new_rd, rw)
-                        self.update_image_light(vpos.xy, li_clr, rw)
+                    tina.Input.spec_g_pars({
+                        'pos': ro,
+                        'color': 1.0,
+                        'normal': nrm,
+                        'texcoord': tex,
+                    })
 
-            # sample indirect light
-            rd, ir_wei = material.wav_sample(-rd, nrm, sign, rng, rw)
-            if rd.dot(nrm) < 0:
-                # refract into / outof
-                ro -= nrm * eps * 16
+                    mtlid = self.geom.get_material_id(ind, gid)
+                    material = self.mtltab.get(mtlid)
 
-            tina.Input.clear_g_pars()
+                    ro += nrm * eps * 8
 
-            rc *= ir_wei
+                    # cast shadow ray to camera
+                    vpos = mapply_pos(self.W2V[None], ro)
+                    if all(-1 < vpos <= 1):
+                        vpos.z = -1.0
+                        ro0 = mapply_pos(self.V2W[None], vpos)
+                        new_rd = (ro0 - ro).normalized()
+                        li_dis = (ro0 - ro).norm()
+                        li_clr = rc * max(0, -rd.dot(nrm))
+                        if Vany(li_clr > 0):
+                            occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, new_rd)
+                            if occ_gid == -1 or occ_near >= li_dis:  # no shadow occlusion
+                                li_clr *= material.wav_brdf(nrm, -rd, new_rd, rw)
+                                self.update_image_light(vpos.xy, li_clr, rw)
+
+                    # sample indirect light
+                    rd, ir_wei = material.wav_sample(-rd, nrm, sign, rng, rw)
+                    if rd.dot(nrm) < 0:
+                        # refract into / outof
+                        ro -= nrm * eps * 16
+
+                    tina.Input.clear_g_pars()
+
+                    rc *= ir_wei
 
         return ro, rd, rc, rw
