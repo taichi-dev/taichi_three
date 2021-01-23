@@ -154,22 +154,20 @@ class ScaleMaterial(IMaterial):
     def sample(self, idir, nrm, sign, rng):
         fac = self.param('factor')
         odir, wei = self.mat.sample(idir, nrm, sign, rng)
-        wei *= fac
-        return odir, wei
+        return odir, wei * fac
 
     @ti.func
     def wav_sample(self, idir, nrm, sign, rng, wav):
         fac = self.param('factor')
         odir, wei = self.mat.wav_sample(idir, nrm, sign, rng, wav)
-        wei *= fac
-        return odir, wei
+        return odir, wei * fac
 
     @ti.func
     def sample_ibl(self, ibls: ti.template(), idir, nrm):
         fac = self.param('factor')
         ibl = ti.static(ibls.get(type(self.mat), ibls))
         wei = self.mat.sample_ibl(ibl, idir, nrm)
-        return fac * wei
+        return wei * fac
 
 
 class AddMaterial(IMaterial):
@@ -352,15 +350,12 @@ class CookTorrance(IMaterial):
         axes = tangentspace(rdir)
         odir = axes @ spherical(u, v)
 
-        pdf = 1.0
+        fdf, vdf, ndf = self.sub_brdf(nrm, idir, odir)
         if odir.dot(nrm) < 0:
             odir = -odir
-            pdf = 0.0  # TODO: fix energy loss on border
-        else:
-            fdf, vdf, ndf = self.sub_brdf(nrm, idir, odir)
-            pdf = fdf
+            fdf = 0.0  # TODO: fix energy loss on border
 
-        return odir, pdf
+        return odir, fdf
 
 
 class Lambert(IMaterial):
@@ -473,17 +468,17 @@ class Glass(IMaterial):
         NoV = min(1 - EPS, max(EPS, nrm.dot(rdir)))
         fdf = f0 + (1 - f0) * (1 - NoV)**5
 
-        wei = 1.0
+        wei = fdf
         odir = V(0., 0., 0.)
-        factor = lerp(fdf, 0.08, 0.92)
+        factor = lerp(Vavg(fdf), 0.08, 0.92)
         if rng.random() < factor:
             odir = rdir
-            wei *= fdf / factor
+            wei = fdf / factor
         else:
             has_r, odir = refract(-idir, nrm, ior)
             if has_r == 0:
                 odir = rdir
-            wei *= (1 - fdf) / (1 - factor)
+            wei = (1 - fdf) / (1 - factor)
         return odir, wei
 
     @ti.func

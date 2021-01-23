@@ -119,6 +119,7 @@ class PathEngine:
     def transmit_ray(self, ro, rd, rc, rl, rng):
         near, ind, gid, uv = self.geom.hit(ro, rd)
 
+        '''
         # travel volume
         vol_near, vol_far = tina.ray_aabb_hit(V3(-1.5), V3(1.5), ro, rd)
         vol_near = max(vol_near, 0)
@@ -144,6 +145,8 @@ class PathEngine:
                 vol_hit = 1
                 break
             t += dt
+        '''
+        vol_hit = 0
 
         if vol_hit == 0:
             if gid == -1:
