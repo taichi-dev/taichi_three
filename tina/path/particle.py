@@ -100,7 +100,9 @@ class ParticleTracer:
     def sample_light_pos(self, org):
         ind = self.eminds[ti.random(int) % self.neminds[None]]
         orgdir = (org - self.verts[ind]).normalized()
-        dir = tangentspace(orgdir) @ spherical(ti.random(), ti.random())
-        pos = dir * self.sizes[ind] + self.verts[ind]
+        nrm = tangentspace(orgdir) @ spherical(ti.random(), ti.random())
+        pos = nrm * self.sizes[ind] + self.verts[ind]
         wei = 2 * ti.pi * self.sizes[ind]**2
+        wei *= max(0, nrm.dot((org - pos).normalized()))
+        pos += nrm * eps * 8
         return pos, ind, wei * self.neminds[None]

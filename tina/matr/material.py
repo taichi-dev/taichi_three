@@ -714,6 +714,7 @@ class MaterialTable:
     def add_material(self, matr):
         self.materials.append(matr)
 
+
 class Emission(IMaterial):
     arguments = []
     defaults = []
@@ -734,6 +735,10 @@ class Emission(IMaterial):
     def estimate_emission(self):
         return 1.0
 
+    @ti.func
+    def sample(self, idir, nrm, sign, rng):
+        return idir, 0.0
+
 
 def Classic(color='color', shineness=32, specular=0.4):
     mat_diff = tina.Lambert() * color
@@ -744,6 +749,11 @@ def Classic(color='color', shineness=32, specular=0.4):
 
 def Diffuse(color='color'):
     material = tina.Lambert() * color
+    return material
+
+
+def Lamp(color='color'):
+    material = tina.Emission() * color
     return material
 
 
