@@ -17,6 +17,14 @@ class IMaterial(Node):
         return 0.0
 
     @ti.func
+    def estimate_emission(self):
+        return 0.0
+
+    @ti.func
+    def estimate_roughness(self):
+        return 0.5
+
+    @ti.func
     def ambient(self):
         return 1.0
 
@@ -106,6 +114,20 @@ class MixMaterial(IMaterial):
         return (1 - fac) * wei1 + fac * wei2
 
     @ti.func
+    def estimate_emission(self):
+        fac = self.param('factor')
+        wei1 = self.mat1.estimate_emission()
+        wei2 = self.mat2.estimate_emission()
+        return (1 - fac) * wei1 + fac * wei2
+
+    @ti.func
+    def estimate_roughness(self):
+        fac = self.param('factor')
+        wei1 = self.mat1.estimate_roughness()
+        wei2 = self.mat2.estimate_roughness()
+        return (1 - fac) * wei1 + fac * wei2
+
+    @ti.func
     def sample(self, idir, nrm, sign, rng):
         fac = self.param('factor')
         odir = V(0., 0., 0.)
@@ -168,6 +190,16 @@ class ScaleMaterial(IMaterial):
         return fac * wei
 
     @ti.func
+    def estimate_emission(self):
+        fac = self.param('factor')
+        wei = self.mat.estimate_emission()
+        return fac * wei
+
+    @ti.func
+    def estimate_roughness(self):
+        return self.mat.estimate_roughness()
+
+    @ti.func
     def sample(self, idir, nrm, sign, rng):
         fac = self.param('factor')
         odir, wei = self.mat.sample(idir, nrm, sign, rng)
@@ -215,6 +247,20 @@ class AddMaterial(IMaterial):
         wei1 = self.mat1.emission()
         wei2 = self.mat2.emission()
         return wei1 + wei2
+
+    @ti.func
+    def estimate_emission(self):
+        fac = self.param('factor')
+        wei1 = self.mat1.estimate_emission()
+        wei2 = self.mat2.estimate_emission()
+        return wei1 + wei2
+
+    @ti.func
+    def estimate_roughness(self):
+        fac = self.param('factor')
+        wei1 = self.mat1.estimate_roughness()
+        wei2 = self.mat2.estimate_roughness()
+        return (wei1 + wei2) / 2
 
     @ti.func
     def sample(self, idir, nrm, sign, rng):
@@ -323,6 +369,10 @@ class CookTorrance(IMaterial):
         tab['lut'] = lut
 
     @ti.func
+    def estimate_roughness(self):
+        return self.param('roughness')
+
+    @ti.func
     def sub_brdf(self, nrm, idir, odir):  # idir = L, odir = V
         roughness = self.param('roughness')
         f0 = self.param('fresnel')
@@ -394,6 +444,10 @@ class Lambert(IMaterial):
         return 1.0
 
     @ti.func
+    def estimate_roughness(self):
+        return 1.0
+
+    @ti.func
     def sample(self, idir, nrm, sign, rng):
         u, v = rng.random(), rng.random()
         axes = tangentspace(nrm)
@@ -453,6 +507,10 @@ class Phong(IMaterial):
 
     def ambient(self):
         return 1.0
+
+    @ti.func
+    def estimate_roughness(self):
+        return 0.1
 
     @ti.func
     def sample(self, idir, nrm, sign, rng):
@@ -615,6 +673,22 @@ class VirtualMaterial(IMaterial):
                 wei = mat.emission()
         return wei
 
+    @ti.func
+    def estimate_emission(self):
+        wei = V(0., 0., 0.)
+        for i, mat in ti.static(enumerate(self.materials)):
+            if i == self.mid:
+                wei = mat.estimate_emission()
+        return wei
+
+    @ti.func
+    def estimate_roughness(self):
+        wei = V(0., 0., 0.)
+        for i, mat in ti.static(enumerate(self.materials)):
+            if i == self.mid:
+                wei = mat.estimate_roughness()
+        return wei
+
 
 @ti.data_oriented
 class MaterialTable:
@@ -646,6 +720,10 @@ class Emission(IMaterial):
 
     @ti.func
     def emission(self):
+        return 1.0
+
+    @ti.func
+    def estimate_emission(self):
         return 1.0
 
 

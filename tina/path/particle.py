@@ -30,12 +30,26 @@ class ParticleTracer:
 
         self.tree = tina.BVHTree(self, self.maxpars * 4)
 
+        self.eminds = ti.field(int, maxpars)
+        self.neminds = ti.field(int, ())
+
     @ti.kernel
     def _export_geometry(self, verts: ti.ext_arr(), sizes: ti.ext_arr()):
         for i in range(self.npars[None]):
             sizes[i] = self.sizes[i]
             for k in ti.static(range(3)):
                 verts[i, k] = self.verts[i][k]
+
+    @ti.kernel
+    def update_emission(self, mtltab: ti.template()):
+        self.neminds[None] = 0
+        for i in range(self.npars[None]):
+            mtlid = self.get_material_id(i)
+            material = mtltab.get(mtlid)
+            emission = material.estimate_emission()
+            if Vany(emission > 0):
+                j = ti.atomic_add(self.neminds[None], 1)
+                self.eminds[j] = i
 
     def update(self):
         pos = np.empty((self.npars[None], 3), dtype=np.float32)
@@ -84,9 +98,8 @@ class ParticleTracer:
 
     @ti.func
     def sample_light_pos(self):
-        ind = ti.random(int) % self.npars[None]
-        mtlid = self.get_material_id(ind)
+        ind = self.eminds[ti.random(int) % self.neminds[None]]
         dir = spherical(ti.random() * 2 - 1, ti.random())
         pos = dir * self.sizes[ind] + self.verts[ind]
         wei = 4 * ti.pi * self.sizes[ind]**2
-        return pos, ind, wei * self.npars[None]
+        return pos, ind, wei * self.neminds[None]

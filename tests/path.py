@@ -16,7 +16,7 @@ scene.add_object(tina.MeshModel('assets/monkey.obj'), tina.Lambert())
 #scene.add_object(tina.MeshModel('assets/cube.obj'), tina.Classic())
 #scene.add_object(tina.MeshTransform(tina.MeshModel('assets/cube.obj'), tina.translate([0, -1.2, 0]) @ tina.scale([2, 0.05, 2])), tina.Lambert())
 
-scene.add_object(tina.MeshTransform(tina.MeshModel('assets/sphere.obj'),
+scene.add_object(tina.MeshTransform(tina.MeshModel('assets/cube.obj'),
         tina.translate([0, 0, 4])), tina.Emission())
 
 gui = ti.GUI('path', scene.res)

@@ -22,6 +22,9 @@ class TriangleTracer:
 
         self.tree = tina.BVHTree(self, self.maxfaces * 4)
 
+        self.eminds = ti.field(int, maxfaces)
+        self.neminds = ti.field(int, ())
+
     def clear_objects(self):
         self.nfaces[None] = 0
 
@@ -78,6 +81,17 @@ class TriangleTracer:
                 for l in ti.static(range(3)):
                     verts[i, k, l] = self.verts[i, k][l]
 
+    @ti.kernel
+    def update_emission(self, mtltab: ti.template()):
+        self.neminds[None] = 0
+        for i in range(self.nfaces[None]):
+            mtlid = self.get_material_id(i)
+            material = mtltab.get(mtlid)
+            emission = material.estimate_emission()
+            if Vany(emission > 0):
+                j = ti.atomic_add(self.neminds[None], 1)
+                self.eminds[j] = i
+
     def update(self):
         verts = np.empty((self.nfaces[None], 3, 3), dtype=np.float32)
         self._export_vertices(verts)
@@ -130,7 +144,7 @@ class TriangleTracer:
 
     @ti.func
     def sample_light_pos(self):
-        ind = ti.random(int) % self.nfaces[None]
+        ind = self.eminds[ti.random(int) % self.neminds[None]]
         v0 = self.verts[ind, 0]
         v1 = self.verts[ind, 1]
         v2 = self.verts[ind, 2]
@@ -138,4 +152,4 @@ class TriangleTracer:
         w0, w1, w2 = w / w.sum()
         pos = v0 * w0 + v1 * w1 + v2 * w2
         wei = (v0 - v1).cross(v0 - v2).norm()
-        return pos, ind, wei * self.nfaces[None]
+        return pos, ind, wei * self.neminds[None]

@@ -110,6 +110,8 @@ class PTScene(Scene):
             tracer.add_object(object, mtlid)
         for tracer in self.geom.tracers:
             tracer.update()
+        for tracer in self.geom.tracers:
+            tracer.update_emission(self.mtltab)
 
     def render(self, nsteps=8, russian=2):
         self.engine.trace(nsteps, russian)
