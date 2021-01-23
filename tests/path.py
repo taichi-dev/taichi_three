@@ -17,8 +17,8 @@ scene.add_object(tina.MeshModel('assets/cube.obj'), tina.PBR(metallic=1.0, rough
 #scene.add_object(tina.MeshModel('assets/cube.obj'), tina.Classic())
 #scene.add_object(tina.MeshTransform(tina.MeshModel('assets/cube.obj'), tina.translate([0, -1.2, 0]) @ tina.scale([2, 0.05, 2])), tina.Lambert())
 
-scene.add_object(tina.MeshTransform(tina.MeshModel('assets/plane.obj'),
-        tina.translate([0, 0, 4]) @ tina.eularXYZ([ti.pi / 2, 0, 0])), tina.Emission())
+scene.add_object(tina.MeshTransform(tina.MeshModel('assets/cube.obj'),
+        tina.translate([0, 0, 4]) @ tina.eularXYZ([-ti.pi / 2, 0, 0])), tina.Emission())
 
 gui = ti.GUI('path', scene.res)
 roughness.make_slider(gui, 'roughness', 0, 1, 0.01)

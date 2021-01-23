@@ -97,9 +97,10 @@ class ParticleTracer:
         return self.mtlids[ind]
 
     @ti.func
-    def sample_light_pos(self):
+    def sample_light_pos(self, org):
         ind = self.eminds[ti.random(int) % self.neminds[None]]
-        dir = spherical(ti.random() * 2 - 1, ti.random())
+        orgdir = (org - self.verts[ind]).normalized()
+        dir = tangentspace(orgdir) @ spherical(ti.random(), ti.random())
         pos = dir * self.sizes[ind] + self.verts[ind]
-        wei = 4 * ti.pi * self.sizes[ind]**2
+        wei = 2 * ti.pi * self.sizes[ind]**2
         return pos, ind, wei * self.neminds[None]

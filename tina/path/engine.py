@@ -177,7 +177,7 @@ class PathEngine:
                 rl += rc * (1 - rs) * material.emission()
 
             # cast shadow ray to lights
-            rs = smoothstep(material.estimate_roughness(), 0.1, 0.5)
+            rs = smoothstep(material.estimate_roughness(), 0.15, 0.7)
             if rs > 0:
                 rl += rc * rs * self.shadow_ray(ro, rd, material, nrm, rng)
 
@@ -209,7 +209,7 @@ class PathEngine:
 
     @ti.func
     def redirect_light(self, ro):
-        pos, ind, gid, wei = self.geom.sample_light_pos()
+        pos, ind, gid, wei = self.geom.sample_light_pos(ro)
 
         mtlid = self.geom.get_material_id(ind, gid)
         material = self.mtltab.get(mtlid)

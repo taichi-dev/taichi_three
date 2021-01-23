@@ -139,17 +139,27 @@ class TriangleTracer:
         v0 = self.verts[ind, 0]
         v1 = self.verts[ind, 1]
         v2 = self.verts[ind, 2]
-        hit, depth, uv = ray_triangle_hit(v0, v1, v2, ro, rd)
+        hit, depth, uv = ray_triangle_cull_hit(v0, v1, v2, ro, rd)
         return hit, depth, uv
 
     @ti.func
-    def sample_light_pos(self):
-        ind = self.eminds[ti.random(int) % self.neminds[None]]
-        v0 = self.verts[ind, 0]
-        v1 = self.verts[ind, 1]
-        v2 = self.verts[ind, 2]
+    def sample_light_pos(self, org):
+        ind = 0
+        wei = 0.0
+        v0, v1, v2 = org, org, org
+        for _ in range(5):
+            ind = self.eminds[ti.random(int) % self.neminds[None]]
+            v0 = self.verts[ind, 0]
+            v1 = self.verts[ind, 1]
+            v2 = self.verts[ind, 2]
+            cent = (v0 + v1 + v2) / 3
+            orgdir = (org - cent).normalized()
+            fnrm = (v1 - v0).cross(v2 - v0)
+            if fnrm.dot(orgdir) > 0:
+                wei = fnrm.norm()
+                break
+
         w = V(ti.random(), ti.random(), ti.random())
         w0, w1, w2 = w / w.sum()
         pos = v0 * w0 + v1 * w1 + v2 * w2
-        wei = (v0 - v1).cross(v0 - v2).norm()
         return pos, ind, wei * self.neminds[None]
