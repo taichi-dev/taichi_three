@@ -3,7 +3,7 @@ from .geometry import *
 
 
 @ti.data_oriented
-class ParticleTracer:  # TODO: realize me
+class ParticleTracer:
     @ti.func
     def calc_geometry(self, near, ind, uv, ro, rd):
         nrm = (ro - self.verts[ind]).normalized()
@@ -85,7 +85,8 @@ class ParticleTracer:  # TODO: realize me
     @ti.func
     def sample_light_pos(self):
         ind = ti.random(int) % self.npars[None]
+        mtlid = self.get_material_id(ind)
         dir = spherical(ti.random() * 2 - 1, ti.random())
         pos = dir * self.sizes[ind] + self.verts[ind]
-        wei = 4 * self.sizes[ind]**2
-        return pos, wei * self.npars[None]
+        wei = 4 * ti.pi * self.sizes[ind]**2
+        return pos, ind, wei * self.npars[None]

@@ -199,8 +199,11 @@ class PathEngine:
 
     @ti.func
     def redirect_light(self, ro):
-        pos, wei = self.geom.tracers[1].sample_light_pos()
-        color = 1.
+        pos, ind, gid, wei = self.geom.sample_light_pos()
+
+        mtlid = self.geom.get_material_id(ind, gid)
+        material = self.mtltab.get(mtlid)
+        color = material.emission()
 
         toli = pos - ro
         dis2 = toli.norm_sqr()

@@ -7,6 +7,19 @@ class MixedGeometryTracer:
         self.tracers = []
 
     @ti.func
+    def sample_light_pos(self):
+        if ti.static(len(self.tracers) == 1):
+            pos, ind, wei = self.tracers[0].sample_light_pos()
+            return pos, ind, 0, wei
+
+        gid = ti.random(int) % len(self.tracers)
+        pos, ind, wei = V(0., 0., 0.), -1, V(0., 0., 0.)
+        for i, tracer in ti.static(enumerate(self.tracers)):
+            if i == gid:
+                pos, ind, wei = tracer.sample_light_pos()
+        return pos, ind, gid, wei
+
+    @ti.func
     def hit(self, ro, rd):
         if ti.static(len(self.tracers) == 1):
             near, ind, uv = self.tracers[0].hit(ro, rd)

@@ -13,6 +13,10 @@ class IMaterial(Node):
         return tina.rgb_at_wav(color, wav)
 
     @ti.func
+    def emission(self):
+        return 0.0
+
+    @ti.func
     def ambient(self):
         return 1.0
 
@@ -95,6 +99,13 @@ class MixMaterial(IMaterial):
         return (1 - fac) * wei1 + fac * wei2
 
     @ti.func
+    def emission(self):
+        fac = self.param('factor')
+        wei1 = self.mat1.emission()
+        wei2 = self.mat2.emission()
+        return (1 - fac) * wei1 + fac * wei2
+
+    @ti.func
     def sample(self, idir, nrm, sign, rng):
         fac = self.param('factor')
         odir = V(0., 0., 0.)
@@ -151,6 +162,12 @@ class ScaleMaterial(IMaterial):
         return fac * wei
 
     @ti.func
+    def emission(self):
+        fac = self.param('factor')
+        wei = self.mat.emission()
+        return fac * wei
+
+    @ti.func
     def sample(self, idir, nrm, sign, rng):
         fac = self.param('factor')
         odir, wei = self.mat.sample(idir, nrm, sign, rng)
@@ -190,6 +207,13 @@ class AddMaterial(IMaterial):
         fac = self.param('factor')
         wei1 = self.mat1.ambient()
         wei2 = self.mat2.ambient()
+        return wei1 + wei2
+
+    @ti.func
+    def emission(self):
+        fac = self.param('factor')
+        wei1 = self.mat1.emission()
+        wei2 = self.mat2.emission()
         return wei1 + wei2
 
     @ti.func
@@ -519,7 +543,7 @@ class Mirror(IMaterial):
         return 0.0
 
     def ambient(self):
-        return 0.0
+        return 1.0
 
     @classmethod
     def cook_for_ibl(cls, env, tab, precision):
@@ -575,6 +599,22 @@ class VirtualMaterial(IMaterial):
                 odir, wei = mat.wav_sample(idir, nrm, sign, rng, wav)
         return odir, wei
 
+    @ti.func
+    def ambient(self):
+        wei = V(0., 0., 0.)
+        for i, mat in ti.static(enumerate(self.materials)):
+            if i == self.mid:
+                wei = mat.ambient()
+        return wei
+
+    @ti.func
+    def emission(self):
+        wei = V(0., 0., 0.)
+        for i, mat in ti.static(enumerate(self.materials)):
+            if i == self.mid:
+                wei = mat.emission()
+        return wei
+
 
 @ti.data_oriented
 class MaterialTable:
@@ -591,6 +631,22 @@ class MaterialTable:
 
     def add_material(self, matr):
         self.materials.append(matr)
+
+class Emission(IMaterial):
+    arguments = []
+    defaults = []
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        return 0.0
+
+    @ti.func
+    def ambient(self):
+        return 0.0
+
+    @ti.func
+    def emission(self):
+        return 1.0
 
 
 def Classic(color='color', shineness=32, specular=0.4):

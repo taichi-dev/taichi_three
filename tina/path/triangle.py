@@ -138,4 +138,4 @@ class TriangleTracer:
         w0, w1, w2 = w / w.sum()
         pos = v0 * w0 + v1 * w1 + v2 * w2
         wei = (v0 - v1).cross(v0 - v2).norm()
-        return pos, wei * self.nfaces[None]
+        return pos, ind, wei * self.nfaces[None]
