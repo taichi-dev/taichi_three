@@ -65,28 +65,65 @@ class PathEngine:
             self._get_image_f(out)
         return out
 
+    @ti.func
+    def trace_ray(self, I, rw, maxdepth, surviverate):
+        ro, rd, rc, rl = self.generate_ray(I)
+        ray_ro = ro
+        ray_rc = rc
+        ray_depth = 0
+
+        rng = tina.TaichiRNG()
+        for depth in range(maxdepth):
+            ray_ro = ro
+            ray_rc = rc
+            ray_depth = depth
+
+            ro, rd, rc, rl, rw = self.transmit_ray(ro, rd, rc, rl, rw, rng)
+            rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.04, 0.95)
+            if ti.random() >= rate:
+                rc *= 0
+            else:
+                rc /= rate
+            if not Vany(rc > 0):
+                break
+
+        return ray_ro, ray_rc, ray_depth, rl
+
     @ti.kernel
-    def trace_rays(self, maxdepth: int, surviverate: float):
+    def trace(self, maxdepth: int, surviverate: float):
         self.uniqid[None] += 1
-        for _ in ti.smart(self.stack):
-            I = V(_ // self.res.x, _ % self.res.x)
-            ro, rd, rc, rl, rw = self.generate_ray(I)
+        for i in ti.smart(self.stack):
+            I = V(i // self.res.x, i % self.res.x)
+            rw = tina.random_wav(self.uniqid[None] + I.y)
+            ray_ro, ray_rc, ray_depth, rl = self.trace_ray(I, rw, maxdepth, surviverate)
+            #lay_ro, lay_rc, lay_depth = self.trace_lay(rw, maxdepth, surviverate)
 
-            rng = tina.TaichiRNG()
-            for depth in range(maxdepth):
-                ro, rd, rc, rl, rw = self.transmit_ray(ro, rd, rc, rl, rw, rng)
-                rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.04, 0.95)
-                if ti.random() >= rate:
-                    rc *= 0
-                else:
-                    rc /= rate
-                if not Vany(rc > 0):
-                    break
-
-            #if strict and Vany(rc > 0):
-            #    continue
             self.img[I] += rl * tina.wav_to_rgb(rw)
             self.cnt[I] += 1
+
+    @ti.func
+    def trace_lay(self, rw, maxdepth, surviverate):
+        ro, rd, rc = self.generate_lay()
+        lay_ro = ro
+        lay_rc = rc
+        lay_depth = 0
+
+        rng = tina.TaichiRNG()
+        for depth in range(maxdepth):
+            lay_ro = ro
+            lay_rc = rc
+            lay_depth = depth
+
+            ro, rd, rc, rw = self.transmit_lay(ro, rd, rc, rw, rng)
+            rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.04, 0.95)
+            if ti.random() >= rate:
+                rc *= 0
+            else:
+                rc /= rate
+            if not Vany(rc > 0):
+                break
+
+        return lay_ro, lay_rc, lay_depth
 
     @ti.func
     def generate_ray(self, I):
@@ -95,34 +132,16 @@ class PathEngine:
         ro = mapply_pos(self.V2W[None], V(uv.x, uv.y, -1.0))
         ro1 = mapply_pos(self.V2W[None], V(uv.x, uv.y, +1.0))
         rd = (ro1 - ro).normalized()
-        rw = tina.random_wav(self.uniqid[None] + I.y)
         rc = 1.0
         rl = 0.0
-        return ro, rd, rc, rl, rw
-
-    @ti.kernel
-    def trace_lays(self, maxdepth: int, surviverate: float):
-        for _ in ti.smart(self.stack):
-            ro, rd, rc, rw = self.generate_lay()
-
-            rng = tina.TaichiRNG()
-            for depth in range(maxdepth):
-                ro, rd, rc, rw = self.transmit_lay(ro, rd, rc, rw, rng)
-                rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.04, 0.95)
-                if ti.random() >= rate:
-                    rc *= 0
-                else:
-                    rc /= rate
-                if not Vany(rc > 0):
-                    break
+        return ro, rd, rc, rl
 
     @ti.func
     def generate_lay(self):
         ind = ti.random(int) % self.lighting.get_nlights()
         ro, rd = self.lighting.emit_light(ind)
-        rw = tina.random_wav(ti.random(int))
         rc = 1.0
-        return ro, rd, rc, rw
+        return ro, rd, rc
 
     @ti.func
     def update_image_light(self, uv, rc, rw):

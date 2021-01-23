@@ -98,11 +98,8 @@ class PTScene(Scene):
         for tracer in self.geom.tracers:
             tracer.update()
 
-    def render(self, nsteps=8, strict=True, russian=2):
-        self.engine.trace_rays(nsteps, russian)
-
-    def render_light(self, nsteps=8, strict=True, russian=2):
-        self.engine.trace_lays(nsteps, russian)
+    def render(self, nsteps=8, russian=2):
+        self.engine.trace(nsteps, russian)
 
     @property
     def img(self):  # TODO: use postp for this too
