@@ -47,18 +47,25 @@ class PathLighting:
         return ro, rd
 
     @ti.func
-    def redirect(self, ro, ind, wav):
+    def redirect(self, ro, ind):
         dir = spherical(ti.random() * 2 - 1, ti.random())
         pos = dir * self.rad[ind] + self.pos[ind]
         toli = pos - ro
         dis2 = toli.norm_sqr()
         toli = toli.normalized()
-        color = tina.rgb_at_wav(self.color[ind], wav)
+        color = self.color[ind]
         wei = color / dis2
         return toli, wei, ti.sqrt(dis2)
 
     @ti.func
-    def background(self, rd, rw):
+    def background(self, rd):
+        if ti.static(hasattr(self, 'skybox')):
+            return self.skybox.sample(rd)
+        else:
+            return 0.0
+
+    @ti.func
+    def wav_background(self, rd, rw):
         if ti.static(hasattr(self, 'skybox')):
             return self.skybox.wav_sample(rd, rw)
         else:
