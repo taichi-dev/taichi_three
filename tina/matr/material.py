@@ -22,7 +22,7 @@ class IMaterial(Node):
 
     @ti.func
     def estimate_roughness(self):
-        return 0.5
+        return 0.2
 
     @ti.func
     def ambient(self):
@@ -115,14 +115,14 @@ class MixMaterial(IMaterial):
 
     @ti.func
     def estimate_emission(self):
-        fac = self.param('factor')
+        fac = 0.5#self.param('factor')
         wei1 = self.mat1.estimate_emission()
         wei2 = self.mat2.estimate_emission()
         return (1 - fac) * wei1 + fac * wei2
 
     @ti.func
     def estimate_roughness(self):
-        fac = self.param('factor')
+        fac = Vavg(self.param('factor'))
         wei1 = self.mat1.estimate_roughness()
         wei2 = self.mat2.estimate_roughness()
         return (1 - fac) * wei1 + fac * wei2
@@ -191,7 +191,7 @@ class ScaleMaterial(IMaterial):
 
     @ti.func
     def estimate_emission(self):
-        fac = self.param('factor')
+        fac = 1.0#self.param('factor')
         wei = self.mat.estimate_emission()
         return fac * wei
 
@@ -236,28 +236,24 @@ class AddMaterial(IMaterial):
 
     @ti.func
     def ambient(self):
-        fac = self.param('factor')
         wei1 = self.mat1.ambient()
         wei2 = self.mat2.ambient()
         return wei1 + wei2
 
     @ti.func
     def emission(self):
-        fac = self.param('factor')
         wei1 = self.mat1.emission()
         wei2 = self.mat2.emission()
         return wei1 + wei2
 
     @ti.func
     def estimate_emission(self):
-        fac = self.param('factor')
         wei1 = self.mat1.estimate_emission()
         wei2 = self.mat2.estimate_emission()
         return wei1 + wei2
 
     @ti.func
     def estimate_roughness(self):
-        fac = self.param('factor')
         wei1 = self.mat1.estimate_roughness()
         wei2 = self.mat2.estimate_roughness()
         return (wei1 + wei2) / 2
@@ -540,6 +536,10 @@ class Glass(IMaterial):
         return 0.0
 
     @ti.func
+    def estimate_roughness(self):
+        return 0.0
+
+    @ti.func
     def _sample(self, idir, nrm, sign, rng, ior):
         if sign >= 0:
             ior = 1 / ior
@@ -584,6 +584,10 @@ class Transparent(IMaterial):
         return 0.0
 
     @ti.func
+    def estimate_roughness(self):
+        return 0.0
+
+    @ti.func
     def sample(self, idir, nrm, sign, rng):
         return -idir, 1.
 
@@ -606,6 +610,10 @@ class Mirror(IMaterial):
     @classmethod
     def cook_for_ibl(cls, env, tab, precision):
         pass
+
+    @ti.func
+    def estimate_roughness(self):
+        return 0.0
 
     @ti.func
     def sample_ibl(self, tab, idir, nrm):
@@ -675,7 +683,7 @@ class VirtualMaterial(IMaterial):
 
     @ti.func
     def estimate_emission(self):
-        wei = V(0., 0., 0.)
+        wei = 0.
         for i, mat in ti.static(enumerate(self.materials)):
             if i == self.mid:
                 wei = mat.estimate_emission()
@@ -683,7 +691,7 @@ class VirtualMaterial(IMaterial):
 
     @ti.func
     def estimate_roughness(self):
-        wei = V(0., 0., 0.)
+        wei = 0.
         for i, mat in ti.static(enumerate(self.materials)):
             if i == self.mid:
                 wei = mat.estimate_roughness()

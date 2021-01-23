@@ -70,17 +70,11 @@ class PathEngine:
         ro, rd = self.generate_ray(I)
         rc = V(1., 1., 1.)
         rl = V(0., 0., 0.)
-        ray_ro = ro
-        ray_rc = rc
-        ray_depth = 0
+        rs = 0.0
 
         rng = tina.TaichiRNG()
         for depth in range(maxdepth):
-            ray_ro = ro
-            ray_rc = rc
-            ray_depth = depth
-
-            ro, rd, rc, rl = self.transmit_ray(ro, rd, rc, rl, rng)
+            ro, rd, rc, rl, rs = self.transmit_ray(ro, rd, rc, rl, rs, rng)
             rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.04, 0.95)
             if ti.random() >= rate:
                 rc *= 0
@@ -116,7 +110,7 @@ class PathEngine:
         self.V2W.from_numpy(np.array(V2W, dtype=np.float32))
 
     @ti.func
-    def transmit_ray(self, ro, rd, rc, rl, rng):
+    def hit_ray(self, ro, rd, rc, rng):
         near, ind, gid, uv = self.geom.hit(ro, rd)
 
         '''
@@ -126,7 +120,6 @@ class PathEngine:
         vol_far = min(vol_far, near)
 
         t = vol_near
-        vol_hit = 0
         int_rho = 0.0
         ran = -ti.log(ti.random())
         step = 0.01
@@ -142,60 +135,77 @@ class PathEngine:
                 ro += t * rd
                 rd = new_rd
                 rc *= 1.0
-                vol_hit = 1
+                gid = -2
                 break
             t += dt
         '''
-        vol_hit = 0
 
-        if vol_hit == 0:
-            if gid == -1:
-                # no hit
-                rl += rc * self.lighting.background(rd)
-                rc *= 0
-            else:
-                # hit object
-                ro += near * rd
-                nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
+        return ro, rd, rc, near, ind, gid, uv
 
-                sign = 1
-                if nrm.dot(rd) > 0:
-                    sign = -1
-                    nrm = -nrm
+    @ti.func
+    def transmit_ray(self, ro, rd, rc, rl, rs, rng):
+        ro, rd, rc, near, ind, gid, uv = self.hit_ray(ro, rd, rc, rng)
 
-                tina.Input.spec_g_pars({
-                    'pos': ro,
-                    'color': 1.,
-                    'normal': nrm,
-                    'texcoord': tex,
-                })
+        if gid == -1:
+            # no hit
+            rl += rc * self.lighting.background(rd)
+            rc *= 0
 
-                mtlid = self.geom.get_material_id(ind, gid)
-                material = self.mtltab.get(mtlid)
+        elif gid != -2:
+            # hit object
+            ro += near * rd
+            nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
 
-                ro += nrm * eps * 8
+            sign = 1
+            if nrm.dot(rd) > 0:
+                sign = -1
+                nrm = -nrm
 
-                # cast shadow ray to lights
-                li_rd, li_wei, li_dis = self.redirect_light(ro)
-                li_wei *= max(0, li_rd.dot(nrm))
-                if Vany(li_wei > 0):
-                    occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, li_rd)
-                    if occ_gid == -1 or occ_near > li_dis:
-                        # no shadow occlusion
-                        li_brdf = material.brdf(nrm, -rd, li_rd)
-                        rl += rc * li_wei * li_brdf
+            tina.Input.spec_g_pars({
+                'pos': ro,
+                'color': 1.,
+                'normal': nrm,
+                'texcoord': tex,
+            })
 
-                # sample indirect light
-                rd, ir_wei = material.sample(-rd, nrm, sign, rng)
-                if rd.dot(nrm) < 0:
-                    # refract into / outof
-                    ro -= nrm * eps * 16
+            mtlid = self.geom.get_material_id(ind, gid)
+            material = self.mtltab.get(mtlid)
 
-                tina.Input.clear_g_pars()
+            ro += nrm * eps * 8
 
-                rc *= ir_wei
+            if rs < 1:
+                rl += rc * (1 - rs) * material.emission()
 
-        return ro, rd, rc, rl
+            # cast shadow ray to lights
+            rs = smoothstep(material.estimate_roughness(), 0.1, 0.5)
+            if rs > 0:
+                rl += rc * rs * self.shadow_ray(ro, rd, material, nrm, rng)
+
+            # sample indirect light
+            rd, ir_wei = material.sample(-rd, nrm, sign, rng)
+            if rd.dot(nrm) < 0:
+                # refract into / outof
+                ro -= nrm * eps * 16
+
+            tina.Input.clear_g_pars()
+
+            rc *= ir_wei
+
+        return ro, rd, rc, rl, rs
+
+    @ti.func
+    def shadow_ray(self, ro, rd, material, nrm, rng):
+        ret = V(0., 0., 0.)
+        li_rd, li_wei, li_dis = self.redirect_light(ro)
+        li_wei *= max(0, li_rd.dot(nrm))
+        if Vany(li_wei > 0):
+            vol_ro, vol_rd, li_rc, near, ind, gid, uv = \
+                    self.hit_ray(ro, li_rd, li_wei, rng)
+            if gid == -1 or near > li_dis:
+                # no shadow occlusion
+                li_brdf = material.brdf(nrm, -rd, li_rd)
+                ret = li_wei * li_brdf
+        return ret
 
     @ti.func
     def redirect_light(self, ro):
