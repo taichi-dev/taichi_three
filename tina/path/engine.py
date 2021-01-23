@@ -175,18 +175,15 @@ class PathEngine:
 
                 ro += nrm * eps * 8
 
-                li_clr = V(0., 0., 0.)
-                for li_ind in range(self.lighting.get_nlights()):
-                    # cast shadow ray to lights
-                    new_rd, li_wei, li_dis = self.lighting.redirect(ro, li_ind)
-                    li_wei *= max(0, new_rd.dot(nrm))
-                    if Vall(li_wei <= 0):
-                        continue
-                    occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, new_rd)
-                    if occ_gid != -1 and occ_near < li_dis:  # shadow occlusion
-                        continue  # but what if it's glass?
-                    li_wei *= material.brdf(nrm, -rd, new_rd)
-                    li_clr += li_wei
+                # cast shadow ray to lights
+                li_rd, li_wei, li_dis = self.redirect_light(ro)
+                li_wei *= max(0, li_rd.dot(nrm))
+                if Vany(li_wei > 0):
+                    occ_near, occ_ind, occ_gid, occ_uv = self.geom.hit(ro, li_rd)
+                    if occ_gid == -1 or occ_near > li_dis:
+                        # no shadow occlusion
+                        li_brdf = material.brdf(nrm, -rd, li_rd)
+                        rl += rc * li_wei * li_brdf
 
                 # sample indirect light
                 rd, ir_wei = material.sample(-rd, nrm, sign, rng)
@@ -196,7 +193,18 @@ class PathEngine:
 
                 tina.Input.clear_g_pars()
 
-                rl += rc * li_clr
                 rc *= ir_wei
 
         return ro, rd, rc, rl
+
+    @ti.func
+    def redirect_light(self, ro):
+        pos, wei = self.geom.tracers[1].sample_light_pos()
+        color = 1.
+
+        toli = pos - ro
+        dis2 = toli.norm_sqr()
+        toli = toli.normalized()
+        fac = wei * color / dis2
+        dis = ti.sqrt(dis2)
+        return toli, fac, dis

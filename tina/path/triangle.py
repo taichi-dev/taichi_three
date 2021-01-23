@@ -127,3 +127,15 @@ class TriangleTracer:
         v2 = self.verts[ind, 2]
         hit, depth, uv = ray_triangle_hit(v0, v1, v2, ro, rd)
         return hit, depth, uv
+
+    @ti.func
+    def sample_light_pos(self):
+        ind = ti.random(int) % self.nfaces[None]
+        v0 = self.verts[ind, 0]
+        v1 = self.verts[ind, 1]
+        v2 = self.verts[ind, 2]
+        w = V(ti.random(), ti.random(), ti.random())
+        w0, w1, w2 = w / w.sum()
+        pos = v0 * w0 + v1 * w1 + v2 * w2
+        wei = (v0 - v1).cross(v0 - v2).norm()
+        return pos, wei * self.nfaces[None]

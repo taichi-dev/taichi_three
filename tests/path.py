@@ -5,15 +5,20 @@ import tina
 ti.init(ti.gpu)
 
 scene = tina.PTScene(smoothing=True, texturing=True)
-scene.lighting.skybox = tina.Atomsphere()
+#scene.lighting.skybox = tina.Atomsphere()
 
 #material = tina.Phong(color=[0.25, 0.5, 0.5])
 #scene.add_object(tina.PrimitiveMesh.sphere(), tina.Glass())
-scene.add_object(tina.PrimitiveMesh.sphere(), tina.Mirror())
+scene.add_object(tina.MeshModel('assets/monkey.obj'), tina.Lambert())
+#scene.add_object(tina.PrimitiveMesh.sphere(), tina.Mirror())
 #scene.add_object(tina.MeshModel('assets/bunny.obj'), tina.Glass())
 #scene.add_object(tina.MeshModel('assets/monkey.obj'), tina.Mirror())
 #scene.add_object(tina.MeshModel('assets/cube.obj'), tina.Classic())
 #scene.add_object(tina.MeshTransform(tina.MeshModel('assets/cube.obj'), tina.translate([0, -1.2, 0]) @ tina.scale([2, 0.05, 2])), tina.Lambert())
+
+mesh = tina.MeshTransform(tina.PrimitiveMesh.sphere(),
+        tina.translate([0, 0, 4]))
+scene.add_object(mesh, tina.Lambert(), tina.TriangleTracer())
 
 gui = ti.GUI('path', scene.res)
 

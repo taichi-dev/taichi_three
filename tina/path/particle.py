@@ -81,3 +81,11 @@ class ParticleTracer:  # TODO: realize me
         if ti.static(not self.multimtl):
             return 0
         return self.mtlids[ind]
+
+    @ti.func
+    def sample_light_pos(self):
+        ind = ti.random(int) % self.npars[None]
+        dir = spherical(ti.random() * 2 - 1, ti.random())
+        pos = dir * self.sizes[ind] + self.verts[ind]
+        wei = 4 * self.sizes[ind]**2
+        return pos, wei * self.npars[None]
