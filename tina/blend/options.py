@@ -46,7 +46,7 @@ def on_param_update(self, context):
 
 def register():
     #bpy.types.Object.tina_material_nodes = bpy.props.StringProperty(name='Material', update=on_param_update)
-    bpy.types.Scene.tina_backend = bpy.props.EnumProperty(name='Backend', items=[(item.upper(), item, '') for item in ['CPU', 'GPU', 'CUDA', 'OpenGL', 'Metal', 'CC']], update=on_param_update)
+    bpy.types.Scene.tina_backend = bpy.props.EnumProperty(name='Backend', items=[(item.upper(), item, '') for item in ['CPU', 'GPU', 'CUDA', 'OpenGL', 'Metal', 'CC']], default=1, update=on_param_update)
     bpy.types.Scene.tina_resolution_x = bpy.props.IntProperty(name='Resolution X', min=1, soft_min=1, subtype='PIXEL', default=512, update=on_param_update)
     bpy.types.Scene.tina_resolution_y = bpy.props.IntProperty(name='Resolution Y', min=1, soft_min=1, subtype='PIXEL', default=512, update=on_param_update)
     bpy.types.Scene.tina_max_faces = bpy.props.IntProperty(name='Max Faces Count', min=1, soft_min=1, default=65536, update=on_param_update)

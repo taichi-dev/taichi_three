@@ -83,7 +83,8 @@ class BlenderEngine(tina.PTScene):
             taa=True)
 
         self.output = OutputPixelConverter()
-        self.cache = IDCache(lambda o: (type(o).__name__, o.name))
+        self.cache_mesh = IDCache(lambda o: (type(o).__name__, o.name))
+        self.cache_trans = IDCache(lambda o: (type(o).__name__, o.name))
 
         self.meshes = {}
         for object in bpy.context.scene.objects:
@@ -93,23 +94,23 @@ class BlenderEngine(tina.PTScene):
                 self.meshes[object.name] = mesh, material
                 self.add_object(mesh, material)
 
-        self.skybox = tina.Atomsphere()
+        self.engine.skybox = tina.PlainSkybox()
 
         self.color = ti.Vector.field(3, float, self.res)
         self.accum_count = 0
         self.need_update = True
 
     def render_scene(self, is_final):
-        if self.need_update:
-            self.update()
-            self.need_update = False
-
         for object in bpy.context.scene.objects:
             if object.type == 'MESH':
                 self.update_object(object)
 
+        if self.need_update:
+            self.update()
+            self.need_update = False
+
         self.render()
-        #import code; code.interact(local=locals())
+        # import code; code.interact(local=locals())
         self.accum_count += 1
 
     def clear_samples(self):
@@ -120,9 +121,17 @@ class BlenderEngine(tina.PTScene):
         return self.accum_count < bpy.context.scene.tina_viewport_samples
 
     def update_object(self, object):
-        verts, norms, coors, world = self.cache.lookup(blender_get_object_mesh, object)
+        verts, norms, coors = self.cache_mesh.lookup(blender_get_object_mesh, object)
         if not len(verts):
             return
+
+        world = self.cache_trans.lookup(blender_get_object_transform, object)
+        new_world = np.array(object.matrix_world)
+        if np.any(world != new_world):
+            print('update', object, 'transform')
+            self.need_update = True
+            self.cache_trans.invalidate(object)
+            world = new_world
 
         mesh, material = self.meshes[object.name]
         mesh.set_transform(world)
@@ -158,9 +167,14 @@ class BlenderEngine(tina.PTScene):
     def invalidate_callback(self, updates):
         for update in updates:
             object = update.id
-            if update.is_updated_geometry:
-                self.cache.invalidate(object)
-            self.need_update = True
+            if 'Object' in type(object).__name__:
+                if object.type == 'MESH':
+                    if not object.name.startswith('_triggerdummy'): 
+                        if update.is_updated_geometry:
+                            self.cache_mesh.invalidate(object)
+                            self.cache_trans.invalidate(object)
+                            print('update', object)
+                            self.need_update = True
 
 
 def bmesh_verts_to_numpy(bm):
@@ -212,5 +226,8 @@ def blender_get_object_mesh(object):
     verts = bmesh_verts_to_numpy(bm)[bmesh_faces_to_numpy(bm)]
     norms = bmesh_face_norms_to_numpy(bm)
     coors = bmesh_face_coors_to_numpy(bm)
-    world = np.array(object.matrix_world)
-    return verts, norms, coors, world
+    return verts, norms, coors
+
+
+def blender_get_object_transform(object):
+    return np.array(object.matrix_world)
