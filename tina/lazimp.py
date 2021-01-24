@@ -21,7 +21,7 @@ def lazyguard():
 
         def reload_recursive_ex(module):
             importlib.reload(module)
-            for module_child in vars(module).values():
+            for module_child in dict(vars(module)).values():
                 if isinstance(module_child, types.ModuleType):
                     fn_child = getattr(module_child, "__file__", None)
                     if (fn_child is not None) and fn_child.startswith(fn_dir):
@@ -118,7 +118,7 @@ def lazyguard():
                 def reload_cb():
                     with search_lock:
                         for name in written_lazy_names:
-                            print('del', name)
+                            # print('del', name)
                             del globals[name]
                         written_lazy_names.clear()
                         mod_attrs_cache.clear()

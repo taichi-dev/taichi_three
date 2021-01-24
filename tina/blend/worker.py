@@ -40,6 +40,8 @@ def render_main(width, height, region3d=None):
                 self.engine.clear_samples()
             else:
                 del self.is_triggered
+        else:
+            self.engine.clear_samples()
 
         if is_final:
             self.engine.update_default_camera()

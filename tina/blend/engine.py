@@ -68,128 +68,63 @@ class OutputPixelConverter:
         return (b << 16) + (g << 8) + r
 
 
-def get_material_from_node_group(node_group_name):
-    from melt.blender import get_node_table
-
-    node_group = bpy.data.node_groups[node_group_name]
-    node_table = get_node_table(node_group)
-    material_output = node_table['Material Output']
-
-    return material_output
-
-
-class BlenderEngine(tina.Engine):
-    def make_shader_of_object(self, object):
-        if not object.tina_material_nodes:
-            return None
-        material = get_material_from_node_group(object.tina_material_nodes)
-        shader = tina.Shader(self.color, self.lighting, material)
-        return shader
+class BlenderEngine(tina.Scene):
+    def get_material_of_object(self, object):
+        #if not object.tina_material_nodes:
+        #    return None
+        #material = get_material_from_node_group(object.tina_material_nodes)
+        material = tina.Lambert()
+        return material
 
     def __init__(self):
-        super().__init__((
-            bpy.context.scene.tina_resolution_x,
-            bpy.context.scene.tina_resolution_y),
-            bpy.context.scene.tina_max_faces,
-            bpy.context.scene.tina_smoothing,
-            bpy.context.scene.tina_texturing,
-            bpy.context.scene.tina_culling,
-            bpy.context.scene.tina_clipping)
+        super().__init__((bpy.context.scene.tina_resolution_x,
+                          bpy.context.scene.tina_resolution_y),
+            maxfaces=bpy.context.scene.tina_max_faces,
+            taa=True)
 
         self.output = OutputPixelConverter()
         self.cache = IDCache(lambda o: (type(o).__name__, o.name))
 
-        self.camera = tina.Camera()
-        self.accum = tina.Accumator(self.res)
-        self.lighting = tina.Lighting(bpy.context.scene.tina_max_lights)
-        self.color = ti.Vector.field(3, float, self.res)
-
-        self.default_shader = tina.Shader(self.color, self.lighting,
-                tina.BlinnPhong())
-        self.shaders = {}
+        self.meshes = {}
         for object in bpy.context.scene.objects:
-            shader = self.make_shader_of_object(object)
-            if shader is not None:
-                self.shaders[object.name] = shader
+            material = self.get_material_of_object(object)
+            if material is None: material = tina.Emission()
+            mesh = tina.MeshTransform(tina.SimpleMesh())
+            self.meshes[object.name] = mesh, material
+            print(mesh, material)
+            self.add_object(mesh, material)
 
     def render_scene(self, is_final):
-        is_center = False
-        if not is_final:
-            if self.accum.count[None] == 0:
-                is_center = True
-            if bpy.context.scene.tina_viewport_samples == 1:
-                is_center = True
-        self.randomize_bias(is_center)
-        self.clear_depth()
-        self.color.fill(0)
-
-        lights = []
-        meshes = []
-
         for object in bpy.context.scene.objects:
-            if not object.visible_get():
-                continue
-            if object.type == 'LIGHT':
-                lights.append(object)
             if object.type == 'MESH':
-                meshes.append(object)
+                self.update_object(object)
 
-        self.lighting.nlights[None] = len(lights)
-        for i, object in enumerate(lights):
-            self.update_light(i, object)
-
-        for object in meshes:
-            self.render_object(object)
-
-        if is_final or bpy.context.scene.tina_viewport_samples != 1:
-            self.accum.update(self.color)
+        self.render()
 
     def clear_samples(self):
-        if bpy.context.scene.tina_viewport_samples != 1:
-            self.accum.clear()
-        else:
-            self.accum.count[None] = 0
+        self.clear()
 
     def is_need_redraw(self):
         return self.accum.count[None] < bpy.context.scene.tina_viewport_samples
 
-    def update_light(self, i, object):
-        color = np.array(object.data.color) * object.data.energy / 4
-        model = np.array(object.matrix_world)
-
-        if object.data.type == 'SUN':
-            dir = model @ np.array([0, 0, 1, 0])
-        elif object.data.type == 'POINT':
-            dir = model @ np.array([0, 0, 0, 1])
-            dir[3] = 1
-            color /= 12
-        else:
-            assert False, f'unsupported light type: {object.data.type}'
-
-        self.lighting.light_dirs[i] = dir.tolist()
-        self.lighting.light_colors[i] = color.tolist()
-
-    def render_object(self, object):
+    def update_object(self, object):
         verts, norms, coors = self.cache.lookup(blender_get_object_mesh, object)
         if not len(verts):
             return
 
-        shader = self.shaders.get(object.name, self.default_shader)
+        mesh, material = self.meshes[object.name]
+        world = np.array(object.matrix_world)
+        mesh.set_transform(world)
 
-        self.camera.model = np.array(object.matrix_world)
-        self.set_camera(self.camera)
-
-        self.set_face_verts(verts)
-        if self.smoothing:
-            self.set_face_norms(norms)
-        if self.texturing:
-            self.set_face_coors(coors)
-        self.render(shader)
+        mesh.set_face_verts(verts)
+        mesh.set_face_norms(norms)
+        mesh.set_face_coors(coors)
 
     def update_region_data(self, region3d):
         pers = np.array(region3d.perspective_matrix)
-        self.camera.view = np.array(region3d.view_matrix)
-        self.camera.proj = pers @ np.linalg.inv(self.camera.view)
+        view = np.array(region3d.view_matrix)
+        proj = pers @ np.linalg.inv(view)
+        self.engine.set_camera(view, proj)
 
     def update_default_camera(self):
         camera = bpy.context.scene.camera
@@ -203,10 +138,7 @@ class BlenderEngine(tina.Engine):
 
     def dump_pixels(self, pixels, width, height, is_final):
         use_bilerp = not (width == self.res.x and height == self.res.y)
-        if is_final or bpy.context.scene.tina_viewport_samples != 1:
-            self.output.dump(self.accum.img, use_bilerp, is_final, pixels, width, height)
-        else:
-            self.output.dump(self.color, use_bilerp, is_final, pixels, width, height)
+        self.output.dump(self.img, use_bilerp, is_final, pixels, width, height)
 
     def invalidate_callback(self, update):
         object = update.id
@@ -258,6 +190,7 @@ def blender_get_object_mesh(object):
     bm = bmesh.new()
     depsgraph = bpy.context.evaluated_depsgraph_get()
     object_eval = object.evaluated_get(depsgraph)
+    # import code; code.interact(local=locals())
     bm.from_object(object_eval, depsgraph)
     bmesh.ops.triangulate(bm, faces=bm.faces)
     verts = bmesh_verts_to_numpy(bm)[bmesh_faces_to_numpy(bm)]
