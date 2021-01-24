@@ -70,11 +70,11 @@ def blender_get_object_mesh(object, depsgraph=None):
     return verts, norms, coors
 
 
-class CustomRenderEngine(bpy.types.RenderEngine):
+class TinaRenderEngine(bpy.types.RenderEngine):
     # These three members are used by blender to set up the
     # RenderEngine; define its internal name, visible name and capabilities.
-    bl_idname = "CUSTOM"
-    bl_label = "Custom"
+    bl_idname = "TINA"
+    bl_label = "Tina"
     bl_use_preview = True
 
     # Init is called whenever a new render engine instance is created. Multiple
@@ -112,8 +112,6 @@ class CustomRenderEngine(bpy.types.RenderEngine):
     # small preview for materials, world and lights.
     def render(self, depsgraph):
         scene = depsgraph.scene
-        #view_layer = depsgraph.view_layer
-        #self.register_pass(scene, view_layer, 'Albedo', 3, 'rgb', 'COLOR')
         scale = scene.render.resolution_percentage / 100.0
         self.size_x = int(scene.render.resolution_x * scale)
         self.size_y = int(scene.render.resolution_y * scale)
@@ -205,7 +203,7 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         self.bind_display_space_shader(scene)
 
         if not self.draw_data or self.draw_data.dimensions != dimensions:
-            self.draw_data = CustomDrawData(dimensions)
+            self.draw_data = TinaDrawData(dimensions)
 
         self.draw_data.draw()
 
@@ -213,7 +211,7 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         bgl.glDisable(bgl.GL_BLEND)
 
 
-class CustomDrawData:
+class TinaDrawData:
     def __init__(self, dimensions):
         # Generate dummy float image buffer
         self.dimensions = dimensions
@@ -304,18 +302,18 @@ def get_panels():
 
 def register():
     # Register the RenderEngine
-    bpy.utils.register_class(CustomRenderEngine)
+    bpy.utils.register_class(TinaRenderEngine)
 
     for panel in get_panels():
-        panel.COMPAT_ENGINES.add('CUSTOM')
+        panel.COMPAT_ENGINES.add('TINA')
 
 
 def unregister():
-    bpy.utils.unregister_class(CustomRenderEngine)
+    bpy.utils.unregister_class(TinaRenderEngine)
 
     for panel in get_panels():
-        if 'CUSTOM' in panel.COMPAT_ENGINES:
-            panel.COMPAT_ENGINES.remove('CUSTOM')
+        if 'TINA' in panel.COMPAT_ENGINES:
+            panel.COMPAT_ENGINES.remove('TINA')
 
 
 if __name__ == "__main__":
