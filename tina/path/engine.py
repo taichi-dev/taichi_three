@@ -32,9 +32,9 @@ class PathEngine:
         self.cnt.fill(0)
 
     @ti.kernel
-    def _get_rgba(self, out: ti.ext_arr(), raw: ti.template()):
+    def _get_image(self, out: ti.ext_arr(), raw: ti.template()):
         for I in ti.grouped(self.img):
-            val = V(0., 0., 0.)
+            val = lerp((I // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
             if self.cnt[I] != 0:
                 val = self.img[I] / self.cnt[I]
                 out[I, 3] = 1.
@@ -48,42 +48,9 @@ class PathEngine:
             for k in ti.static(range(3)):
                 out[I, k] = val[k]
 
-    def get_rgba(self, raw=False):
+    def get_image(self, raw=False):
         out = np.zeros((*self.res, 4), dtype=np.float32)
         self._get_rgba(out, raw)
-        return out
-
-    @ti.func
-    def _f_get_image(self, out: ti.template(),
-                     tonemap: ti.template(), is_ext: ti.template()):
-        for I in ti.grouped(self.img):
-            val = lerp((I // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
-            if self.cnt[I] != 0:
-                val = self.img[I] / self.cnt[I]
-            if not all(val >= 0 or val <= 0):  # NaN?
-                val = V(.9, .4, .9)
-            val = tonemap(val)
-            if ti.static(is_ext):
-                for k in ti.static(range(3)):
-                    out[I, k] = val[k]
-            else:
-                out[I] = val
-
-    @ti.kernel
-    def _get_image_e(self, out: ti.ext_arr(), notone: ti.template()):
-        tonemap = ti.static((lambda x: x) if notone else aces_tonemap)
-        self._f_get_image(out, tonemap, True)
-
-    @ti.kernel
-    def _get_image_f(self, out: ti.template()):
-        self._f_get_image(out, lambda x: x, False)
-
-    def get_image(self, out=None, notone=False):
-        if out is None:
-            out = np.zeros((*self.res, 3), dtype=np.float32)
-            self._get_image_e(out, notone)
-        else:
-            self._get_image_f(out)
         return out
 
     @ti.func

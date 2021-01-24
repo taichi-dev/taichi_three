@@ -125,8 +125,7 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         s.engine.set_camera(view, proj)
         for _ in range(8):
             s.render()
-        img = s.engine.get_rgba()
-        img = np.ascontiguousarray(img.swapaxes(0, 1))
+        img = np.ascontiguousarray(s.img.swapaxes(0, 1))
         rect = img.reshape(self.size_x * self.size_y, 4).tolist()
 
         '''

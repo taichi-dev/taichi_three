@@ -4,8 +4,8 @@ import tina
 ti.init(ti.gpu)
 
 scene = tina.PTScene(smoothing=True)
-#scene.engine.skybox = tina.Atomsphere()
-scene.engine.skybox = tina.Skybox('assets/skybox.jpg')
+scene.engine.skybox = tina.Atomsphere()
+#scene.engine.skybox = tina.Skybox('assets/skybox.jpg')
 
 roughness = tina.Param(float, initial=0.15)
 metallic = tina.Param(float, initial=1.0)

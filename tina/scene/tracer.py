@@ -116,13 +116,9 @@ class PTScene(Scene):
         self.engine.trace(nsteps, russian)
 
     @property
-    def img(self):  # TODO: use postp for this too
+    def img(self):
         return self.engine.get_image()
 
     @property
     def raw_img(self):
-        return self.engine.get_image(notone=True)
-
-    @property
-    def raw_image(self):
-        return self.engine.get_image(lambda x: x)
+        return self.engine.get_image(raw=True)
