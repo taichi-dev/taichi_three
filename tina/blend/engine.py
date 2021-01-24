@@ -32,8 +32,8 @@ class OutputPixelConverter:
             color = bilerp(img, pos)
         else:
             color = img[i, j]
-        color = aces_tonemap(color)
         if ti.static(is_final):
+            color = aces_tonemap(color)
             base = (j * width + i) * 4
             out[base + 0] = color.x
             out[base + 1] = color.y
@@ -73,13 +73,15 @@ class BlenderEngine(tina.PTScene):
         #if not object.tina_material_nodes:
         #    return None
         #material = get_material_from_node_group(object.tina_material_nodes)
-        material = tina.PBR(metallic=0.6, roughness=0.0)
+        material = tina.Mirror()
         return material
 
     def __init__(self):
         super().__init__((bpy.context.scene.tina_resolution_x,
                           bpy.context.scene.tina_resolution_y),
             maxfaces=bpy.context.scene.tina_max_faces,
+            smoothing=True,
+            texturing=True,
             taa=True)
 
         self.output = OutputPixelConverter()
