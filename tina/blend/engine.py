@@ -73,7 +73,7 @@ class BlenderEngine(tina.PTScene):
         #if not object.tina_material_nodes:
         #    return None
         #material = get_material_from_node_group(object.tina_material_nodes)
-        material = tina.Lambert()
+        material = tina.PBR(metallic=0.6, roughness=0.0)
         return material
 
     def __init__(self):
@@ -94,7 +94,7 @@ class BlenderEngine(tina.PTScene):
                 self.meshes[object.name] = mesh, material
                 self.add_object(mesh, material)
 
-        self.engine.skybox = tina.PlainSkybox()
+        self.engine.skybox = tina.RotSkybox(tina.Atomsphere())
 
         self.color = ti.Vector.field(3, float, self.res)
         self.accum_count = 0
@@ -172,8 +172,7 @@ class BlenderEngine(tina.PTScene):
                     if not object.name.startswith('_triggerdummy'): 
                         if update.is_updated_geometry:
                             self.cache_mesh.invalidate(object)
-                            self.cache_trans.invalidate(object)
-                            print('update', object)
+                            print('update', object, 'mesh')
                             self.need_update = True
 
 

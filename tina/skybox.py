@@ -118,7 +118,7 @@ class Skybox:
         return img.shape[:2]
 
     @ti.func
-    def mapcoor(self, I):
+    def mapcoor(self, dir):
         if ti.static(self.cubic):
             coor = cubemap(dir)
             I = (self.shape[0] - 1) * coor
@@ -321,3 +321,38 @@ class PlainSkybox:
     @ti.func
     def sample(self, dir):
         return self.color
+
+
+@ti.data_oriented
+class RotSkybox:
+    def __init__(self, skybox):
+        self.wraps = skybox
+
+    @ti.func
+    def trans(self, dir):
+        dir.y, dir.z = dir.z, -dir.y
+        return dir
+
+    @ti.func
+    def untrans(self, dir):
+        dir.y, dir.z = -dir.z, dir.y
+        return dir
+
+    @ti.func
+    def mapcoor(self, dir):
+        self.wraps.mapcoor(self.trans(dir))
+
+    @ti.func
+    def unmapcoor(self, I):
+        ti.static_assert(not self.cubic)
+        coor = I / (V(*self.shape) - 1)
+        dir = unspheremap(coor)
+        return self.untrans(dir)
+
+    @ti.func
+    def sample(self, dir):
+        return self.wraps.sample(self.trans(dir))
+
+    @ti.func
+    def wav_sample(self, dir, rw):
+        return self.wraps.wav_sample(self.trans(dir), rw)
