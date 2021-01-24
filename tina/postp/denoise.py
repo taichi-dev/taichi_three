@@ -1,4 +1,4 @@
-from tina.common import *
+from ..common import *
 
 
 @ti.data_oriented

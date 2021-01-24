@@ -1,6 +1,6 @@
 @eval('lambda x: x()')
 def lazyguard():
-    # An artwork presented by github.com/archibate
+    # Lazy import - an artwork presented by github.com/archibate
 
     import importlib
     import threading
@@ -8,11 +8,34 @@ def lazyguard():
     import inspect
     import os
 
+    def reload_package(package):
+        import os
+        import types
+        import importlib
+
+        assert(hasattr(package, "__package__"))
+        fn = package.__file__
+        fn_dir = os.path.dirname(fn) + os.sep
+        module_visit = {fn}
+        del fn
+
+        def reload_recursive_ex(module):
+            importlib.reload(module)
+            for module_child in vars(module).values():
+                if isinstance(module_child, types.ModuleType):
+                    fn_child = getattr(module_child, "__file__", None)
+                    if (fn_child is not None) and fn_child.startswith(fn_dir):
+                        if fn_child not in module_visit:
+                            # print("reloading:", fn_child, "from", module)
+                            module_visit.add(fn_child)
+                            reload_recursive_ex(module_child)
+
+        reload_recursive_ex(package)
+
     search_lock = threading.Lock()
     mod_attrs_cache = {}
 
-    @eval('lambda x: x()')
-    class lazyguard:
+    class Lazyguard:
         """
         Set up lazy import in a module. To use:
 
@@ -27,9 +50,12 @@ def lazyguard():
         Then calling `mypkg.hello()` will import `mypkg.foo` just-in-time.
         """
 
+        def get_mod_attrs_cache(self):
+            return mod_attrs_cache
+
         def __bool__(self):
-            def make_getattr(this_file, this_module):
-                def wrapped(name):
+            def make(this_file, this_module):
+                def getattr_cb(name):
                     def get_module_attrs(path):
                         with open(path, 'r', encoding='utf-8') as f:
                             lines = f.readlines()
@@ -83,15 +109,33 @@ def lazyguard():
                         with search_lock:
                             getter = next(search)
                         globals[name] = getter()
+                        written_lazy_names.add(name)
                     except StopIteration:
                         raise AttributeError("Module '" + this_module + "' has no attribute named '" + name + "'") from None
 
                     return globals[name]
 
-                return wrapped
+                def reload_cb():
+                    with search_lock:
+                        for name in written_lazy_names:
+                            print('del', name)
+                            del globals[name]
+                        written_lazy_names.clear()
+                        mod_attrs_cache.clear()
+                    module = importlib.import_module('.', this_module)
+                    reload_package(module)
 
+                return getattr_cb, reload_cb
+
+            written_lazy_names = set()
             globals = inspect.stack()[1][0].f_globals
-            globals['__getattr__'] = make_getattr(globals['__file__'], globals['__package__'])
+            getattr_cb, reload_cb = make(globals['__file__'], globals['__package__'])
+            globals['__getattr__'] = getattr_cb
+            globals['__lazyreload__'] = reload_cb
             return False
 
-    return lazyguard
+    class DisableLazyguard:
+        def __bool__(self):
+            return True
+
+    return Lazyguard()

@@ -70,7 +70,7 @@ def export_simple_mesh(mesh):
     ret = {}
     if hasattr(mesh, 'get_npolygon'):
         npolygon = mesh.get_npolygon()
-    assert hasattr(mesh, 'get_face_verts'):
+    assert hasattr(mesh, 'get_face_verts')
     out = np.empty((nfaces, npolygon, 3), dtype=np.float32)
     _export_mesh_verts(out)
     ret['fv'] = out
