@@ -70,6 +70,22 @@ def blender_get_object_mesh(object, depsgraph=None):
     return verts, norms, coors
 
 
+class TinaMaterialPanel(bpy.types.Panel):
+    '''Tina material options'''
+
+    bl_label = 'Tina Material'
+    bl_idname = 'MATERIAL_PT_tina'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'material'
+
+    def draw(self, context):
+        layout = self.layout
+        object = context.object
+
+        layout.prop(object.data.materials[0], 'tina_emission')
+
+
 class TinaRenderEngine(bpy.types.RenderEngine):
     # These three members are used by blender to set up the
     # RenderEngine; define its internal name, visible name and capabilities.
@@ -90,6 +106,21 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         pass
 
     def _update_scene(self, s, depsgraph):
+        materials = {}
+        for material in depsgraph.ids:
+            if type(material).__name__ != 'Material':
+                continue
+
+            if material.tina_emission != 0:
+                matr = material.tina_emission * tina.Emission()
+            else:
+                raise Exception
+                matr = tina.PBR(basecolor=list(material.specular_color),
+                                metallic=material.metallic,
+                                roughness=material.roughness,
+                                specular=material.specular_intensity)
+            materials[material] = matr
+
         for object in depsgraph.ids:
             if type(object).__name__ != 'Object':
                 continue
@@ -105,8 +136,12 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                     mesh.set_face_norms(norms)
                     mesh.set_face_coors(coors)
 
-                material = tina.Emission()
-                s.add_object(mesh, material)
+                # import code; code.interact(local=locals())
+                if not len(object.data.materials):
+                    matr = tina.Emission()
+                else:
+                    matr = materials[object.data.materials[0]]
+                s.add_object(mesh, matr)
 
     # This is the method called by Blender for both final renders (F12) and
     # small preview for materials, world and lights.
@@ -121,6 +156,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.update_stats('Initializing', 'Loading scene')
         s = tina.PTScene((self.size_x, self.size_y))
+        #s = tina.Scene((self.size_x, self.size_y), taa=True)
         self._update_scene(s, depsgraph)
 
         self.update_stats('Initializing', 'Constructing tree')
@@ -301,8 +337,10 @@ def get_panels():
 
 
 def register():
-    # Register the RenderEngine
+    bpy.types.Material.tina_emission = bpy.props.FloatProperty(name='Emission', min=0.0, soft_min=0.0, default=0.0)
+
     bpy.utils.register_class(TinaRenderEngine)
+    bpy.utils.register_class(TinaMaterialPanel)
 
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
@@ -310,10 +348,13 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(TinaRenderEngine)
+    bpy.utils.unregister_class(TinaMaterialPanel)
 
     for panel in get_panels():
         if 'TINA' in panel.COMPAT_ENGINES:
             panel.COMPAT_ENGINES.remove('TINA')
+
+    del bpy.types.Material.tina_emission
 
 
 if __name__ == "__main__":
