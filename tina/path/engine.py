@@ -31,6 +31,28 @@ class PathEngine:
         self.img.fill(0)
         self.cnt.fill(0)
 
+    @ti.kernel
+    def _get_rgba(self, out: ti.ext_arr(), raw: ti.template()):
+        for I in ti.grouped(self.img):
+            val = V(0., 0., 0.)
+            if self.cnt[I] != 0:
+                val = self.img[I] / self.cnt[I]
+                out[I, 3] = 1.
+            else:
+                out[I, 3] = 0.
+            if not all(val >= 0 or val <= 0):
+                val = V(.9, .4, .9)
+            else:
+                if ti.static(not raw):
+                    val = aces_tonemap(val)
+            for k in ti.static(range(3)):
+                out[I, k] = val[k]
+
+    def get_rgba(self, raw=False):
+        out = np.zeros((*self.res, 4), dtype=np.float32)
+        self._get_rgba(out, raw)
+        return out
+
     @ti.func
     def _f_get_image(self, out: ti.template(),
                      tonemap: ti.template(), is_ext: ti.template()):

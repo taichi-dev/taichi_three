@@ -55,6 +55,8 @@ def lazyguard():
 
         def __bool__(self):
             def make(this_file, this_module):
+                assert this_module is not None
+
                 def getattr_cb(name):
                     def get_module_attrs(path):
                         with open(path, 'r', encoding='utf-8') as f:

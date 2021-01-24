@@ -1,19 +1,73 @@
-bl_info = {
-        'name': 'Tina',
-        'description': 'A soft renderer based on Taichi programming language',
-        'author': 'archibate <1931127624@qq.com>',
-        'version': (0, 0, 1),
-        'blender': (2, 81, 0),
-        'location': 'Render -> Tina',
-        'support': 'COMMUNITY',
-        'wiki_url': 'https://github.com/taichi-dev/taichi_three/wiki',
-        'tracker_url': 'https://github.com/taichi-dev/taichi_three/issues',
-        'category': 'Render',
-}
-
-
 import bpy
 import bgl
+
+import taichi as ti
+import numpy as np
+import tina
+
+
+def calc_camera_matrices(depsgraph):
+    camera = depsgraph.scene.camera
+    render = depsgraph.scene.render
+    scale = render.resolution_percentage / 100.0
+    proj = np.array(camera.calc_matrix_camera(depsgraph,
+        x=render.resolution_x * scale, y=render.resolution_y * scale,
+        scale_x=render.pixel_aspect_x, scale_y=render.pixel_aspect_y))
+    view = np.linalg.inv(np.array(camera.matrix_world))
+    return view, proj
+
+
+def bmesh_verts_to_numpy(bm):
+    arr = [x.co for x in bm.verts]
+    if len(arr) == 0:
+        return np.zeros((0, 3), dtype=np.float32)
+    return np.array(arr, dtype=np.float32)
+
+
+def bmesh_faces_to_numpy(bm):
+    arr = [[e.index for e in f.verts] for f in bm.faces]
+    if len(arr) == 0:
+        return np.zeros((0, 3), dtype=np.int32)
+    return np.array(arr, dtype=np.int32)
+
+
+def bmesh_face_norms_to_numpy(bm):
+    vnorms = [x.normal for x in bm.verts]
+    if len(vnorms) == 0:
+        vnorms = np.zeros((0, 3), dtype=np.float32)
+    else:
+        vnorms = np.array(vnorms)
+    norms = [
+        [vnorms[e.index] for e in f.verts]
+        if f.smooth else [f.normal for e in f.verts]
+        for f in bm.faces]
+    if len(norms) == 0:
+        return np.zeros((0, 3, 3), dtype=np.float32)
+    return np.array(norms, dtype=np.float32)
+
+
+def bmesh_face_coors_to_numpy(bm):
+    uv_lay = bm.loops.layers.uv.active
+    if uv_lay is None:
+        return np.zeros((len(bm.faces), 3, 2), dtype=np.float32)
+    coors = [[l[uv_lay].uv for l in f.loops] for f in bm.faces]
+    if len(coors) == 0:
+        return np.zeros((0, 3, 2), dtype=np.float32)
+    return np.array(coors, dtype=np.float32)
+
+
+def blender_get_object_mesh(object, depsgraph=None):
+    import bmesh
+    bm = bmesh.new()
+    if depsgraph is None:
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+    object_eval = object.evaluated_get(depsgraph)
+    bm.from_object(object_eval, depsgraph)
+    bmesh.ops.triangulate(bm, faces=bm.faces)
+    verts = bmesh_verts_to_numpy(bm)[bmesh_faces_to_numpy(bm)]
+    norms = bmesh_face_norms_to_numpy(bm)
+    coors = bmesh_face_coors_to_numpy(bm)
+    return verts, norms, coors
 
 
 class CustomRenderEngine(bpy.types.RenderEngine):
@@ -35,6 +89,25 @@ class CustomRenderEngine(bpy.types.RenderEngine):
     def __del__(self):
         pass
 
+    def _update_scene(self, s, depsgraph):
+        for object in depsgraph.ids:
+            if type(object).__name__ != 'Object':
+                continue
+            if object.type == 'MESH':
+                mesh = tina.MeshTransform(tina.SimpleMesh())
+                verts, norms, coors = blender_get_object_mesh(object, depsgraph)
+                world = np.array(object.matrix_world)
+
+                @ti.materialize_callback
+                def init_mesh():
+                    mesh.set_transform(world)
+                    mesh.set_face_verts(verts)
+                    mesh.set_face_norms(norms)
+                    mesh.set_face_coors(coors)
+
+                material = tina.Emission()
+                s.add_object(mesh, material)
+
     # This is the method called by Blender for both final renders (F12) and
     # small preview for materials, world and lights.
     def render(self, depsgraph):
@@ -42,7 +115,21 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         scale = scene.render.resolution_percentage / 100.0
         self.size_x = int(scene.render.resolution_x * scale)
         self.size_y = int(scene.render.resolution_y * scale)
+        view, proj = calc_camera_matrices(depsgraph)
 
+        ti.init(ti.gpu)
+        s = tina.PTScene((self.size_x, self.size_y))
+        self._update_scene(s, depsgraph)
+
+        s.update()
+        s.engine.set_camera(view, proj)
+        for _ in range(8):
+            s.render()
+        img = s.engine.get_rgba()
+        img = np.ascontiguousarray(img.swapaxes(0, 1))
+        rect = img.reshape(self.size_x * self.size_y, 4).tolist()
+
+        '''
         # Fill the render result with a flat color. The framebuffer is
         # defined as a list of pixels, each pixel itself being a list of
         # R,G,B,A values.
@@ -53,6 +140,7 @@ class CustomRenderEngine(bpy.types.RenderEngine):
 
         pixel_count = self.size_x * self.size_y
         rect = [color] * pixel_count
+        '''
 
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
