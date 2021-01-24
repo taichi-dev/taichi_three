@@ -68,7 +68,7 @@ class OutputPixelConverter:
         return (b << 16) + (g << 8) + r
 
 
-class BlenderEngine(tina.Scene):
+class BlenderEngine(tina.PTScene):
     def get_material_of_object(self, object):
         #if not object.tina_material_nodes:
         #    return None
@@ -87,35 +87,45 @@ class BlenderEngine(tina.Scene):
 
         self.meshes = {}
         for object in bpy.context.scene.objects:
-            material = self.get_material_of_object(object)
-            if material is None: material = tina.Emission()
-            mesh = tina.MeshTransform(tina.SimpleMesh())
-            self.meshes[object.name] = mesh, material
-            print(mesh, material)
-            self.add_object(mesh, material)
+            if object.type == 'MESH':
+                material = self.get_material_of_object(object)
+                mesh = tina.MeshTransform(tina.SimpleMesh())
+                self.meshes[object.name] = mesh, material
+                self.add_object(mesh, material)
+
+        self.skybox = tina.Atomsphere()
+
+        self.color = ti.Vector.field(3, float, self.res)
+        self.accum_count = 0
+        self.need_update = True
 
     def render_scene(self, is_final):
+        if self.need_update:
+            self.update()
+            self.need_update = False
+
         for object in bpy.context.scene.objects:
             if object.type == 'MESH':
                 self.update_object(object)
 
         self.render()
+        #import code; code.interact(local=locals())
+        self.accum_count += 1
 
     def clear_samples(self):
         self.clear()
+        self.accum_count = 0
 
     def is_need_redraw(self):
-        return self.accum.count[None] < bpy.context.scene.tina_viewport_samples
+        return self.accum_count < bpy.context.scene.tina_viewport_samples
 
     def update_object(self, object):
-        verts, norms, coors = self.cache.lookup(blender_get_object_mesh, object)
+        verts, norms, coors, world = self.cache.lookup(blender_get_object_mesh, object)
         if not len(verts):
             return
 
         mesh, material = self.meshes[object.name]
-        world = np.array(object.matrix_world)
         mesh.set_transform(world)
-
         mesh.set_face_verts(verts)
         mesh.set_face_norms(norms)
         mesh.set_face_coors(coors)
@@ -131,19 +141,26 @@ class BlenderEngine(tina.Scene):
         render = bpy.context.scene.render
         depsgraph = bpy.context.evaluated_depsgraph_get()
         scale = render.resolution_percentage / 100.0
-        self.camera.proj = np.array(camera.calc_matrix_camera(depsgraph,
+        proj = np.array(camera.calc_matrix_camera(depsgraph,
             x=render.resolution_x * scale, y=render.resolution_y * scale,
             scale_x=render.pixel_aspect_x, scale_y=render.pixel_aspect_y))
-        self.camera.view = np.linalg.inv(np.array(camera.matrix_world))
+        view = np.linalg.inv(np.array(camera.matrix_world))
+        self.engine.set_camera(view, proj)
 
     def dump_pixels(self, pixels, width, height, is_final):
+        if isinstance(self, tina.PTScene):
+            self.engine._get_image_f(self.color)
+        else:
+            self.color.copy_from(self.img)
         use_bilerp = not (width == self.res.x and height == self.res.y)
-        self.output.dump(self.img, use_bilerp, is_final, pixels, width, height)
+        self.output.dump(self.color, use_bilerp, is_final, pixels, width, height)
 
-    def invalidate_callback(self, update):
-        object = update.id
-        if update.is_updated_geometry:
-            self.cache.invalidate(object)
+    def invalidate_callback(self, updates):
+        for update in updates:
+            object = update.id
+            if update.is_updated_geometry:
+                self.cache.invalidate(object)
+            self.need_update = True
 
 
 def bmesh_verts_to_numpy(bm):
@@ -190,10 +207,10 @@ def blender_get_object_mesh(object):
     bm = bmesh.new()
     depsgraph = bpy.context.evaluated_depsgraph_get()
     object_eval = object.evaluated_get(depsgraph)
-    # import code; code.interact(local=locals())
     bm.from_object(object_eval, depsgraph)
     bmesh.ops.triangulate(bm, faces=bm.faces)
     verts = bmesh_verts_to_numpy(bm)[bmesh_faces_to_numpy(bm)]
     norms = bmesh_face_norms_to_numpy(bm)
     coors = bmesh_face_coors_to_numpy(bm)
-    return verts, norms, coors
+    world = np.array(object.matrix_world)
+    return verts, norms, coors, world

@@ -3,7 +3,7 @@ from ..advans import *
 
 @ti.data_oriented
 class PathEngine:
-    def __init__(self, geom, lighting, mtltab, res=512):
+    def __init__(self, geom, mtltab, res=512):
         if isinstance(res, int): res = res, res
         self.res = ti.Vector(res)
         self.nrays = self.res.x * self.res.y
@@ -12,7 +12,6 @@ class PathEngine:
         self.cnt = ti.field(int, self.res)
 
         self.geom = geom
-        self.lighting = lighting
         self.mtltab = mtltab
         self.stack = tina.Stack(N_mt=self.nrays)
 
@@ -148,7 +147,7 @@ class PathEngine:
 
         if gid == -1:
             # no hit
-            rl += rc * self.lighting.background(rd)
+            rl += rc * self.background(rd)
             rc *= 0
 
         elif gid != -2:
@@ -221,3 +220,10 @@ class PathEngine:
         fac = wei * color / dis2
         dis = ti.sqrt(dis2)
         return toli, fac, dis
+
+    @ti.func
+    def background(self, rd):
+        if ti.static(hasattr(self, 'skybox')):
+            return self.skybox.sample(rd)
+        else:
+            return 0.0

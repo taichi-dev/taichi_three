@@ -4,8 +4,8 @@ import tina
 ti.init(ti.gpu)
 
 scene = tina.PTScene(smoothing=True)
-scene.lighting.skybox = tina.Atomsphere()
-#scene.lighting.skybox = tina.Skybox('assets/grass.jpg')
+#scene.skybox = tina.Atomsphere()
+scene.skybox = tina.Skybox('assets/skybox.jpg')
 
 roughness = tina.Param(float, initial=0.15)
 metallic = tina.Param(float, initial=1.0)
@@ -27,4 +27,4 @@ while gui.running:
     gui.set_image(scene.img)
     gui.show()
 
-tina.pfmwrite('/tmp/color.pfm', scene.img)
+#tina.pfmwrite('/tmp/color.pfm', scene.img)

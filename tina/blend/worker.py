@@ -78,8 +78,8 @@ def invalidate_main(updates, viewport_changed):
             hasattr(self, 'is_triggered') and delattr(self, 'is_triggered') if viewport_changed or not hasattr(invalidate_main, 'cac_old_frame_current') or bpy.context.scene.frame_current != invalidate_main.cac_old_frame_current or not all(getattr(u.id, 'name', '').startswith('_triggerdummy') for u in updates if type(u.id).__name__ not in ['Scene', 'Collection']) or all(type(u.id).__name__ in ['Scene', 'Collection'] for u in updates) else 1
             invalidate_main.cac_old_frame_current = bpy.context.scene.frame_current
 
-        for update in updates:
-            self.engine.invalidate_callback(update)
+        if hasattr(self, 'engine'):
+            self.engine.invalidate_callback(updates)
 
     worker.wait_done()
 
