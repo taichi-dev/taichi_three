@@ -107,7 +107,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
     def _update_scene(self, s, depsgraph):
         materials = {}
-        import code; code.interact(local=locals())
+        # import code; code.interact(local=locals())
 
         for object in depsgraph.ids:
             if type(object).__name__ != 'Object':
@@ -128,7 +128,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                     matr = tina.Emission()
                 else:
                     if object.tina_material not in materials:
-                        matr = construct_material_output(object.tina_material)
+                        tree = bpy.data.node_groups[object.tina_material]
+                        from .node_system import construct_material_output
+                        matr = construct_material_output(tree)
                         materials[object.tina_material] = matr
                     matr = materials[object.tina_material]
                 s.add_object(mesh, matr)
@@ -327,7 +329,7 @@ def get_panels():
 
 
 def register():
-    bpy.types.Material.tina_material = bpy.props.StringProperty(name='Material')
+    bpy.types.Object.tina_material = bpy.props.StringProperty(name='Material')
 
     bpy.utils.register_class(TinaRenderEngine)
     bpy.utils.register_class(TinaMaterialPanel)
@@ -344,7 +346,7 @@ def unregister():
         if 'TINA' in panel.COMPAT_ENGINES:
             panel.COMPAT_ENGINES.remove('TINA')
 
-    del bpy.types.Material.tina_material
+    del bpy.types.Object.tina_material
 
 
 '''''

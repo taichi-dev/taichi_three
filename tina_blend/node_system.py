@@ -185,7 +185,8 @@ class TinaEmissionNode(TinaBaseNode):
         self.outputs.new('tina_material_socket', 'material')
 
     def construct(self, cache):
-        return tina.Emission() * list(self.lut(cache, 'color'))
+        return tina.Emission() * list(self.lut(cache, 'color')
+                ) * self.lut(cache, 'strength')
 
 
 @register_node
@@ -220,7 +221,7 @@ class TinaMaterialOutputNode(TinaBaseNode):
         return self.lut(cache, 'material')
 
 
-def construct_node_tree(tree):
+def construct_material_output(tree):
     cache = {}
     material = tree.nodes['Material Output'].construct(cache)
     return material
