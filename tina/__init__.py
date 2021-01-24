@@ -1,18 +1,5 @@
-bl_info = {
-        'name': 'Tina',
-        'description': 'A soft renderer based on Taichi programming language',
-        'author': 'archibate <1931127624@qq.com>',
-        'version': (0, 0, 1),
-        'blender': (2, 81, 0),
-        'location': 'Render -> Tina',
-        'support': 'COMMUNITY',
-        'wiki_url': 'https://github.com/taichi-dev/taichi_three/wiki',
-        'tracker_url': 'https://github.com/taichi-dev/taichi_three/issues',
-        'category': 'Render',
-}
-
-__version__ = bl_info['version']
-__author__ = bl_info['author']
+__version__ = (0, 0, 1)
+__author__ = 'archibate <1931127624@qq.com>'
 __license__ = 'MIT'
 
 print('[Tina] version', '.'.join(map(str, __version__)))
@@ -29,18 +16,6 @@ def require_version(*ver):
         print(msg)
     elif __version__ < ver:
         raise RuntimeError(msg)
-
-
-def register():
-    print('[Tina] registering as blender addon')
-    from . import blend
-    blend.register()
-
-
-def unregister():
-    print('[Tina] unregistering as blender addon')
-    from . import blend
-    blend.unregister()
 
 
 from .lazimp import *
