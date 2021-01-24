@@ -83,7 +83,7 @@ class TinaMaterialPanel(bpy.types.Panel):
         layout = self.layout
         object = context.object
 
-        layout.prop(object.data.materials[0], 'tina_emission')
+        layout.prop_search(object, 'tina_material', bpy.data, 'node_groups')
 
 
 class TinaRenderEngine(bpy.types.RenderEngine):
@@ -107,19 +107,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
     def _update_scene(self, s, depsgraph):
         materials = {}
-        for material in depsgraph.ids:
-            if type(material).__name__ != 'Material':
-                continue
-
-            if material.tina_emission != 0:
-                matr = material.tina_emission * tina.Emission()
-            else:
-                raise Exception
-                matr = tina.PBR(basecolor=list(material.specular_color),
-                                metallic=material.metallic,
-                                roughness=material.roughness,
-                                specular=material.specular_intensity)
-            materials[material] = matr
+        import code; code.interact(local=locals())
 
         for object in depsgraph.ids:
             if type(object).__name__ != 'Object':
@@ -136,11 +124,13 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                     mesh.set_face_norms(norms)
                     mesh.set_face_coors(coors)
 
-                # import code; code.interact(local=locals())
-                if not len(object.data.materials):
+                if not object.tina_material:
                     matr = tina.Emission()
                 else:
-                    matr = materials[object.data.materials[0]]
+                    if object.tina_material not in materials:
+                        matr = construct_material_output(object.tina_material)
+                        materials[object.tina_material] = matr
+                    matr = materials[object.tina_material]
                 s.add_object(mesh, matr)
 
     # This is the method called by Blender for both final renders (F12) and
@@ -337,7 +327,7 @@ def get_panels():
 
 
 def register():
-    bpy.types.Material.tina_emission = bpy.props.FloatProperty(name='Emission', min=0.0, soft_min=0.0, default=0.0)
+    bpy.types.Material.tina_material = bpy.props.StringProperty(name='Material')
 
     bpy.utils.register_class(TinaRenderEngine)
     bpy.utils.register_class(TinaMaterialPanel)
@@ -354,8 +344,8 @@ def unregister():
         if 'TINA' in panel.COMPAT_ENGINES:
             panel.COMPAT_ENGINES.remove('TINA')
 
-    del bpy.types.Material.tina_emission
+    del bpy.types.Material.tina_material
 
 
-if __name__ == "__main__":
-    register()
+'''''
+'''''

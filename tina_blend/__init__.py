@@ -13,5 +13,23 @@ bl_info = {
 
 import tina
 
+
+from . import render_engine
+from . import node_system
+
+
+submodules = node_system, render_engine
+
+
+def register():
+    for mod in submodules:
+        mod.register()
+
+
+def unregister():
+    for mod in reversed(submodules):
+        mod.unregister()
+
+
 if tina.lazyguard:
-    from .render_engine import *
+    pass
