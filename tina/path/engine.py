@@ -50,7 +50,7 @@ class PathEngine:
 
     def get_image(self, raw=False):
         out = np.zeros((*self.res, 4), dtype=np.float32)
-        self._get_rgba(out, raw)
+        self._get_image(out, raw)
         return out
 
     @ti.func

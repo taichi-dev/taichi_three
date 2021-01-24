@@ -112,39 +112,43 @@ class CustomRenderEngine(bpy.types.RenderEngine):
     # small preview for materials, world and lights.
     def render(self, depsgraph):
         scene = depsgraph.scene
+        #view_layer = depsgraph.view_layer
+        #self.register_pass(scene, view_layer, 'Albedo', 3, 'rgb', 'COLOR')
         scale = scene.render.resolution_percentage / 100.0
         self.size_x = int(scene.render.resolution_x * scale)
         self.size_y = int(scene.render.resolution_y * scale)
         view, proj = calc_camera_matrices(depsgraph)
 
         ti.init(ti.gpu)
+
+        self.update_stats('Initializing', 'Loading scene')
         s = tina.PTScene((self.size_x, self.size_y))
         self._update_scene(s, depsgraph)
 
+        self.update_stats('Initializing', 'Constructing tree')
         s.update()
         s.engine.set_camera(view, proj)
-        for _ in range(8):
-            s.render()
-        img = np.ascontiguousarray(s.img.swapaxes(0, 1))
-        rect = img.reshape(self.size_x * self.size_y, 4).tolist()
-
-        '''
-        # Fill the render result with a flat color. The framebuffer is
-        # defined as a list of pixels, each pixel itself being a list of
-        # R,G,B,A values.
-        if self.is_preview:
-            color = [0.1, 0.2, 0.1, 1.0]
-        else:
-            color = [0.2, 0.1, 0.1, 1.0]
-
-        pixel_count = self.size_x * self.size_y
-        rect = [color] * pixel_count
-        '''
 
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
-        layer = result.layers[0].passes["Combined"]
-        layer.rect = rect
+
+        nsamples = 32
+        for samp in range(nsamples):
+            self.update_stats('Rendering', f'{samp}/{nsamples} Samples')
+            self.update_progress((samp + .5) / nsamples)
+            if self.test_break():
+                break
+            s.render()
+            img = s.img
+            img = np.ascontiguousarray(img.swapaxes(0, 1))
+            rect = img.reshape(self.size_x * self.size_y, 4).tolist()
+            layer = result.layers[0].passes["Combined"]
+            layer.rect = rect
+            self.update_result(result)
+        else:
+            self.update_stats('Done', f'{nsamples} Samples')
+            self.update_progress(1.0)
+
         self.end_result(result)
 
     # For viewport renders, this method gets called once at the start and
