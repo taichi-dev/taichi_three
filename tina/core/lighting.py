@@ -49,6 +49,10 @@ class Lighting:
     def add_light(self, dir=(0, 0, 1), pos=None, color=(1, 1, 1)):
         i = self.nlights[None]
         self.nlights[None] = i + 1
+        self.set_light(i, dir, pos, color)
+        return i
+
+    def set_light(self, i, dir=(0, 0, 1), pos=None, color=(1, 1, 1)):
         if pos is not None:
             dir = np.array(pos)
             dirw = 1
@@ -59,7 +63,6 @@ class Lighting:
         color = np.array(color)
         self.light_dirs[i] = dir.tolist() + [dirw]
         self.light_colors[i] = color.tolist()
-        return i
 
     def set_ambient_light(self, color):
         self.ambient_color[None] = np.array(color).tolist()

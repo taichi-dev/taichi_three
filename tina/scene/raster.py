@@ -242,3 +242,12 @@ class Scene:
         '''
 
         return tina.readgltf(path).extract(self)
+
+    @ti.kernel
+    def _fast_export_image(self, out: ti.ext_arr()):
+        for x, y in ti.grouped(self.img):
+            base = (y * self.res.x + x) * 3
+            r, g, b = self.img[x, y]
+            out[base + 0] = r
+            out[base + 1] = g
+            out[base + 2] = b
