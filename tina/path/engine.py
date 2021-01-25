@@ -159,24 +159,25 @@ class PathEngine:
             mtlid = self.geom.get_material_id(ind, gid)
             material = self.mtltab.get(mtlid)
 
-            ro += nrm * eps * 8
-
             if rs < 1:
                 rl += rc * (1 - rs) * material.emission()
 
+            # sample indirect light
+            new_rd, ir_wei, rough = material.sample(-rd, nrm, sign, rng)
+            if new_rd.dot(nrm) < 0:
+                # refract into / outof
+                ro -= nrm * eps * 8
+            else:
+                ro += nrm * eps * 8
+
             # cast shadow ray to lights
-            rs = smoothstep(material.estimate_roughness(), 0.0, 0.04)
+            rs = smoothstep(rough, 0.0, 0.04)
             if rs > 0:
                 rl += rc * rs * self.shadow_ray(ro, rd, material, nrm, rng)
 
-            # sample indirect light
-            rd, ir_wei = material.sample(-rd, nrm, sign, rng)
-            if rd.dot(nrm) < 0:
-                # refract into / outof
-                ro -= nrm * eps * 16
-
             tina.Input.clear_g_pars()
 
+            rd = new_rd
             rc *= ir_wei
 
         return ro, rd, rc, rl, rs

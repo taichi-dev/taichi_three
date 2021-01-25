@@ -21,10 +21,6 @@ class IMaterial(Node):
         return 0.0
 
     @ti.func
-    def estimate_roughness(self):
-        return 0.2
-
-    @ti.func
     def ambient(self):
         return 1.0
 
@@ -37,7 +33,7 @@ class IMaterial(Node):
         odir = axes @ spherical(u, v)
         odir = odir.normalized()
         brdf = self.brdf(nrm, idir, odir)
-        return odir, brdf
+        return odir, brdf, 0.2
 
     @ti.func
     def wav_sample(self, idir, nrm, sign, rng, wav):
@@ -121,32 +117,26 @@ class MixMaterial(IMaterial):
         return (1 - fac) * wei1 + fac * wei2
 
     @ti.func
-    def estimate_roughness(self):
-        fac = Vavg(self.param('factor'))
-        wei1 = self.mat1.estimate_roughness()
-        wei2 = self.mat2.estimate_roughness()
-        return (1 - fac) * wei1 + fac * wei2
-
-    @ti.func
     def sample(self, idir, nrm, sign, rng):
         fac = self.param('factor')
         odir = V(0., 0., 0.)
         wei = V(0., 0., 0.)
-        factor = lerp(Vavg(fac), eps * 3, 1 - eps * 3)
+        rough = 0.
+        factor = lerp(Vavg(fac), 0.08, 0.92)
         if rng.random() < factor:
-            odir, wei = self.mat2.sample(idir, nrm, sign, rng)
+            odir, wei, rough = self.mat2.sample(idir, nrm, sign, rng)
             wei *= fac / factor
         else:
-            odir, wei = self.mat1.sample(idir, nrm, sign, rng)
+            odir, wei, rough = self.mat1.sample(idir, nrm, sign, rng)
             wei *= (1 - fac) / (1 - factor)
-        return odir, wei
+        return odir, wei, rough
 
     @ti.func
     def wav_sample(self, idir, nrm, sign, rng, wav):
         fac = self.param('factor')
         odir = V(0., 0., 0.)
         wei = 0.
-        factor = lerp(Vavg(fac), eps * 3, 1 - eps * 3)
+        factor = lerp(Vavg(fac), 0.08, 0.92)
         if rng.random() < factor:
             odir, wei = self.mat2.wav_sample(idir, nrm, sign, rng, wav)
             wei *= fac / factor
@@ -196,14 +186,10 @@ class ScaleMaterial(IMaterial):
         return fac * wei
 
     @ti.func
-    def estimate_roughness(self):
-        return self.mat.estimate_roughness()
-
-    @ti.func
     def sample(self, idir, nrm, sign, rng):
         fac = self.param('factor')
-        odir, wei = self.mat.sample(idir, nrm, sign, rng)
-        return odir, wei * fac
+        odir, wei, rough = self.mat.sample(idir, nrm, sign, rng)
+        return odir, wei * fac, rough
 
     @ti.func
     def wav_sample(self, idir, nrm, sign, rng, wav):
@@ -253,20 +239,15 @@ class AddMaterial(IMaterial):
         return wei1 + wei2
 
     @ti.func
-    def estimate_roughness(self):
-        wei1 = self.mat1.estimate_roughness()
-        wei2 = self.mat2.estimate_roughness()
-        return (wei1 + wei2) / 2
-
-    @ti.func
     def sample(self, idir, nrm, sign, rng):
         odir = V(0., 0., 0.)
         wei = V(0., 0., 0.)
+        rough = 0.
         if rng.random_int() % 2 == 0:
-            odir, wei = self.mat1.sample(idir, nrm, sign, rng)
+            odir, wei, rough = self.mat1.sample(idir, nrm, sign, rng)
             wei *= 2
         else:
-            odir, wei = self.mat2.sample(idir, nrm, sign, rng)
+            odir, wei, rough = self.mat2.sample(idir, nrm, sign, rng)
             wei *= 2
         return odir, wei
 
@@ -365,10 +346,6 @@ class CookTorrance(IMaterial):
         tab['lut'] = lut
 
     @ti.func
-    def estimate_roughness(self):
-        return self.param('roughness')
-
-    @ti.func
     def sub_brdf(self, nrm, idir, odir):  # idir = L, odir = V
         roughness = self.param('roughness')
         f0 = self.param('fresnel')
@@ -425,7 +402,7 @@ class CookTorrance(IMaterial):
             odir = -odir
             fdf = 0.0  # TODO: fix energy loss on border
 
-        return odir, fdf
+        return odir, fdf, roughness
 
 
 class Lambert(IMaterial):
@@ -440,16 +417,12 @@ class Lambert(IMaterial):
         return 1.0
 
     @ti.func
-    def estimate_roughness(self):
-        return 1.0
-
-    @ti.func
     def sample(self, idir, nrm, sign, rng):
         u, v = rng.random(), rng.random()
         axes = tangentspace(nrm)
         odir = axes @ spherical(u, v)
         odir = odir.normalized()
-        return odir, 1.0
+        return odir, 1.0, 1.0
 
     @classmethod
     def cook_for_ibl(cls, tab, precision):
@@ -505,10 +478,6 @@ class Phong(IMaterial):
         return 1.0
 
     @ti.func
-    def estimate_roughness(self):
-        return 0.1
-
-    @ti.func
     def sample(self, idir, nrm, sign, rng):
         # https://developer.nvidia.com/gpugems/gpugems3/part-iii-rendering/chapter-20-gpu-based-importance-sampling
         m = self.param('shineness')
@@ -521,7 +490,7 @@ class Phong(IMaterial):
         if odir.dot(nrm) < 0:
             odir = -odir
             wei = 0.0
-        return odir, wei
+        return odir, wei, 0.1
 
 
 class Glass(IMaterial):
@@ -533,10 +502,6 @@ class Glass(IMaterial):
         return 0.0
 
     def ambient(self):
-        return 0.0
-
-    @ti.func
-    def estimate_roughness(self):
         return 0.0
 
     @ti.func
@@ -561,7 +526,7 @@ class Glass(IMaterial):
             if has_r == 0:
                 odir = rdir
             wei = (1 - fdf) / (1 - factor)
-        return odir, wei
+        return odir, wei, 0.0
 
     @ti.func
     def sample(self, idir, nrm, sign, rng):
@@ -584,16 +549,12 @@ class Transparent(IMaterial):
         return 0.0
 
     @ti.func
-    def estimate_roughness(self):
-        return 0.0
-
-    @ti.func
     def sample(self, idir, nrm, sign, rng):
-        return -idir, 1.
+        return -idir, 1.0, 0.0
 
     @ti.func
     def wav_sample(self, idir, nrm, sign, rng, rw):
-        return -idir, 1.
+        return -idir, 1.0
 
 
 class Mirror(IMaterial):
@@ -612,10 +573,6 @@ class Mirror(IMaterial):
         pass
 
     @ti.func
-    def estimate_roughness(self):
-        return 0.0
-
-    @ti.func
     def sample_ibl(self, tab, idir, nrm):
         odir = reflect(-idir, nrm)
         return tab['env'].sample(odir)
@@ -623,7 +580,7 @@ class Mirror(IMaterial):
     @ti.func
     def sample(self, idir, nrm, sign, rng):
         odir = reflect(-idir, nrm)
-        return odir, 1.0
+        return odir, 1.0, 0.0
 
 
 # noinspection PyMissingConstructor
@@ -643,11 +600,11 @@ class VirtualMaterial(IMaterial):
 
     @ti.func
     def sample(self, idir, nrm, sign, rng):
-        odir, wei = V(0., 0., 0.), V(0., 0., 0.)
+        odir, wei, rough = V(0., 0., 0.), V(0., 0., 0.), 0.
         for i, mat in ti.static(enumerate(self.materials)):
             if i == self.mid:
-                odir, wei = mat.sample(idir, nrm, sign, rng)
-        return odir, wei
+                odir, wei, rough = mat.sample(idir, nrm, sign, rng)
+        return odir, wei, rough
 
     @ti.func
     def wav_brdf(self, nrm, idir, odir, wav):
@@ -687,14 +644,6 @@ class VirtualMaterial(IMaterial):
         for i, mat in ti.static(enumerate(self.materials)):
             if i == self.mid:
                 wei = mat.estimate_emission()
-        return wei
-
-    @ti.func
-    def estimate_roughness(self):
-        wei = 0.
-        for i, mat in ti.static(enumerate(self.materials)):
-            if i == self.mid:
-                wei = mat.estimate_roughness()
         return wei
 
 
@@ -737,7 +686,7 @@ class Emission(IMaterial):
 
     @ti.func
     def sample(self, idir, nrm, sign, rng):
-        return idir, 0.0
+        return idir, 0.0, 0.0
 
 
 def Classic(color='color', shineness=32, specular=0.4):
