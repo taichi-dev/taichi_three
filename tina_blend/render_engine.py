@@ -86,6 +86,41 @@ class TinaMaterialPanel(bpy.types.Panel):
         layout.prop_search(object, 'tina_material', bpy.data, 'node_groups')
 
 
+class TinaLightPanel(bpy.types.Panel):
+    '''Tina light options'''
+
+    bl_label = 'Tina Light'
+    bl_idname = 'DATA_PT_tina'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'data'
+
+    def draw(self, context):
+        layout = self.layout
+        object = context.object
+
+        if object.type == 'LIGHT':
+            layout.prop(object.data, 'tina_color')
+            layout.prop(object.data, 'tina_strength')
+
+
+class TinaWorldPanel(bpy.types.Panel):
+    '''Tina world options'''
+
+    bl_label = 'Tina World'
+    bl_idname = 'WORLD_PT_tina'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'world'
+
+    def draw(self, context):
+        layout = self.layout
+        world = context.scene.world
+
+        layout.prop(world, 'tina_color')
+        layout.prop(world, 'tina_strength')
+
+
 class TinaRenderEngine(bpy.types.RenderEngine):
     # These three members are used by blender to set up the
     # RenderEngine; define its internal name, visible name and capabilities.
@@ -105,39 +140,67 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     def __del__(self):
         pass
 
-    def _update_scene(self, s, depsgraph):
+    def __update_light_object(self, s, object, depsgraph):
+        light = object.data
+        if light.type == 'POINT':
+            print('adding point light', object.name)
+
+            color = (light.tina_strength * np.array(light.tina_color)).tolist()
+            pos = np.array(object.matrix_world) @ np.array([0, 0, 1, 0])
+
+            @ti.materialize_callback
+            def init_light():
+                s.lighting.add_light(pos=pos, color=color)
+
+        elif light.type == 'SUN':
+            print('adding sun light', object.name)
+
+            color = (light.tina_strength * np.array(light.tina_color)).tolist()
+            dir = np.array(object.matrix_world) @ np.array([0, 0, 0, 1])
+
+            @ti.materialize_callback
+            def init_light():
+                s.lighting.add_light(dir=dir, color=color)
+
+    def __update_mesh_object(self, s, object, depsgraph):
+        print('adding mesh object', object.name)
+
+        mesh = tina.MeshTransform(tina.SimpleMesh())
+        verts, norms, coors = blender_get_object_mesh(object, depsgraph)
+        world = np.array(object.matrix_world)
+
+        @ti.materialize_callback
+        def init_mesh():
+            mesh.set_transform(world)
+            mesh.set_face_verts(verts)
+            mesh.set_face_norms(norms)
+            mesh.set_face_coors(coors)
+
+        if not object.tina_material:
+            matr = tina.PBR()#tina.Emission() * [.9, .4, .9]
+        else:
+            if object.tina_material not in materials:
+                tree = bpy.data.node_groups[object.tina_material]
+                from .node_system import construct_material_output
+                matr = construct_material_output(tree)
+                materials[object.tina_material] = matr
+            matr = materials[object.tina_material]
+        s.add_object(mesh, matr)
+
+    def __update_scene(self, s, depsgraph):
         materials = {}
         # import code; code.interact(local=locals())
 
+        @ti.materialize_callback
+        def clear_lights():
+            s.lighting.clear_lights()
+
         for object in depsgraph.ids:
-            if type(object).__name__ != 'Object':
-                continue
-            if object.type == 'MESH':
-                print('adding object', object.name)
-
-                @eval('lambda x: x()')
-                def _():
-                    mesh = tina.MeshTransform(tina.SimpleMesh())
-                    verts, norms, coors = blender_get_object_mesh(object, depsgraph)
-                    world = np.array(object.matrix_world)
-
-                    @ti.materialize_callback
-                    def init_mesh():
-                        mesh.set_transform(world)
-                        mesh.set_face_verts(verts)
-                        mesh.set_face_norms(norms)
-                        mesh.set_face_coors(coors)
-
-                    if not object.tina_material:
-                        matr = tina.Emission() * [.9, .4, .9]
-                    else:
-                        if object.tina_material not in materials:
-                            tree = bpy.data.node_groups[object.tina_material]
-                            from .node_system import construct_material_output
-                            matr = construct_material_output(tree)
-                            materials[object.tina_material] = matr
-                        matr = materials[object.tina_material]
-                    s.add_object(mesh, matr)
+            if isinstance(object, bpy.types.Object):
+                if object.type == 'MESH':
+                    self.__update_mesh_object(s, object, depsgraph)
+                elif object.type == 'LIGHT':
+                    self.__update_light_object(s, object, depsgraph)
 
     # This is the method called by Blender for both final renders (F12) and
     # small preview for materials, world and lights.
@@ -148,28 +211,42 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.size_y = int(scene.render.resolution_y * scale)
         view, proj = calc_camera_matrices(depsgraph)
 
-        ti.init(ti.gpu)
+        is_pt = False
+
+        ti.init(ti.cpu)
 
         self.update_stats('Initializing', 'Loading scene')
-        s = tina.PTScene((self.size_x, self.size_y))
-        #s = tina.Scene((self.size_x, self.size_y), taa=True)
-        self._update_scene(s, depsgraph)
+        if is_pt:
+            s = tina.PTScene((self.size_x, self.size_y))
+        else:
+            s = tina.Scene((self.size_x, self.size_y),
+                    bgcolor=(np.array(scene.world.tina_color)
+                        * scene.world.tina_strength).tolist(),
+                    taa=True)
+        self.__update_scene(s, depsgraph)
 
-        self.update_stats('Initializing', 'Constructing tree')
-        s.update()
+        if is_pt:
+            self.update_stats('Initializing', 'Constructing tree')
+            s.update()
+        else:
+            self.update_stats('Initializing', 'Materializing layout')
         s.engine.set_camera(view, proj)
 
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
 
-        nsamples = 64
+        nsamples = 1
         for samp in range(nsamples):
             self.update_stats('Rendering', f'{samp}/{nsamples} Samples')
             self.update_progress((samp + .5) / nsamples)
             if self.test_break():
                 break
             s.render()
-            img = s.raw_img**2.2
+            if is_pt:
+                img = s.raw_img**2.2
+            else:
+                img = np.concatenate([s.img.to_numpy(),
+                    np.ones((self.size_x, self.size_y, 1))], axis=2)
             img = np.ascontiguousarray(img.swapaxes(0, 1))
             rect = img.reshape(self.size_x * self.size_y, 4).tolist()
             layer = result.layers[0].passes["Combined"]
@@ -334,9 +411,15 @@ def get_panels():
 
 def register():
     bpy.types.Object.tina_material = bpy.props.StringProperty(name='Material')
+    bpy.types.Light.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(1, 1, 1))
+    bpy.types.Light.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1)
+    bpy.types.World.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(0.04, 0.04, 0.04))
+    bpy.types.World.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1)
 
     bpy.utils.register_class(TinaRenderEngine)
     bpy.utils.register_class(TinaMaterialPanel)
+    bpy.utils.register_class(TinaLightPanel)
+    bpy.utils.register_class(TinaWorldPanel)
 
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
@@ -345,12 +428,18 @@ def register():
 def unregister():
     bpy.utils.unregister_class(TinaRenderEngine)
     bpy.utils.unregister_class(TinaMaterialPanel)
+    bpy.utils.unregister_class(TinaLightPanel)
+    bpy.utils.unregister_class(TinaWorldPanel)
 
     for panel in get_panels():
         if 'TINA' in panel.COMPAT_ENGINES:
             panel.COMPAT_ENGINES.remove('TINA')
 
     del bpy.types.Object.tina_material
+    del bpy.types.Light.tina_color
+    del bpy.types.Light.tina_strength
+    del bpy.types.World.tina_color
+    del bpy.types.World.tina_strength
 
 
 '''''
