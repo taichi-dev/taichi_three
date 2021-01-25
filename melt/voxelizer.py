@@ -25,7 +25,11 @@ class MeshVoxelizer:
         #self.block = ti.root.pointer(ti.ijk, self.res // 8)
         #self.block.dense(ti.ijk, 8).place(sel<F4>f.voxels)
 
-    def voxelize(self, verts):
+    def voxelize(self, verts, vmin=None, vmax=None):
+        if vmin is None or vmax is None:
+            vmin, vmax = np.min(verts), np.max(verts)
+        verts = (verts - vmin) / (vmax - vmin)
+
         self._voxelize(verts)
         self._update(None)
 

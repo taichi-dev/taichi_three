@@ -282,7 +282,7 @@ def main():
 
     vox = MeshVoxelizer([64] * 3)
     verts, faces = tina.readobj('assets/bunny.obj', simple=True)
-    vox.voxelize(verts[faces] * 0.6 + 0.5)
+    vox.voxelize(verts[faces])
 
     gui = ti.GUI()
 
@@ -296,7 +296,7 @@ def main():
         sig.value = 5
 
     def reset():
-        mpm.seed_volume(vox, V(-.5, -.5, -.5), V(.5, .5, .5),
+        mpm.seed_volume(vox, -.35, .35,
                 V(0., 0., 0.), mpm.JELLY, 1)
 
     reset()
