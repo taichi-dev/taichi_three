@@ -162,14 +162,14 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
 
-        nsamples = 32
+        nsamples = 64
         for samp in range(nsamples):
             self.update_stats('Rendering', f'{samp}/{nsamples} Samples')
             self.update_progress((samp + .5) / nsamples)
             if self.test_break():
                 break
             s.render()
-            img = s.img
+            img = s.raw_img**2.2
             img = np.ascontiguousarray(img.swapaxes(0, 1))
             rect = img.reshape(self.size_x * self.size_y, 4).tolist()
             layer = result.layers[0].passes["Combined"]

@@ -63,11 +63,13 @@ class PathEngine:
         rng = tina.TaichiRNG()
         for depth in range(maxdepth):
             ro, rd, rc, rl, rs = self.transmit_ray(ro, rd, rc, rl, rs, rng)
+            '''
             rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.04, 0.95)
             if ti.random() >= rate:
                 rc *= 0
             else:
                 rc /= rate
+            '''
             if not Vany(rc > 0):
                 break
 
@@ -77,7 +79,7 @@ class PathEngine:
     def trace(self, maxdepth: int, surviverate: float):
         self.uniqid[None] += 1
         for i in ti.smart(self.stack):
-            I = V(i // self.res.x, i % self.res.x)
+            I = V(i % self.res.x, i // self.res.x)
             rl = self.trace_ray(I, maxdepth, surviverate)
             self.img[I] += rl
             self.cnt[I] += 1
