@@ -113,27 +113,31 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if type(object).__name__ != 'Object':
                 continue
             if object.type == 'MESH':
-                mesh = tina.MeshTransform(tina.SimpleMesh())
-                verts, norms, coors = blender_get_object_mesh(object, depsgraph)
-                world = np.array(object.matrix_world)
+                print('adding object', object.name)
 
-                @ti.materialize_callback
-                def init_mesh():
-                    mesh.set_transform(world)
-                    mesh.set_face_verts(verts)
-                    mesh.set_face_norms(norms)
-                    mesh.set_face_coors(coors)
+                @eval('lambda x: x()')
+                def _():
+                    mesh = tina.MeshTransform(tina.SimpleMesh())
+                    verts, norms, coors = blender_get_object_mesh(object, depsgraph)
+                    world = np.array(object.matrix_world)
 
-                if not object.tina_material:
-                    matr = tina.Emission()
-                else:
-                    if object.tina_material not in materials:
-                        tree = bpy.data.node_groups[object.tina_material]
-                        from .node_system import construct_material_output
-                        matr = construct_material_output(tree)
-                        materials[object.tina_material] = matr
-                    matr = materials[object.tina_material]
-                s.add_object(mesh, matr)
+                    @ti.materialize_callback
+                    def init_mesh():
+                        mesh.set_transform(world)
+                        mesh.set_face_verts(verts)
+                        mesh.set_face_norms(norms)
+                        mesh.set_face_coors(coors)
+
+                    if not object.tina_material:
+                        matr = tina.Emission() * [.9, .4, .9]
+                    else:
+                        if object.tina_material not in materials:
+                            tree = bpy.data.node_groups[object.tina_material]
+                            from .node_system import construct_material_output
+                            matr = construct_material_output(tree)
+                            materials[object.tina_material] = matr
+                        matr = materials[object.tina_material]
+                    s.add_object(mesh, matr)
 
     # This is the method called by Blender for both final renders (F12) and
     # small preview for materials, world and lights.
