@@ -82,24 +82,24 @@ class MeshVoxelizer:
                             self.temp[p, q, s] += inc
 
 
-vox = MeshVoxelizer([256] * 3)
-verts, faces = tina.readobj('assets/bunny.obj', simple=True)
-verts *= 0.6
-verts += 0.5
+if __name__ == '__main__':
+    vox = MeshVoxelizer([256] * 3)
+    verts, faces = tina.readobj('assets/monkey.obj', simple=True)
+    verts *= 0.5
+    verts += 0.5
 
-scene = tina.Scene(taa=True)
-#model = tina.SimpleParticles()
-#scene.add_object(model)
-volume = tina.SimpleVolume(vox.res.x)
-scene.add_object(volume)
+    scene = tina.Scene(taa=True)
+    volume = tina.SimpleVolume(vox.res.x)
+    scene.add_object(volume)
+    #model = tina.MeshToWire(tina.MeshModel('assets/monkey.obj'))
+    #scene.add_object(model)
 
-vox.voxelize(verts[faces])
-volume.set_volume_density(np.abs(vox.voxels.to_numpy()) * 0.05)
+    vox.voxelize(verts[faces])
+    volume.set_volume_density(np.abs(vox.voxels.to_numpy()) * 0.05)
 
-gui = ti.GUI()
-while gui.running:
-    scene.input(gui)
-    #model.set_particles(pars)
-    scene.render()
-    gui.set_image(scene.img)
-    gui.show()
+    gui = ti.GUI()
+    while gui.running:
+        scene.input(gui)
+        scene.render()
+        gui.set_image(scene.img)
+        gui.show()

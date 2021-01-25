@@ -1,4 +1,5 @@
 from tina.advans import *
+from voxelizer import MeshVoxelizer
 
 
 @ti.func
@@ -77,6 +78,20 @@ class MPMSolver:
         for c in [self.x, self.v, self.C, self.F, self.material, self.Jp]:
             self.particle.place(c)
         self.particle_num = ti.field(int, ())
+
+    @ti.kernel
+    def seed_volume(self, vox: ti.template(),
+            bmin: ti.template(), bmax: ti.template(),
+            vel: ti.template(), material: ti.template(),
+            ppg: ti.template()):
+        for I in ti.grouped(vox.voxels):
+            if vox.voxels[I] <= 0:
+                continue
+            n = ti.atomic_add(self.particle_num[None], ppg)
+            for i in range(ppg):
+                bias = V(ti.random(), ti.random(), ti.random())
+                pos = lerp((I + bias) / vox.res, bmin, bmax)
+                self.seed_particle(n + i, pos, vel, material)
 
     @ti.func
     def seed_particle(self, i, pos, vel, material):
@@ -265,6 +280,10 @@ def main():
     wire = tina.MeshToWire(tina.PrimitiveMesh.asset('cube'))
     scene.add_object(wire)
 
+    vox = MeshVoxelizer([64] * 3)
+    verts, faces = tina.readobj('assets/bunny.obj', simple=True)
+    vox.voxelize(verts[faces] * 0.6 + 0.5)
+
     gui = ti.GUI()
 
     scene.init_control(gui, blendish=True)
@@ -276,12 +295,9 @@ def main():
         sig = gui.slider('sig', 0, 8, 0.1)
         sig.value = 5
 
-    @ti.kernel
     def reset():
-        for i in range(mpm.res.x**mpm.dim):
-            pos = V(*[ti.random() for i in range(mpm.dim)]) * 0.5
-            vel = ti.Vector.zero(float, mpm.dim)
-            mpm.seed_particle(i, pos, vel, mpm.WATER)
+        mpm.seed_volume(vox, V(-.5, -.5, -.5), V(.5, .5, .5),
+                V(0., 0., 0.), mpm.JELLY, 1)
 
     reset()
     while gui.running:
