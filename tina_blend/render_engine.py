@@ -121,6 +121,30 @@ class TinaWorldPanel(bpy.types.Panel):
         layout.prop(world, 'tina_strength')
 
 
+class TinaRenderPanel(bpy.types.Panel):
+    '''Tina render options'''
+
+    bl_label = 'Tina Render'
+    bl_idname = 'RENDER_PT_tina'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'render'
+
+    def draw(self, context):
+        layout = self.layout
+        options = context.scene.tina_render
+
+        row = layout.row()
+        row.prop(options, 'taa')
+        row.prop(options, 'fxaa')
+        row.prop(options, 'ssr')
+        row.prop(options, 'ssao')
+        row = layout.row()
+        row.prop(options, 'blooming')
+        row.prop(options, 'smoothing')
+        row.prop(options, 'texturing')
+
+
 class TinaRenderEngine(bpy.types.RenderEngine):
     # These three members are used by blender to set up the
     # RenderEngine; define its internal name, visible name and capabilities.
@@ -177,7 +201,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             mesh.set_face_coors(coors)
 
         if not object.tina_material:
-            matr = tina.PBR()#tina.Emission() * [.9, .4, .9]
+            matr = tina.PBR()
         else:
             if object.tina_material not in materials:
                 tree = bpy.data.node_groups[object.tina_material]
@@ -219,10 +243,18 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         if is_pt:
             s = tina.PTScene((self.size_x, self.size_y))
         else:
+            options = scene.tina_render
             s = tina.Scene((self.size_x, self.size_y),
                     bgcolor=(np.array(scene.world.tina_color)
                         * scene.world.tina_strength).tolist(),
-                    taa=True)
+                    taa=options.taa,
+                    fxaa=options.fxaa,
+                    ssr=options.ssr,
+                    ssao=options.ssao,
+                    blooming=options.blooming,
+                    smoothing=options.smoothing,
+                    texturing=options.texturing,
+                    )
         self.__update_scene(s, depsgraph)
 
         if is_pt:
@@ -409,17 +441,32 @@ def get_panels():
     return panels
 
 
+class TinaRenderProperties(bpy.types.PropertyGroup):
+    taa: bpy.props.BoolProperty(name='TAA', default=True)
+    ssr: bpy.props.BoolProperty(name='SSR', default=False)
+    ssao: bpy.props.BoolProperty(name='SSAO', default=False)
+    fxaa: bpy.props.BoolProperty(name='FXAA', default=False)
+    blooming: bpy.props.BoolProperty(name='Blooming', default=False)
+    smoothing: bpy.props.BoolProperty(name='Smoothing', default=True)
+    texturing: bpy.props.BoolProperty(name='Texturing', default=True)
+
+
 def register():
+    bpy.utils.register_class(TinaRenderProperties)
+
     bpy.types.Object.tina_material = bpy.props.StringProperty(name='Material')
     bpy.types.Light.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(1, 1, 1))
     bpy.types.Light.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1)
     bpy.types.World.tina_color = bpy.props.FloatVectorProperty(name='Color', subtype='COLOR', min=0, max=1, default=(0.04, 0.04, 0.04))
     bpy.types.World.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1)
+    bpy.types.World.tina_strength = bpy.props.FloatProperty(name='Strength', min=0, default=1)
+    bpy.types.Scene.tina_render = bpy.props.PointerProperty(name='tina', type=TinaRenderProperties)
 
     bpy.utils.register_class(TinaRenderEngine)
     bpy.utils.register_class(TinaMaterialPanel)
     bpy.utils.register_class(TinaLightPanel)
     bpy.utils.register_class(TinaWorldPanel)
+    bpy.utils.register_class(TinaRenderPanel)
 
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
@@ -430,6 +477,7 @@ def unregister():
     bpy.utils.unregister_class(TinaMaterialPanel)
     bpy.utils.unregister_class(TinaLightPanel)
     bpy.utils.unregister_class(TinaWorldPanel)
+    bpy.utils.unregister_class(TinaRenderPanel)
 
     for panel in get_panels():
         if 'TINA' in panel.COMPAT_ENGINES:
@@ -440,6 +488,9 @@ def unregister():
     del bpy.types.Light.tina_strength
     del bpy.types.World.tina_color
     del bpy.types.World.tina_strength
+    del bpy.types.Scene.tina_render
+
+    bpy.utils.unregister_class(TinaRenderProperties)
 
 
 '''''
