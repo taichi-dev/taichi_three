@@ -33,7 +33,7 @@ class MPMSolver:
         self.p_vol = self.dx**self.dim
         self.p_mass = self.p_vol * self.p_rho
         self.gravity = tovector((0, 9.8, 0)[:self.dim])
-        self.E = 1e5 * size * E_scale
+        self.E = 1e6 * size * E_scale
         self.nu = 0.2
 
         self.mu_0 = self.E / (2 * (1 + self.nu))
@@ -50,7 +50,7 @@ class MPMSolver:
 
         indices = ti.ij if self.dim == 2 else ti.ijk
 
-        grid_size = 4096
+        grid_size = 1024
         grid_block_size = 128
         leaf_block_size = 16 if self.dim == 2 else 8
         self.grid = ti.root.pointer(indices, grid_size // grid_block_size)
@@ -83,7 +83,7 @@ class MPMSolver:
     @ti.kernel
     def reset(self):
         for i in range(self.res.x**self.dim):
-            pos = V(*[ti.random() for i in range(self.dim)]) * 0.7
+            pos = V(*[ti.random() for i in range(self.dim)]) * 0.5
             vel = ti.Vector.zero(float, self.dim)
             self.seed_particle(i, pos, vel, self.WATER)
 
