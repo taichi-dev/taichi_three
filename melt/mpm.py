@@ -78,15 +78,6 @@ class MPMSolver:
             self.particle.place(c)
         self.particle_num = ti.field(int, ())
 
-        ti.materialize_callback(self.reset)
-
-    @ti.kernel
-    def reset(self):
-        for i in range(self.res.x**self.dim):
-            pos = V(*[ti.random() for i in range(self.dim)]) * 0.5
-            vel = ti.Vector.zero(float, self.dim)
-            self.seed_particle(i, pos, vel, self.WATER)
-
     @ti.func
     def seed_particle(self, i, pos, vel, material):
         self.x[i] = pos
@@ -256,6 +247,7 @@ class MPMSolver:
             self.grid_boundary()
             self.g2p()
 
+
 def main():
     use_mciso = False
 
@@ -284,10 +276,18 @@ def main():
         sig = gui.slider('sig', 0, 8, 0.1)
         sig.value = 5
 
+    @ti.kernel
+    def reset():
+        for i in range(mpm.res.x**mpm.dim):
+            pos = V(*[ti.random() for i in range(mpm.dim)]) * 0.5
+            vel = ti.Vector.zero(float, mpm.dim)
+            mpm.seed_particle(i, pos, vel, mpm.WATER)
+
+    reset()
     while gui.running:
         scene.input(gui)
         if gui.is_pressed('r'):
-            mpm.reset()
+            reset()
         if not gui.is_pressed(gui.SPACE):
             mpm.step()
         if use_mciso:
@@ -301,6 +301,8 @@ def main():
         gui.show()
 
     ti.kernel_profiler_print()
+
+    np.save('/tmp/mpm.npy', mpm.get_particle_pos())
 
 def main2():
     ti.init(ti.gpu, make_block_local=False)
