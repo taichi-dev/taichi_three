@@ -75,7 +75,7 @@ class SSR:
         nsamples = self.nsamples[None]
         nsteps = self.nsteps[None]
         for i in range(nsamples):
-            odir, wei = material.sample(viewdir, normal, 1, rng)
+            odir, wei, rough = material.sample(viewdir, normal, 1, rng)
 
             step = self.stepsize[None] / (
                     ti.sqrt(1 - odir.dot(viewdir)**2) * nsteps)

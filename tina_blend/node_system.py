@@ -148,7 +148,7 @@ class TinaPBRNode(TinaBaseNode):
         self.inputs.new('tina_clamped_value_socket', 'roughness')
         self.inputs.new('tina_clamped_value_socket', 'metallic')
         self.inputs.new('tina_clamped_value_socket', 'specular')
-        self.outputs.new('tina_material_socket', 'material')
+        self.outputs.new('tina_material_socket', 'matr')
 
     def construct(self, cache):
         return tina.PBR(basecolor=list(self.lut(cache, 'basecolor')),
@@ -166,7 +166,7 @@ class TinaDiffuseNode(TinaBaseNode):
     def init(self, context):
         self.width = 150
         self.inputs.new('tina_color_socket', 'color')
-        self.outputs.new('tina_material_socket', 'material')
+        self.outputs.new('tina_material_socket', 'matr')
 
     def construct(self, cache):
         return tina.Diffuse(color=list(self.lut(cache, 'color')))
@@ -182,7 +182,7 @@ class TinaEmissionNode(TinaBaseNode):
         self.width = 150
         self.inputs.new('tina_color_socket', 'color')
         self.inputs.new('tina_value_socket', 'strength')
-        self.outputs.new('tina_material_socket', 'material')
+        self.outputs.new('tina_material_socket', 'matr')
 
     def construct(self, cache):
         return tina.Emission() * list(self.lut(cache, 'color')
@@ -199,12 +199,102 @@ class TinaGlassNode(TinaBaseNode):
         self.width = 150
         self.inputs.new('tina_color_socket', 'color')
         self.inputs.new('tina_value_socket', 'ior')
-        self.outputs.new('tina_material_socket', 'material')
+        self.outputs.new('tina_material_socket', 'matr')
 
     def construct(self, cache):
         return tina.Glass(
                 color=list(self.lut(cache, 'color')),
                 ior=self.lut(cache, 'ior'))
+
+
+@register_node
+class TinaMirrorNode(TinaBaseNode):
+    bl_idname = 'tina_mirror_node'
+    bl_label = 'Mirror'
+    category = 'Material'
+
+    def init(self, context):
+        self.width = 150
+        self.inputs.new('tina_color_socket', 'color')
+        self.outputs.new('tina_material_socket', 'matr')
+
+    def construct(self, cache):
+        return tina.Mirror() * list(self.lut(cache, 'color'))
+
+
+@register_node
+class TinaMixMaterialNode(TinaBaseNode):
+    bl_idname = 'tina_mix_material_node'
+    bl_label = 'Mix Material'
+    category = 'Material'
+
+    def init(self, context):
+        self.width = 150
+        self.inputs.new('tina_material_socket', 'mat0')
+        self.inputs.new('tina_material_socket', 'mat1')
+        self.inputs.new('tina_clamped_value_socket', 'factor')
+        self.outputs.new('tina_material_socket', 'matr')
+
+    def construct(self, cache):
+        return tina.MixMaterial(
+                self.lut(cache, 'mat0'),
+                self.lut(cache, 'mat1'),
+                self.lut(cache, 'fac'))
+
+
+@register_node
+class TinaAddMaterialNode(TinaBaseNode):
+    bl_idname = 'tina_add_material_node'
+    bl_label = 'Add Material'
+    category = 'Material'
+
+    def init(self, context):
+        self.width = 150
+        self.inputs.new('tina_material_socket', 'mat0')
+        self.inputs.new('tina_material_socket', 'mat1')
+        self.outputs.new('tina_material_socket', 'matr')
+
+    def construct(self, cache):
+        return tina.AddMaterial(
+                self.lut(cache, 'mat0'),
+                self.lut(cache, 'mat1'))
+
+
+@register_node
+class TinaScaleMaterialNode(TinaBaseNode):
+    bl_idname = 'tina_scale_material_node'
+    bl_label = 'Scale Material'
+    category = 'Material'
+
+    def init(self, context):
+        self.width = 150
+        self.inputs.new('tina_material_socket', 'mat0')
+        self.inputs.new('tina_color_socket', 'color')
+        self.inputs.new('tina_value_socket', 'strength')
+        self.outputs.new('tina_material_socket', 'matr')
+
+    def construct(self, cache):
+        return tina.ScaleMaterial(self.lut(cache, 'mat0',
+                (np.array(self.lut(cache, 'color'))
+                    * self.lut(cache, 'strength')).tolist()))
+
+
+@register_node
+class TinaGeometryInputNode(TinaBaseNode):
+    bl_idname = 'tina_geometry_input_node'
+    bl_label = 'Geometry Input'
+    category = 'Input'
+
+    def init(self, context):
+        self.width = 150
+        self.outputs.new('tina_vector_socket', 'pos')
+        self.outputs.new('tina_vector_socket', 'normal')
+        self.outputs.new('tina_vector_socket', 'texcoord')
+
+    def construct(self, cache):
+        return dict(pos=tina.Input('pos'),
+                normal=tina.Input('normal'),
+                texcoord=tina.Input('texcoord'))
 
 
 @register_node

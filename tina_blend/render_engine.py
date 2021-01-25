@@ -186,7 +186,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             def init_light():
                 s.lighting.add_light(dir=dir, color=color)
 
-    def __update_mesh_object(self, s, object, depsgraph):
+    def __update_mesh_object(self, s, object, depsgraph, materials):
         print('adding mesh object', object.name)
 
         mesh = tina.MeshTransform(tina.SimpleMesh())
@@ -222,7 +222,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         for object in depsgraph.ids:
             if isinstance(object, bpy.types.Object):
                 if object.type == 'MESH':
-                    self.__update_mesh_object(s, object, depsgraph)
+                    self.__update_mesh_object(s, object, depsgraph, materials)
                 elif object.type == 'LIGHT':
                     self.__update_light_object(s, object, depsgraph)
 
