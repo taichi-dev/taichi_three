@@ -8,11 +8,6 @@ class IMaterial(Node):
         raise NotImplementedError(type(self))
 
     @ti.func
-    def wav_brdf(self, nrm, idir, odir, wav):
-        color = self.brdf(nrm, idir, odir)
-        return tina.rgb_at_wav(color, wav)
-
-    @ti.func
     def emission(self):
         return 0.0
 
@@ -34,11 +29,6 @@ class IMaterial(Node):
         odir = odir.normalized()
         brdf = self.brdf(nrm, idir, odir)
         return odir, brdf, 0.2
-
-    @ti.func
-    def wav_sample(self, idir, nrm, sign, rng, wav):
-        odir, wei = self.sample(idir, nrm, sign, rng)
-        return odir, tina.rgb_at_wav(wei, wav)
 
     @classmethod
     def cook_for_ibl(cls, tab, precision):
@@ -132,20 +122,6 @@ class MixMaterial(IMaterial):
         return odir, wei, rough
 
     @ti.func
-    def wav_sample(self, idir, nrm, sign, rng, wav):
-        fac = self.param('factor')
-        odir = V(0., 0., 0.)
-        wei = 0.
-        factor = lerp(Vavg(fac), 0.08, 0.92)
-        if rng.random() < factor:
-            odir, wei = self.mat2.wav_sample(idir, nrm, sign, rng, wav)
-            wei *= fac / factor
-        else:
-            odir, wei = self.mat1.wav_sample(idir, nrm, sign, rng, wav)
-            wei *= (1 - fac) / (1 - factor)
-        return odir, wei
-
-    @ti.func
     def sample_ibl(self, ibltab, idir, nrm):
         fac = self.param('factor')
         wei1 = self.mat1.sample_ibl(ibltab, idir, nrm)
@@ -190,12 +166,6 @@ class ScaleMaterial(IMaterial):
         fac = self.param('factor')
         odir, wei, rough = self.mat.sample(idir, nrm, sign, rng)
         return odir, wei * fac, rough
-
-    @ti.func
-    def wav_sample(self, idir, nrm, sign, rng, wav):
-        fac = self.param('factor')
-        odir, wei = self.mat.wav_sample(idir, nrm, sign, rng, wav)
-        return odir, wei * fac
 
     @ti.func
     def sample_ibl(self, ibls: ti.template(), idir, nrm):
@@ -248,18 +218,6 @@ class AddMaterial(IMaterial):
             wei *= 2
         else:
             odir, wei, rough = self.mat2.sample(idir, nrm, sign, rng)
-            wei *= 2
-        return odir, wei
-
-    @ti.func
-    def wav_sample(self, idir, nrm, sign, rng, wav):
-        odir = V(0., 0., 0.)
-        wei = 0.
-        if rng.random_int() % 2 == 0:
-            odir, wei = self.mat1.wav_sample(idir, nrm, sign, rng, wav)
-            wei *= 2
-        else:
-            odir, wei = self.mat2.wav_sample(idir, nrm, sign, rng, wav)
             wei *= 2
         return odir, wei
 
@@ -494,8 +452,8 @@ class Phong(IMaterial):
 
 
 class Glass(IMaterial):
-    arguments = ['ior', 'ior0', 'ior1']
-    defaults = [1.52, 1.51, 1.53]
+    arguments = ['ior']
+    defaults = [1.52]
 
     @ti.func
     def brdf(self, nrm, idir, odir):
@@ -533,12 +491,6 @@ class Glass(IMaterial):
         ior = self.param('ior')
         return self._sample(idir, nrm, sign, rng, ior)
 
-    @ti.func
-    def wav_sample(self, idir, nrm, sign, rng, rw):
-        ior0, ior1 = self.param('ior0'), self.param('ior1')
-        ior = lerp(unlerp(rw, 780, 380), ior0, ior1)
-        return self._sample(idir, nrm, sign, rng, ior)
-
 
 class Transparent(IMaterial):
     @ti.func
@@ -551,10 +503,6 @@ class Transparent(IMaterial):
     @ti.func
     def sample(self, idir, nrm, sign, rng):
         return -idir, 1.0, 0.0
-
-    @ti.func
-    def wav_sample(self, idir, nrm, sign, rng, rw):
-        return -idir, 1.0
 
 
 class Mirror(IMaterial):
@@ -605,22 +553,6 @@ class VirtualMaterial(IMaterial):
             if i == self.mid:
                 odir, wei, rough = mat.sample(idir, nrm, sign, rng)
         return odir, wei, rough
-
-    @ti.func
-    def wav_brdf(self, nrm, idir, odir, wav):
-        wei = 0.
-        for i, mat in ti.static(enumerate(self.materials)):
-            if i == self.mid:
-                wei = mat.wav_brdf(nrm, idir, odir, wav)
-        return wei
-
-    @ti.func
-    def wav_sample(self, idir, nrm, sign, rng, wav):
-        odir, wei = V(0., 0., 0.), 0.
-        for i, mat in ti.static(enumerate(self.materials)):
-            if i == self.mid:
-                odir, wei = mat.wav_sample(idir, nrm, sign, rng, wav)
-        return odir, wei
 
     @ti.func
     def ambient(self):
