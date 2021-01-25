@@ -31,5 +31,4 @@ def unregister():
         mod.unregister()
 
 
-if tina.lazyguard:
-    pass
+tina.lazyguard()

@@ -579,7 +579,3 @@ def unregister():
     del bpy.types.Scene.tina_render
 
     bpy.utils.unregister_class(TinaRenderProperties)
-
-
-'''''
-'''''

@@ -54,6 +54,14 @@ def lazyguard():
             return mod_attrs_cache
 
         def __bool__(self):
+            globals = inspect.stack()[1][0].f_globals
+            return self.make(globals, hook_getattr=True)
+
+        def __call__(self, hook_getattr=False):
+            globals = inspect.stack()[1][0].f_globals
+            return self.make(globals, hook_getattr=False)
+
+        def make(self, globals, hook_getattr):
             def make(this_file, this_module):
                 assert this_module is not None
 
@@ -130,9 +138,9 @@ def lazyguard():
                 return getattr_cb, reload_cb
 
             written_lazy_names = set()
-            globals = inspect.stack()[1][0].f_globals
             getattr_cb, reload_cb = make(globals['__file__'], globals['__package__'])
-            globals['__getattr__'] = getattr_cb
+            if hook_getattr:
+                globals['__getattr__'] = getattr_cb
             globals['__lazyreload__'] = reload_cb
             return False
 

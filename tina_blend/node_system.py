@@ -345,7 +345,3 @@ def unregister():
 
     bpy.utils.unregister_class(TinaNodeTree)
     nodeitems_utils.unregister_node_categories('tina_node_tree')
-
-
-'''''
-'''''
