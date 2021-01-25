@@ -257,7 +257,7 @@ class MPMSolver:
             self.g2p()
 
 def main():
-    use_mciso = True
+    use_mciso = False
 
     ti.init(ti.gpu, make_block_local=False, kernel_profiler=True)
     mpm = MPMSolver([32] * 3)
