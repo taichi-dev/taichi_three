@@ -22,7 +22,7 @@ class MPMSolver:
     SNOW = 2
     SAND = 3
 
-    def __init__(self, res, size=1, dt_scale=1, E_scale=1):
+    def __init__(self, res, size=1, dt_scale=1, E_scale=1, nu_scale=1):
         self.res = tovector(res)
         self.dim = len(self.res)
         assert self.dim in [2, 3]
@@ -35,7 +35,7 @@ class MPMSolver:
         self.p_mass = self.p_vol * self.p_rho
         self.gravity = tovector((0, 9.8, 0)[:self.dim])
         self.E = 1e6 * size * E_scale
-        self.nu = 0.2
+        self.nu = 0.2 * nu_scale
 
         self.mu_0 = self.E / (2 * (1 + self.nu))
         self.lambda_0 = self.E * self.nu / ((1 + self.nu) * (1 - 2 * self.nu))
@@ -78,6 +78,8 @@ class MPMSolver:
         for c in [self.x, self.v, self.C, self.F, self.material, self.Jp]:
             self.particle.place(c)
         self.particle_num = ti.field(int, ())
+
+        self.grid_postprocess = []
 
     @ti.kernel
     def seed_volume(self, vox: ti.template(),
@@ -191,6 +193,32 @@ class MPMSolver:
             cond2 = I > self.res and self.grid_v[I] > 0
             self.grid_v[I] = 0 if cond1 or cond2 else self.grid_v[I]
 
+    def collide_sphere(self, center, radius):
+        center = V(*center)
+
+        @ti.kernel
+        def collide():
+            for I in ti.grouped(self.grid_m):
+                offset = I * self.dx - center
+                if offset.norm_sqr() < radius**2:
+                    self.grid_v[I] *= 0
+
+        self.grid_postprocess.append(collide)
+
+    def collide_volume(self, vox, bmin, bmax):
+        @ti.kernel
+        def collide():
+            for I in ti.grouped(self.grid_m):
+                pos = I / self.res
+                if all(bmin <= pos <= bmax):
+                    J = vox.res * unlerp(pos, bmin, bmax)
+                    #rho = trilerp(vox.voxels, J)
+                    rho = vox.voxels[ifloor(J)]
+                    if rho >= 0.5:
+                        self.grid_v[I] *= 0
+
+        self.grid_postprocess.append(collide)
+
     @ti.kernel
     def g2p(self):
         ti.no_activate(self.particle)
@@ -262,6 +290,8 @@ class MPMSolver:
             self.p2g()
             self.grid_normalize()
             self.grid_boundary()
+            for op in self.grid_postprocess:
+                op()
             self.g2p()
 
 
@@ -283,8 +313,10 @@ def main():
     scene.add_object(wire)
 
     vox = MeshVoxelizer([64] * 3)
+    vox2 = MeshVoxelizer([64] * 3)
     verts, faces = tina.readobj('assets/bunny.obj', simple=True)
     vox.voxelize(verts[faces])
+    verts, faces = tina.readobj('assets/cube.obj', simple=True)
 
     gui = ti.GUI()
 
@@ -296,6 +328,9 @@ def main():
         rad.value = 4
         sig = gui.slider('sig', 0, 8, 0.1)
         sig.value = 5
+
+    mpm.collide_volume(vox2, V(-.5, -1.35, -.5), V(.5, -.35, .5))
+    #mpm.collide_sphere(V(0., -1., 0.), .5)
 
     def reset():
         mpm.seed_volume(vox, -.35, .35, 0., mpm.JELLY, 20)

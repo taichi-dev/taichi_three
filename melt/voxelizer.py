@@ -1,7 +1,5 @@
 from tina.advans import *
 
-ti.init(ti.cuda)
-
 
 @ti.func
 def inside(p, a, b, c):
@@ -45,7 +43,7 @@ class MeshVoxelizer:
         self._update(lambda x, y, z: (y, z, x))
         '''
 
-        return vmin, vmax
+        return vmin, vmax, verts
 
     @ti.kernel
     def _update(self, f: ti.template()):
@@ -89,6 +87,8 @@ class MeshVoxelizer:
 
 
 if __name__ == '__main__':
+    ti.init(ti.cuda)
+
     vox = MeshVoxelizer([256] * 3)
     verts, faces = tina.readobj('assets/monkey.obj', simple=True)
     verts *= 0.5
