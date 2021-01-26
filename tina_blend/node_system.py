@@ -1,6 +1,24 @@
 import bpy
 import nodeitems_utils
-import tina
+from tina.common import *
+
+
+def tocolor(x):
+    if isinstance(x, tina.Node):
+        return x
+    try:
+        return list(x)
+    except TypeError:
+        return [x, x, x]
+
+
+def tovalue(x):
+    if isinstance(tina.Node):
+        return x
+    try:
+        return sum(x) / len(x)
+    except TypeError:
+        return x
 
 
 class TinaNodeTree(bpy.types.NodeTree):
@@ -27,6 +45,8 @@ class TinaBaseSocket(bpy.types.NodeSocket):
                 res = link.from_node.construct(cache)
                 cache[link.from_node] = res
             res = cache[link.from_node]
+            if isinstance(res, dict):
+                res = res[link.from_socket.name]
             cache[link.from_socket] = res
             return res
 
@@ -38,10 +58,10 @@ class TinaValueSocket(TinaBaseSocket):
     value : bpy.props.FloatProperty(name='value', soft_min=0, precision=3)
 
     def draw(self, context, layout, node, text):
-        if not self.links:
-            layout.prop(self, 'value', text=text)
-        else:
+        if self.is_linked or self.is_output:
             layout.label(text=text)
+        else:
+            layout.prop(self, 'value', text=text)
 
     def draw_color(self, context, node):
         return (0.63, 0.63, 0.63, 1.0)
@@ -54,10 +74,10 @@ class TinaClampedValueSocket(TinaBaseSocket):
     value : bpy.props.FloatProperty(name='value', min=0, max=1, precision=3)
 
     def draw(self, context, layout, node, text):
-        if not self.links:
-            layout.prop(self, 'value', text=text)
-        else:
+        if self.is_linked or self.is_output:
             layout.label(text=text)
+        else:
+            layout.prop(self, 'value', text=text)
 
     def draw_color(self, context, node):
         return (0.63, 0.63, 0.63, 1.0)
@@ -70,10 +90,10 @@ class TinaColorSocket(TinaBaseSocket):
     value : bpy.props.FloatVectorProperty(name='value', subtype='COLOR', size=3, min=0, max=1, default=(1, 1, 1))
 
     def draw(self, context, layout, node, text):
-        if not self.links:
-            layout.prop(self, 'value', text=text)
-        else:
+        if self.is_linked or self.is_output:
             layout.label(text=text)
+        else:
+            layout.prop(self, 'value', text=text)
 
     def draw_color(self, context, node):
         return (0.78, 0.78, 0.16, 1.0)
@@ -86,10 +106,10 @@ class TinaVectorSocket(TinaBaseSocket):
     value : bpy.props.FloatVectorProperty(name='value', size=3)
 
     def draw(self, context, layout, node, text):
-        if not self.links:
-            layout.prop(self, 'value', text=text)
-        else:
+        if self.is_linked or self.is_output:
             layout.label(text=text)
+        else:
+            layout.prop(self, 'value', text=text)
 
     def draw_color(self, context, node):
         return (0.39, 0.39, 0.78, 1.0)
@@ -151,7 +171,7 @@ class TinaPBRNode(TinaBaseNode):
         self.outputs.new('tina_material_socket', 'matr')
 
     def construct(self, cache):
-        return tina.PBR(basecolor=list(self.lut(cache, 'basecolor')),
+        return tina.PBR(basecolor=tocolor(self.lut(cache, 'basecolor')),
                 roughness=self.lut(cache, 'roughness'),
                 metallic=self.lut(cache, 'metallic'),
                 specular=self.lut(cache, 'specular'))
@@ -169,7 +189,7 @@ class TinaDiffuseNode(TinaBaseNode):
         self.outputs.new('tina_material_socket', 'matr')
 
     def construct(self, cache):
-        return tina.Diffuse(color=list(self.lut(cache, 'color')))
+        return tina.Diffuse(color=tocolor(self.lut(cache, 'color')))
 
 
 @register_node
@@ -185,7 +205,7 @@ class TinaEmissionNode(TinaBaseNode):
         self.outputs.new('tina_material_socket', 'matr')
 
     def construct(self, cache):
-        return tina.Emission() * list(self.lut(cache, 'color')
+        return tina.Emission() * tocolor(self.lut(cache, 'color')
                 ) * self.lut(cache, 'strength')
 
 
@@ -203,7 +223,7 @@ class TinaGlassNode(TinaBaseNode):
 
     def construct(self, cache):
         return tina.Glass(
-                color=list(self.lut(cache, 'color')),
+                color=tocolor(self.lut(cache, 'color')),
                 ior=self.lut(cache, 'ior'))
 
 
@@ -219,7 +239,7 @@ class TinaMirrorNode(TinaBaseNode):
         self.outputs.new('tina_material_socket', 'matr')
 
     def construct(self, cache):
-        return tina.Mirror() * list(self.lut(cache, 'color'))
+        return tina.Mirror() * tocolor(self.lut(cache, 'color'))
 
 
 @register_node
@@ -309,6 +329,41 @@ class TinaMaterialOutputNode(TinaBaseNode):
 
     def construct(self, cache):
         return self.lut(cache, 'material')
+
+
+@register_node
+class TinaCombineXYZNode(TinaBaseNode):
+    bl_idname = 'tina_combine_xyz_node'
+    bl_label = 'Combine XYZ'
+    category = 'Converter'
+
+    def init(self, context):
+        self.width = 150
+        self.inputs.new('tina_value_socket', 'x')
+        self.inputs.new('tina_value_socket', 'y')
+        self.inputs.new('tina_value_socket', 'z')
+        self.outputs.new('tina_vector_socket', 'vec')
+
+    def construct(self, cache):
+        return V(
+                self.lut(cache, 'x'),
+                self.lut(cache, 'y'),
+                self.lut(cache, 'z'))
+
+
+@register_node
+class TinaValueNode(TinaBaseNode):
+    bl_idname = 'tina_value_node'
+    bl_label = 'Value'
+    category = 'Input'
+
+    def init(self, context):
+        self.width = 150
+        self.inputs.new('tina_value_socket', 'value')
+        self.outputs.new('tina_value_socket', 'value')
+
+    def construct(self, cache):
+        return self.lut(cache, 'value')
 
 
 def construct_material_output(tree):
