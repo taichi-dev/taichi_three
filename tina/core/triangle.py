@@ -110,7 +110,7 @@ class TriangleRaster:
             n = (b - a).cross(c - a)
             bcn = (b - c) / n
             can = (c - a) / n
-            wscale = ti.Vector([mapply(self.engine.W2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
+            wscale = 1 / ti.Vector([mapply(self.engine.W2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
             for P in ti.grouped(ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1))):
                 pos = float(P) + self.engine.bias[None]
                 w_bc = (pos - b).cross(bcn)
