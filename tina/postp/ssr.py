@@ -4,7 +4,7 @@ from ..core.shader import calc_viewdir
 
 @ti.data_oriented
 class SSR:
-    def __init__(self, res, norm, coor, mtlid, mtltab, debug=False):
+    def __init__(self, res, norm, coor, mtlid, mtltab, taa=False):
         self.res = tovector(res)
         self.img = ti.Vector.field(4, float, self.res)
         self.nsamples = ti.field(int, ())
@@ -16,12 +16,12 @@ class SSR:
         self.coor = coor
         self.mtlid = mtlid
         self.mtltab = mtltab
-        self.debug = debug
+        self.taa = taa
 
         @ti.materialize_callback
         def init_params():
-            self.nsamples[None] = 32
-            self.nsteps[None] = 32
+            self.nsamples[None] = 32 if not taa else 12
+            self.nsteps[None] = 32 if not taa else 64
             self.stepsize[None] = 2
             self.tolerance[None] = 15
             self.blurring[None] = 4
@@ -30,7 +30,7 @@ class SSR:
     def apply(self, image: ti.template()):
         for i, j in self.img:
             res = V(0., 0., 0., 0.)
-            if ti.static(self.debug):
+            if ti.static(self.taa):
                 res = self.img[i, j]
             else:
                 rad = self.blurring[None]
@@ -69,8 +69,10 @@ class SSR:
                 'texcoord': texcoord,
             })
 
-        rng = tina.WangHashRNG(P % self.blurring[None])
-        #rng = tina.TaichiRNG()
+        rng = tina.TaichiRNG()
+        if ti.static(not self.taa):
+            pid = P % self.blurring[None]
+            rng = ti.static(tina.WangHashRNG(pid))
 
         nsamples = self.nsamples[None]
         nsteps = self.nsteps[None]

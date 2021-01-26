@@ -63,11 +63,11 @@ class Scene:
                 self.coor_buffer = ti.Vector.field(2, float, (1, 1))
 
         if self.ssao:
-            self.ssao = tina.SSAO(self.res, self.norm_buffer)
+            self.ssao = tina.SSAO(self.res, self.norm_buffer, taa=self.taa)
 
         if self.ssr:
             self.ssr = tina.SSR(self.res, self.norm_buffer,
-                    self.coor_buffer, self.mtlid_buffer, self.mtltab)
+                    self.coor_buffer, self.mtlid_buffer, self.mtltab, taa=self.taa)
 
         if self.blooming:
             self.blooming = tina.Blooming(self.res)

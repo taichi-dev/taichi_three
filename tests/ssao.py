@@ -3,9 +3,9 @@ import tina
 
 ti.init(ti.cuda)
 
-scene = tina.Scene(smoothing=True, ssao=True, ibl=True)
-model = tina.MeshModel('assets/bunny.obj')
-#model = tina.MeshModel('assets/monkey.obj')
+scene = tina.Scene(smoothing=True, ssao=True)#, ibl=True)
+#model = tina.MeshModel('assets/bunny.obj')
+model = tina.MeshModel('assets/monkey.obj')
 #model = tina.MeshModel('/home/bate/Documents/testssao.obj')
 scene.add_object(model)
 
