@@ -88,6 +88,10 @@ class PTScene(Scene):
                 if not hasattr(self, 'particle_tracer'):
                     self.particle_tracer = tina.ParticleTracer(**self.options)
                 tracer = self.particle_tracer
+            elif hasattr(object, 'sample_volume'):
+                if not hasattr(self, 'volume_tracer'):
+                    self.volume_tracer = tina.VolumeTracer(**self.options)
+                tracer = self.volume_tracer
             else:
                 raise ValueError(f'cannot determine tracer type of object: {object}')
 
