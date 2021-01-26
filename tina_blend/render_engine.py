@@ -146,6 +146,7 @@ class TinaRenderPanel(bpy.types.Panel):
         row.prop(options, 'blooming')
         row.prop(options, 'smoothing')
         row.prop(options, 'texturing')
+        layout.prop(options, 'path_tracing')
         layout.operator('scene.tina_reset')
         # import code; code.interact(local=locals())
 
@@ -265,11 +266,14 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
     def __setup_scene(self, depsgraph):
         scene = depsgraph.scene
+        self.is_pt = scene.tina_render.path_tracing
         if self.is_pt:
+            options = scene.tina_render
             self.scene = tina.PTScene(
                     (self.size_x, self.size_y),
                     smoothing=options.smoothing,
                     texturing=options.texturing)
+            self.scene.lighting = tina.Lighting()
         else:
             options = scene.tina_render
             self.scene = tina.Scene((self.size_x, self.size_y),
@@ -325,7 +329,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
 
-        nsamples = 1
+        nsamples = 32
         for samp in range(nsamples):
             self.update_stats('Rendering', f'{samp}/{nsamples} Samples')
             self.update_progress((samp + .5) / nsamples)
@@ -546,6 +550,7 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
     blooming: bpy.props.BoolProperty(name='Blooming', default=False)
     smoothing: bpy.props.BoolProperty(name='Smoothing', default=True)
     texturing: bpy.props.BoolProperty(name='Texturing', default=True)
+    path_tracing: bpy.props.BoolProperty(name='Path Tracing', default=True)
 
 
 class TinaResetOperator(bpy.types.Operator):
