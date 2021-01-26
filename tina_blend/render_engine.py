@@ -84,6 +84,7 @@ class TinaMaterialPanel(bpy.types.Panel):
         object = context.object
 
         layout.prop_search(object, 'tina_material', bpy.data, 'node_groups')
+        layout.operator('scene.tina_reset')
 
 
 class TinaLightPanel(bpy.types.Panel):
@@ -102,6 +103,7 @@ class TinaLightPanel(bpy.types.Panel):
         if object.type == 'LIGHT':
             layout.prop(object.data, 'tina_color')
             layout.prop(object.data, 'tina_strength')
+            layout.operator('scene.tina_reset')
 
 
 class TinaWorldPanel(bpy.types.Panel):
@@ -119,6 +121,7 @@ class TinaWorldPanel(bpy.types.Panel):
 
         layout.prop(world, 'tina_color')
         layout.prop(world, 'tina_strength')
+        layout.operator('scene.tina_reset')
 
 
 class TinaRenderPanel(bpy.types.Panel):
@@ -143,6 +146,8 @@ class TinaRenderPanel(bpy.types.Panel):
         row.prop(options, 'blooming')
         row.prop(options, 'smoothing')
         row.prop(options, 'texturing')
+        layout.operator('scene.tina_reset')
+        # import code; code.interact(local=locals())
 
 
 class TinaRenderEngine(bpy.types.RenderEngine):
@@ -151,6 +156,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     bl_idname = "TINA"
     bl_label = "Tina"
     bl_use_preview = True
+    instances = []
 
     # Init is called whenever a new render engine instance is created. Multiple
     # instances may exist at the same time, for example for a viewport and final
@@ -159,6 +165,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.scene_data = None
         self.draw_data = None
         self.is_pt = False
+        self.instances.append(self)
 
         self.object_to_mesh = {}
         self.light_to_index = {}
@@ -166,7 +173,9 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     # When the render engine instance is destroy, this is called. Clean up any
     # render engine data here, for example stopping running render threads.
     def __del__(self):
-        pass
+        if self in self.instances:
+            self.instances.remove(self)
+
 
     def __setup_light_object(self, object, depsgraph, nlights):
         light = object.data
@@ -276,7 +285,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                     tonemap=False)
 
         materials = {}
-        # import code; code.interact(local=locals())
 
         nlights = 0
         for object in depsgraph.ids:
@@ -306,6 +314,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     # This is the method called by Blender for both final renders (F12) and
     # small preview for materials, world and lights.
     def render(self, depsgraph):
+        scene = depsgraph.scene
         scale = scene.render.resolution_percentage / 100.0
         self.size_x = int(scene.render.resolution_x * scale)
         self.size_y = int(scene.render.resolution_y * scale)
@@ -339,7 +348,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.end_result(result)
 
     def __setup(self, depsgraph, perspective):
-        ti.init(ti.cpu)
+        ti.init(ti.gpu)
 
         self.update_stats('Initializing', 'Loading scene')
         self.__setup_scene(depsgraph)
@@ -539,6 +548,24 @@ class TinaRenderProperties(bpy.types.PropertyGroup):
     texturing: bpy.props.BoolProperty(name='Texturing', default=True)
 
 
+class TinaResetOperator(bpy.types.Operator):
+    '''Reset Tina Renderer'''
+
+    bl_idname = "scene.tina_reset"
+    bl_label = "Reset Tina"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        for inst in TinaRenderEngine.instances:
+            inst.scene_data = None
+            inst.tag_update()
+            inst.tag_redraw()
+        return {'FINISHED'}
+
+
 def register():
     bpy.utils.register_class(TinaRenderProperties)
 
@@ -551,6 +578,7 @@ def register():
     bpy.types.Scene.tina_render = bpy.props.PointerProperty(name='tina', type=TinaRenderProperties)
 
     bpy.utils.register_class(TinaRenderEngine)
+    bpy.utils.register_class(TinaResetOperator)
     bpy.utils.register_class(TinaMaterialPanel)
     bpy.utils.register_class(TinaLightPanel)
     bpy.utils.register_class(TinaWorldPanel)
@@ -562,6 +590,7 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(TinaRenderEngine)
+    bpy.utils.unregister_class(TinaResetOperator)
     bpy.utils.unregister_class(TinaMaterialPanel)
     bpy.utils.unregister_class(TinaLightPanel)
     bpy.utils.unregister_class(TinaWorldPanel)
