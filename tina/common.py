@@ -80,6 +80,14 @@ ti.Matrix.xy = property(lambda v: V(v.x, v.y))
 ti.Matrix.xyz = property(lambda v: V(v.x, v.y, v.z))
 
 
+@ti.func
+def Vprod(v):
+    x = v.entries[0]
+    for y in ti.static(v.entries[1:]):
+        x *= y
+    return x
+
+
 def totuple(x):
     if x is None:
         x = []

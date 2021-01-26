@@ -87,8 +87,10 @@ class MPMSolver:
         for I in ti.grouped(vox.voxels):
             if vox.voxels[I] <= 0:
                 continue
-            n = ti.atomic_add(self.particle_num[None], ppg)
-            for i in range(ppg):
+            scale = Vprod((bmax - bmin) * self.res / vox.res)
+            ppv = int(ppg * scale + ti.random())
+            n = ti.atomic_add(self.particle_num[None], ppv)
+            for i in range(ppv):
                 bias = V(ti.random(), ti.random(), ti.random())
                 pos = lerp((I + bias) / vox.res, bmin, bmax)
                 self.seed_particle(n + i, pos, vel, material)
@@ -296,8 +298,7 @@ def main():
         sig.value = 5
 
     def reset():
-        mpm.seed_volume(vox, -.35, .35,
-                V(0., 0., 0.), mpm.JELLY, 1)
+        mpm.seed_volume(vox, -.35, .35, 0., mpm.JELLY, 20)
 
     reset()
     while gui.running:
@@ -317,8 +318,6 @@ def main():
         gui.show()
 
     ti.kernel_profiler_print()
-
-    np.save('/tmp/mpm.npy', mpm.get_particle_pos())
 
 def main2():
     ti.init(ti.gpu, make_block_local=False)

@@ -27,7 +27,7 @@ class MeshVoxelizer:
 
     def voxelize(self, verts, vmin=None, vmax=None):
         if vmin is None or vmax is None:
-            vmin, vmax = np.min(verts), np.max(verts)
+            vmin, vmax = np.min(verts) - 0.1, np.max(verts) + 0.1
         verts = (verts - vmin) / (vmax - vmin)
 
         self._voxelize(verts)
@@ -44,6 +44,8 @@ class MeshVoxelizer:
         self._voxelize(tmp)
         self._update(lambda x, y, z: (y, z, x))
         '''
+
+        return vmin, vmax
 
     @ti.kernel
     def _update(self, f: ti.template()):
