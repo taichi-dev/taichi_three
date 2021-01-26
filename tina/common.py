@@ -80,11 +80,15 @@ ti.Matrix.xy = property(lambda v: V(v.x, v.y))
 ti.Matrix.xyz = property(lambda v: V(v.x, v.y, v.z))
 
 
-@ti.func
-def Vprod(v):
+@ti.pyfunc
+def Vprod(w):
+    v = tovector(w)
+    if ti.static(not v.entries):
+        return 1
     x = v.entries[0]
-    for y in ti.static(v.entries[1:]):
-        x *= y
+    if ti.static(len(v.entries) > 1):
+        for y in ti.static(v.entries[1:]):
+            x *= y
     return x
 
 
@@ -96,10 +100,10 @@ def totuple(x):
     if isinstance(x, list):
         x = tuple(x)
     if not isinstance(x, tuple):
-        x = x,
+        x = [x]
     if isinstance(x, tuple) and len(x) and x[0] is None:
         x = []
-    return x
+    return tuple(x)
 
 
 def tovector(x):

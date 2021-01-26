@@ -11,7 +11,7 @@ class Memory:
         self.man = MemoryAllocator(size)
 
     @ti.pyfunc
-    def subscript(self, index):
+    def subscript(self, index: ti.template()):
         if ti.static(isinstance(index, slice)):
             ti.static_assert(ti.static(index.step is None))
             index_start = 0
@@ -29,7 +29,7 @@ class Memory:
         self.data[index] = value
 
     @ti.kernel
-    def _to_numpy(arr: ti.ext_arr(), base: int, size: int):
+    def _to_numpy(self, arr: ti.ext_arr(), base: int, size: int):
         for i in range(size):
             arr[i] = self.data[base + i]
 
@@ -39,7 +39,7 @@ class Memory:
         return arr
 
     @ti.kernel
-    def _from_numpy(arr: ti.ext_arr(), base: int, size: int):
+    def _from_numpy(self, arr: ti.ext_arr(), base: int, size: int):
         for i in range(size):
             self.data[base + i] = arr[i]
 
@@ -103,7 +103,7 @@ class MemoryView:
         self.size = size
 
     @ti.pyfunc
-    def subscript(self, index):
+    def subscript(self, index: ti.template()):
         if ti.static(isinstance(index, slice)):
             ti.static_assert(ti.static(index.step is None))
             index_start = 0
@@ -115,21 +115,64 @@ class MemoryView:
             base = self.base + index_start
             size = max(0, min(self.size, index_stop) - index_start)
             return MemoryView(self.root, base, size)
+        if ti.static(index is None):
+            return self.root[self.base]
         return self.root[self.base + index]
 
     __getitem__ = subscript
 
     def __setitem__(self, index, value):
+        if ti.static(index is None):
+            self.root[self.base] = value
+            return
         self.root[self.base + index] = value
 
     def to_numpy(self):
-        self.root.to_numpy(self.base, self.size)
+        return self.root.to_numpy(self.base, self.size)
 
     def from_numpy(self, arr):
         self.root.from_numpy(arr, self.base, self.size)
 
     def __repr__(self):
         return f'MemoryView({self.root!r}, base={self.base!r}, size={self.size!r})'
+
+    def variable(self):
+        return self
+
+
+@ti.data_oriented
+class NDMemoryView:
+    def __init__(self, root, base, shape):
+        self.root = root
+        self.base = base
+        self.shape = shape
+
+    def subscript(self, *indices):
+        return ti.subscript(self.root, self.base + self.linearize(indices))
+
+    def __getitem__(self, index):
+        return self.root[self.base + self.linearize(totuple(index))]
+
+    def __setitem__(self, index, value):
+        self.root[self.base + self.linearize(totuple(index))] = value
+
+    def to_numpy(self):
+        arr = self.root.to_numpy(self.base, Vprod(self.shape))
+        return arr.reshape(self.shape)
+
+    def from_numpy(self, arr):
+        arr = arr.reshape(Vprod(self.shape))
+        self.root.from_numpy(arr, self.base, Vprod(self.shape))
+
+    @ti.pyfunc
+    def linearize(self, indices):
+        if ti.static(not len(indices) or indices[0] is None):
+            return 0
+        acc = indices[0]
+        if ti.static(len(indices) > 1):
+            for i, index in ti.static(enumerate(indices[1:])):
+                acc += Vprod(self.shape[:i + 1]) * index
+        return acc
 
     def variable(self):
         return self
@@ -147,43 +190,70 @@ class Buffer(MemoryView):
             self.root.man.free(self.base)
 
 
+class NDBuffer(NDMemoryView):
+    def __init__(self, root, shape):
+        self.root = root
+        self.shape = shape
+        base = root.man.malloc(Vprod(shape))
+        super().__init__(root, base, shape)
+
+    def __del__(self):
+        if hasattr(self, 'base') and hasattr(self, 'root'):
+            self.root.man.free(self.base)
+
+
+class Uniform(NDBuffer):
+    def __init__(self, root, value=None):
+        super().__init__(root, ())
+        if value is not None:
+            self[None] = value
+
+
 @ti.data_oriented
 class Launcher:
-    def __init__(self, maxargs=64):
+    def __init__(self, maxargs=32, maxdims=8):
         self.maxargs = maxargs
-        self.bsize = ti.field(int, maxargs)
+        self.maxdims = maxdims
+        self.bshape = ti.field(int, (maxargs, maxdims))
         self.bbase = ti.field(int, maxargs)
 
-    def call(self, func, **kwargs):
+    def call(self, func, this, **kwargs):
         roots = []
-        bbase = [0] * self.maxargs
-        bsize = [0] * self.maxargs
+        bbase = np.zeros(self.maxargs)
+        bshape = np.zeros((self.maxargs, self.maxdims))
         assert len(kwargs) < self.maxargs
         for i, (key, buf) in enumerate(kwargs.items()):
             bbase[i] = buf.base
-            bsize[i] = buf.size
-            roots.append((buf.root, key))
-        self.bbase.from_numpy(np.array(bbase))
-        self.bsize.from_numpy(np.array(bsize))
-        self._call(func, tuple(roots))
+            for j in range(len(buf.shape)):
+                bshape[i, j] = buf.shape[j]
+            roots.append((buf.root, key, len(buf.shape)))
+        self.bbase.from_numpy(bbase)
+        self.bshape.from_numpy(bshape)
+        self._call(func, this, tuple(roots))
 
     def __call__(self, func):
+        import functools
+
+        @functools.wraps(func)
         def wrapped(this):
             kwargs = {}
             for key in this.lanes:
                 val = getattr(this, key)
                 kwargs[key] = val
-            self.call(func, **kwargs)
+            self.call(func, this, **kwargs)
 
         return wrapped
 
     @ti.kernel
-    def _call(self, func: ti.template(), roots: ti.template()):
-        func(namespace((key, MemoryView(root, ti.subscript(self.bbase, i), ti.subscript(self.bsize, i))) for i, (root, key) in enumerate(roots)))
+    def _call(self, func: ti.template(), this: ti.template(), roots: ti.template()):
+        func(this, namespace((key, NDMemoryView(root, ti.subscript(self.bbase, i),
+            [ti.subscript(self.bshape, i, j) for j in range(dim)]
+            )) for i, (root, key, dim) in enumerate(roots)))
 
 
 lane = Launcher()
-root = Memory(float)
+roof = Memory(ti.f32)
+rooi = Memory(ti.i32)
 
 
 @ti.data_oriented
@@ -191,14 +261,34 @@ class MyProc:
     def __init__(self):
         self.buf = Buffer(root, 5)
         self.lanes = ['buf']
+        self.dt = 0.1
 
     @lane
     @ti.func
-    def func(self):
-        for i in range(self.buf.size):
-            print(self.buf[i])
+    def func(self, opts):
+        for i in range(opts.buf.size):
+            print(opts.buf[i] * self.dt)
 
 
-proc = MyProc()
-proc.func()
-exit(1)
+@ti.data_oriented
+class Rasterizer:
+    def __init__(self):
+        self.lanes = 'img', 'nx', 'ny'
+
+    @lane
+    @ti.func
+    def rasterize(self, opts):
+        for x, y in ti.ndrange(*opts.img.shape):
+            u = x / opts.img.shape[0]
+            v = y / opts.img.shape[1]
+            opts.img[x, y, 0] = u
+            opts.img[x, y, 1] = v
+
+
+rast = Rasterizer()
+rast.img = NDBuffer(roof, [512, 512, 2])
+rast.nx = Uniform(rooi, 512)
+rast.ny = Uniform(rooi, 512)
+rast.rasterize()
+img = rast.img.to_numpy()
+ti.imshow(img)
