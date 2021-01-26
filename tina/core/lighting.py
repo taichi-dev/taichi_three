@@ -18,7 +18,7 @@ class SkyboxLighting:
 
     @ti.func
     def shade_color(self, material, pos, normal, viewdir):
-        return material.sample_ibl(self.ibltab, viewdir, normal)
+        return material.sample_ibl(self.ibltab, viewdir, normal) + material.emission()
 
 
 @ti.data_oriented
@@ -83,6 +83,7 @@ class Lighting:
     @ti.func
     def shade_color(self, material, pos, normal, viewdir):
         res = V(0.0, 0.0, 0.0)
+        res += material.emission()
         res += self.get_ambient_light_color() * material.ambient()
         for l in ti.smart(self.get_lights_range()):
             light, lcolor = self.get_light_data(l)

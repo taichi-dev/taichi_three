@@ -6,7 +6,7 @@ ti.init(ti.cpu)
 
 scene = tina.Scene()
 model = tina.MeshModel('assets/cube.obj')
-material = tina.Diffuse(tina.Input('pos'))
+material = tina.Emission() * tina.Input('pos')
 scene.add_object(model, material)
 
 gui = ti.GUI(res=scene.res)
