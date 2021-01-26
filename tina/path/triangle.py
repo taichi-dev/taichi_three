@@ -149,7 +149,7 @@ class TriangleTracer:
         v1 = self.verts[ind, 1]
         v2 = self.verts[ind, 2]
         fnrm = (v1 - v0).cross(v2 - v0) / 2
-        r1, r2 = ti.random(), ti.random()
+        r1, r2 = ti.sqrt(ti.random()), ti.random()
         w0, w1, w2 = 1 - r1, r1 * (1 - r2), r1 * r2
         pos = v0 * w0 + v1 * w1 + v2 * w2
         orgdir = (org - pos).normalized()

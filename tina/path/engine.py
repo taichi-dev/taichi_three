@@ -173,7 +173,7 @@ class PathEngine:
                 ro += nrm * eps * 8
 
             # cast shadow ray to lights
-            rs = smoothstep(rough, 0.0, 0.04)
+            rs = smoothstep(rough, 0.08, 0.25)
             if rs > 0:
                 rl += rc * rs * self.shadow_ray(ro, rd, material, nrm, rng)
 
