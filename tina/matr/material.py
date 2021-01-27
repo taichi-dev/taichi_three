@@ -477,9 +477,17 @@ class HenyeyGreenstein(IVolMaterial):
     def sample(self, idir, nrm, sign, rng):
         g = self.param('g')
         u, v = rng.random(), rng.random()
-        de = (1 - u) / (1 - g) + u / (1 + g)
-        mu = (1 / de**2 - 1 - g**2) / (2 * g)
-        axes = tangentspace(idir)
+        de = (1 - u) / (1 + g) + u / (1 - g)
+        mu = (1 + g**2 - 1 / de**2) / (2 * g)
+        if -g >= 1 - eps:
+            mu = -1
+        #elif 1 - 0.02 <= -g <= 1 - eps:
+        #    mu = lerp(smoothstep(-g, 1 - 0.02, 1), mu, -1)
+        #elif eps <= abs(g) <= 0.02:
+        #    mu = lerp(smoothstep(abs(g), 0.02, eps), mu, u * 2 - 1)
+        elif abs(g) <= eps:
+            mu = u * 2 - 1
+        axes = tangentspace(-idir)
         odir = axes @ spherical(mu, v)
         odir = odir.normalized()
         return odir, 1.0, 1 - g**2
