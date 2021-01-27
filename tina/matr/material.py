@@ -232,7 +232,7 @@ class AddMaterial(IMaterial):
         else:
             odir, wei, rough = self.mat2.sample(idir, nrm, sign, rng)
             wei *= 2
-        return odir, wei
+        return odir, wei, rough
 
 
 # http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
@@ -439,11 +439,10 @@ class Phong(IMaterial):
 
     @ti.func
     def brdf(self, nrm, idir, odir):
-        shineness = self.param('shineness')
-
+        m = self.param('shineness')
         rdir = reflect(-idir, nrm)
         VoR = max(0, odir.dot(rdir))
-        return VoR**shineness * (shineness + 2) / 2
+        return VoR**m * (m + 2) / 2
 
     def ambient(self):
         return 1.0
@@ -464,15 +463,33 @@ class Phong(IMaterial):
         return odir, wei, 0.1
 
 
+class HenyeyGreenstein(IVolMaterial):
+    arguments = ['g']
+    defaults = [0.76]
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        g = self.param('g')
+        cost = idir.dot(odir)
+        return (1 - g**2) / (1 + g**2 + 2 * g * cost)**(3/2)
+
+    @ti.func
+    def sample(self, idir, nrm, sign, rng):
+        g = self.param('g')
+        u, v = rng.random(), rng.random()
+        axes = tangentspace(nrm)
+        odir = axes @ spherical(u, v)
+        odir = odir.normalized()
+        brdf = self.brdf(nrm, idir, odir)
+        return odir, brdf, 0.4
+
+
 class VolScatter(IVolMaterial):
     arguments = []
     defaults = []
 
     @ti.func
     def brdf(self, nrm, idir, odir):
-        return 1.0
-
-    def ambient(self):
         return 1.0
 
 

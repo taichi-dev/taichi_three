@@ -4,6 +4,8 @@ from .geometry import *
 
 @ti.data_oriented
 class VolumeTracer:
+    is_dedicated_tracer = True
+
     def __init__(self, **extra_options):
         pass
 

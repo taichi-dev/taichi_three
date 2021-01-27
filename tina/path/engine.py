@@ -63,7 +63,7 @@ class PathEngine:
         rng = tina.TaichiRNG()
         for depth in range(maxdepth):
             ro, rd, rc, rl, rs = self.transmit_ray(ro, rd, rc, rl, rs, rng)
-            rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.04, 0.95)
+            rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.06, 0.996)
             if ti.random() >= rate:
                 rc *= 0
             else:
