@@ -116,7 +116,7 @@ class PTScene(Scene):
         for tracer in self.geom.tracers:
             tracer.update_emission(self.mtltab)
 
-    def render(self, nsteps=8, russian=2):
+    def render(self, nsteps=10, russian=8):
         self.engine.trace(nsteps, russian)
 
     @property

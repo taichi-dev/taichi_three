@@ -28,7 +28,7 @@ class IMaterial(Node):
         odir = axes @ spherical(u, v)
         odir = odir.normalized()
         brdf = self.brdf(nrm, idir, odir)
-        return odir, brdf, 0.2
+        return odir, brdf, 0.4
 
     @classmethod
     def cook_for_ibl(cls, tab, precision):
@@ -49,6 +49,19 @@ class IMaterial(Node):
 
     def __rmul__(self, factor):
         return ScaleMaterial(self, factor)
+
+
+class IVolMaterial(IMaterial):
+    # cu = f(u, v), cv = g(u, v)
+    # pdf = |df/du dg/dv - df/dv dg/du|
+    @ti.func
+    def sample(self, idir, nrm, sign, rng):
+        u, v = rng.random() * 2 - 1, rng.random()
+        axes = tangentspace(idir)
+        odir = axes @ spherical(u, v)
+        odir = odir.normalized()
+        brdf = self.brdf(nrm, idir, odir)
+        return odir, brdf, 0.4
 
 
 @ti.func
@@ -449,6 +462,18 @@ class Phong(IMaterial):
             odir = -odir
             wei = 0.0
         return odir, wei, 0.1
+
+
+class VolScatter(IVolMaterial):
+    arguments = []
+    defaults = []
+
+    @ti.func
+    def brdf(self, nrm, idir, odir):
+        return 1.0
+
+    def ambient(self):
+        return 1.0
 
 
 class Glass(IMaterial):

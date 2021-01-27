@@ -20,7 +20,10 @@ class SimpleVolume:
 
     @ti.func
     def sample_volume(self, pos):
-        return trilerp(self.dens, pos * self.N)
+        ret = 0.0
+        if all(0 <= pos <= 1):
+            ret = trilerp(self.dens, pos * self.N)
+        return ret
 
     @ti.func
     def sample_gradient(self, pos):

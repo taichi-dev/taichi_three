@@ -15,14 +15,16 @@ class VolumeTracer:
 
     @ti.func
     def sample_density(self, pos):
-        #return self.voxl.sample_volume(pos) * 4.6
-        return 15.6 if (pos // 0.5).sum() % 2 == 0 else 0.0
+        return 3.0
+        #return self.voxl.sample_volume(pos * 0.5 + 0.5) * 18.6
+        #return 3.6 if (pos // 0.5).sum() % 2 == 0 else 0.0
 
     @ti.func
     def hit(self, ro, rd, maxfar=inf):
         # travel volume
-        near, far = tina.ray_aabb_hit(V3(-1.5), V3(1.5), ro, rd)
+        near, far = tina.ray_aabb_hit(V3(-1.), V3(1.), ro, rd)
 
+        hitind = -1
         depth = inf
         if near <= far:
             near = max(near, 0)
@@ -38,16 +40,17 @@ class VolumeTracer:
                 pos = ro + t * rd
                 rho = self.sample_density(pos)
                 int_rho += rho * dt
-                if ran < int_rho:
+                if ran < int_rho:  # ti.random() > ti.exp(-Integrate rho*dt)
                     depth = t
+                    hitind = 0
                     break
                 t += dt
 
-        return depth, 0, V(0., 0.)
+        return depth, hitind, V(0., 0.)
 
     @ti.func
     def calc_geometry(self, near, ind, uv, ro, rd):
-        nrm = V(0., 0., 1.)
+        nrm = V(0., 0., 0.)
         return nrm, V(0., 0.)
 
     @ti.func
@@ -63,4 +66,4 @@ class VolumeTracer:
 
     @ti.func
     def get_material_id(self, ind):
-        return 0
+        return 1
