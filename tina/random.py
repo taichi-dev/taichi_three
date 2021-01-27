@@ -16,8 +16,7 @@ class TaichiRNG:
 @ti.data_oriented
 class WangHashRNG:
     def __init__(self, seed):
-        seed = self.noise_int(seed)
-        self.seed = ti.expr_init(seed)
+        self.seed = ti.expr_init(self.noise_int(seed))
 
     def __del__(self):
         if hasattr(self, 'seed'):

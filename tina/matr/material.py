@@ -470,18 +470,19 @@ class HenyeyGreenstein(IVolMaterial):
     @ti.func
     def brdf(self, nrm, idir, odir):
         g = self.param('g')
-        cost = idir.dot(odir)
-        return (1 - g**2) / (1 + g**2 + 2 * g * cost)**(3/2)
+        mu = idir.dot(odir)
+        return (1 - g**2) / (1 + g**2 + 2 * g * mu)**(3/2)
 
     @ti.func
     def sample(self, idir, nrm, sign, rng):
         g = self.param('g')
         u, v = rng.random(), rng.random()
-        axes = tangentspace(nrm)
-        odir = axes @ spherical(u, v)
+        de = (1 - u) / (1 - g) + u / (1 + g)
+        mu = (1 / de**2 - 1 - g**2) / (2 * g)
+        axes = tangentspace(idir)
+        odir = axes @ spherical(mu, v)
         odir = odir.normalized()
-        brdf = self.brdf(nrm, idir, odir)
-        return odir, brdf, 0.4
+        return odir, 1.0, 1 - g**2
 
 
 class VolScatter(IVolMaterial):
