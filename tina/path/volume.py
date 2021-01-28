@@ -17,8 +17,8 @@ class VolumeTracer:
 
     @ti.func
     def sample_density(self, pos):
-        #return 3.0
-        return self.voxl.sample_volume(pos * 0.5 + 0.5) * 18.6
+        return 3.0
+        #return self.voxl.sample_volume(pos * 0.5 + 0.5) * 18.6
         #return 3.6 if (pos // 0.5).sum() % 2 == 0 else 0.0
 
     @ti.func

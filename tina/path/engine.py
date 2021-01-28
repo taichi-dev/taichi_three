@@ -61,6 +61,9 @@ class PathEngine:
         rs = 0.0
 
         rng = tina.TaichiRNG()
+        #rng = tina.WangHashRNG(V23(I, self.uniqid[None]))
+        #rng = tina.HammersleyRNG(I, self.uniqid[None])
+
         for depth in range(maxdepth):
             ro, rd, rc, rl, rs = self.transmit_ray(ro, rd, rc, rl, rs, rng)
             rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.06, 0.996)
