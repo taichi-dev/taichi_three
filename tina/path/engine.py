@@ -54,15 +54,11 @@ class PathEngine:
         return out
 
     @ti.func
-    def trace_ray(self, I, maxdepth, surviverate):
+    def trace_ray(self, I, maxdepth, surviverate, rng):
         ro, rd = self.generate_ray(I)
         rc = V(1., 1., 1.)
         rl = V(0., 0., 0.)
         rs = 0.0
-
-        rng = tina.TaichiRNG()
-        #rng = tina.WangHashRNG(V23(I, self.uniqid[None]))
-        #rng = tina.HammersleyRNG(I, self.uniqid[None])
 
         for depth in range(maxdepth):
             ro, rd, rc, rl, rs = self.transmit_ray(ro, rd, rc, rl, rs, rng)
@@ -79,9 +75,15 @@ class PathEngine:
     @ti.kernel
     def trace(self, maxdepth: int, surviverate: float):
         self.uniqid[None] += 1
+
         for i in ti.smart(self.stack):
+            rng = tina.TaichiRNG()
+            #rng = tina.WangHashRNG(V(i, self.uniqid[None]))
+            #rng = tina.HammersleyRNG(i, self.uniqid[None])
+            #rng = tina.SobolRNG(self.sobol, i)
+
             I = V(i % self.res.x, i // self.res.x)
-            rl = self.trace_ray(I, maxdepth, surviverate)
+            rl = self.trace_ray(I, maxdepth, surviverate, rng)
             self.img[I] += rl
             self.cnt[I] += 1
 

@@ -106,4 +106,44 @@ class HammersleyRNG:
 
     @ti.func
     def random_int(self):
-        return int(self.random() * 4294967296)
+        return int(self.random() * 2**20)
+
+
+@ti.data_oriented
+class SobolSequence:
+    def __init__(self, m=32, n=512, skip=8):
+        self.m = m
+        self.n = n
+        self.skip = self.skip0 = skip
+        self.data = ti.field(float, (m, n))
+
+        ti.materialize_callback(self.reseed)
+
+    def clear(self):
+        self.skip = self.skip0
+        self.reseed()
+
+    def reseed(self):
+        import sobol
+        arr = sobol.i4_sobol_generate(self.m, self.n, self.skip)
+        self.data.from_numpy(arr)
+        self.skip += 8
+
+
+@ti.data_oriented
+class SobolRNG:
+    def __init__(self, seq, index):
+        self.seq = seq
+        index = WangHashRNG.noise_int(index)
+        self.index = ti.expr_init(index)
+        self.time = ti.expr_init(0)
+
+    @ti.func
+    def random(self):
+        ret = self.seq.data[self.index % self.seq.m, self.time % self.seq.n]
+        self.time += 1
+        return ret
+
+    @ti.func
+    def random_int(self):
+        return int(self.random() * 2**20)

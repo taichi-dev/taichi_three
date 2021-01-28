@@ -19,7 +19,6 @@ gui = ti.GUI('volume', scene.res)
 scene.update()
 while gui.running:
     scene.input(gui)
-    if gui.frame < 64:
-        scene.render()#nsteps=32)
+    scene.render()#nsteps=32)
     gui.set_image(scene.img)
     gui.show()
