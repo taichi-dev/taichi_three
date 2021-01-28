@@ -17,14 +17,14 @@ class VolumeTracer:
 
     @ti.func
     def sample_density(self, pos):
-        return 3.0
-        #return self.voxl.sample_volume(pos * 0.5 + 0.5) * 18.6
-        #return 3.6 if (pos // 0.5).sum() % 2 == 0 else 0.0
+        return self.voxl.sample_volume(pos)
+        #return 2.6 if (pos // 0.5).sum() % 2 == 0 else 0.0
 
     @ti.func
     def hit(self, ro, rd, maxfar=inf):
         # travel volume
-        near, far = tina.ray_aabb_hit(V3(-1.), V3(1.), ro, rd)
+        bmin, bmax = self.voxl.get_bounding_box()
+        near, far = tina.ray_aabb_hit(bmin, bmax, ro, rd)
 
         hitind = -1
         depth = inf

@@ -28,7 +28,7 @@ class IMaterial(Node):
         odir = axes @ spherical(u, v)
         odir = odir.normalized()
         brdf = self.brdf(nrm, idir, odir)
-        return odir, brdf, 0.4
+        return odir, brdf, 0.75
 
     @classmethod
     def cook_for_ibl(cls, tab, precision):
@@ -373,7 +373,7 @@ class CookTorrance(IMaterial):
             odir = -odir
             fdf = 0.0  # TODO: fix energy loss on border
 
-        return odir, fdf, roughness
+        return odir, fdf, smoothstep(rough, 0.08, 0.25)
 
 
 class Lambert(IMaterial):

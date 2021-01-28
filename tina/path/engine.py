@@ -168,7 +168,7 @@ class PathEngine:
                 rl += rc * (1 - rs) * material.emission()
 
             # sample indirect light
-            new_rd, ir_wei, rough = material.sample(-rd, nrm, sign, rng)
+            new_rd, ir_wei, rs = material.sample(-rd, nrm, sign, rng)
             if new_rd.dot(nrm) < 0:
                 # refract into / outof
                 ro -= nrm * eps * 8
@@ -176,7 +176,6 @@ class PathEngine:
                 ro += nrm * eps * 8
 
             # cast shadow ray to lights
-            rs = smoothstep(rough, 0.08, 0.25)
             if rs > 0:
                 rl += rc * rs * self.shadow_ray(ro, rd, material, nrm, rng)
 
