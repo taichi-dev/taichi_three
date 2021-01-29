@@ -1,9 +1,13 @@
 from tina.advans import *
 
 _, __ = tina.readobj('assets/monkey.obj', simple=True)
-
 verts_np = _[__]
 verts = texture_as_field(verts_np)
+
+_, __ = tina.readobj('assets/sphere.obj', simple=True)
+passes_np = _[__]
+passes_np[:, :, 1] -= 2.5
+passes = texture_as_field(passes_np)
 
 dt = 0.002
 invM = 1 / 4
@@ -18,8 +22,8 @@ anv = ti.Vector.field(3, float, ())
 scene = tina.Scene()
 model = tina.MeshTransform(tina.SimpleMesh())
 scene.add_object(model)
-#passive = tina.MeshTransform(tina.SimpleMesh())
-#scene.add_object(passive)
+passive = tina.MeshTransform(tina.SimpleMesh())
+scene.add_object(passive)
 
 @ti.kernel
 def reset():
@@ -34,17 +38,31 @@ def forward():
     rot[None] += anv[None] * dt
     vel[None].y -= 0.98
 
+@ti.func
+def hit(curpos):
+    ret_sdf = -inf
+    ret_norm = V(0., 0., 0.)
+    for p in range(passes.shape[0]):
+        e1 = passes[p, 1] - passes[p, 0]
+        e2 = passes[p, 2] - passes[p, 0]
+        norm = e1.cross(e2).normalized()
+        sdf = (curpos - passes[p, 0]).dot(norm)
+        if sdf > ret_sdf:
+            ret_sdf = sdf
+            ret_norm = norm
+    return ret_sdf, ret_norm
+
 @ti.kernel
 def collide():
     force = V(0., 0., 0.)
     torque = V(0., 0., 0.)
     for i, j in verts:
-        p = mapply_pos(model.trans[None], verts[i, j])
-        if p.y >= -1.5:
-            continue
-        F = Ks * (-1.5 - p.y) * U3(1)
+        curpos = mapply_pos(model.trans[None], verts[i, j])
         curvel = vel[None] + anv[None].cross(verts[i, j])
-        F += -Kd * curvel
+        sdf, norm = hit(curpos)
+        if sdf >= 0:
+            continue
+        F = -Ks * sdf * norm - Kd * curvel
         torque += verts[i, j].cross(F)
         force += F
     vel[None] += force * dt * invM
@@ -59,6 +77,7 @@ def step():
 
 reset()
 model.set_face_verts(verts_np)
+passive.set_face_verts(passes_np)
 gui = ti.GUI('rbd')
 while gui.running:
     scene.input(gui)
