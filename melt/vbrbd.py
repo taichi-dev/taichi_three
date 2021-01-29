@@ -3,6 +3,7 @@
 from tina.advans import *
 #from voxelizer import MeshVoxelizer
 
+NE = 64
 N = 128
 R = 0.1
 Ks = 600
@@ -12,6 +13,8 @@ Dt = 0.001
 Grav = 2.5
 pos = ti.Vector.field(3, float, N)
 vel = ti.Vector.field(3, float, N)
+epos = ti.Vector.field(3, float, NE)
+erot = ti.Vector.field(4, float, NE)
 
 @ti.kernel
 def reset():
