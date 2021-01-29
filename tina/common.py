@@ -77,6 +77,8 @@ def U2(i):
 
 
 ti.Matrix.xy = property(lambda v: V(v.x, v.y))
+ti.Matrix.Yx = property(lambda v: V(-v.y, v.x))
+ti.Matrix.xZy = property(lambda v: V(v.x, -v.z, v.y))
 ti.Matrix.xyz = property(lambda v: V(v.x, v.y, v.z))
 
 

@@ -7,12 +7,9 @@ hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
         (y.__name__ != 'assign' or not setattr(y, '__name__', '_assign'))
         and f(x, y, z))(ti.Matrix.element_wise_writeback_binary)) or setattr(
         ti.Matrix, 'is_global', (lambda f: lambda x: len(x) and f(x))(
-        ti.Matrix.is_global)) or setattr(ti, 'pi', __import__('math').pi
-        ) or setattr(ti, 'tau', __import__('math').tau) or setattr(ti,
-        'expr_init', (lambda f: lambda x: x if isinstance(x, dict) else
-        f(x))(ti.expr_init)) or setattr(ti, 'expr_init_func', (lambda f:
-        lambda x: x if isinstance(x, dict) else f(x))(ti.expr_init_func)
-        ) or print('[Tina] Taichi properties hacked')
+        ti.Matrix.is_global)) or setattr(ti.TaichiOperations, '__pos__',
+        lambda x: x) or setattr(ti, 'pi', __import__('math').pi) or setattr(ti,
+        'tau', __import__('math').tau) or print('[Tina] Taichi properties hacked')
 
 
 @eval('lambda x: x()')
