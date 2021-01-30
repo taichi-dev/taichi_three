@@ -1,10 +1,10 @@
 from tina.advans import *
 
-_, __ = tina.readobj('assets/monkey.obj', simple=True)
+_, __ = tina.readobj('assets/cube.obj', simple=True)
 verts_np = _[__]
 verts = texture_as_field(verts_np)
 
-_, __ = tina.readobj('assets/cube.obj', simple=True)
+_, __ = tina.readobj('assets/sphere.obj', simple=True)
 passes_np = _[__]
 passes_np[:, :, 1] -= 2.5
 passes = texture_as_field(passes_np)
@@ -12,8 +12,8 @@ passes = texture_as_field(passes_np)
 dt = 0.001
 invM = 1 / 4
 invI = 1 / 16
-Ks = 512000
-Kd = 128
+Ks = 16000
+Kd = 256
 pos = ti.Vector.field(3, float, ())
 vel = ti.Vector.field(3, float, ())
 rot = ti.Vector.field(3, float, ())
@@ -97,12 +97,14 @@ def collide():
             cp1, cv1 = curposvel(p1)
             cp2, cv2 = curposvel(p2)
             sdf, norm, coor = hitedge(cp1, cp2)
+            edgelen = (p1 - p2).norm()
             relpos = lerp(coor, p1, p2)
             curpos = lerp(coor, cp1, cp2)
             curvel = lerp(coor, cv1, cv2)
             if sdf >= 0:
                 continue
             F = -Ks * sdf * norm - Kd * curvel
+            F *= edgelen
             torque += relpos.cross(F)
             force += F
     vel[None] += force * dt * invM

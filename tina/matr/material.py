@@ -373,7 +373,7 @@ class CookTorrance(IMaterial):
             odir = -odir
             fdf = 0.0  # TODO: fix energy loss on border
 
-        return odir, fdf, smoothstep(rough, 0.08, 0.25)
+        return odir, fdf, smoothstep(roughness, 0.08, 0.25)
 
 
 class Lambert(IMaterial):
