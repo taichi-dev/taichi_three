@@ -143,8 +143,8 @@ class TriangleTracer:
         return hit, depth, uv
 
     @ti.func
-    def sample_light_pos(self, org):
-        pos, ind, wei = V3(0.), -1, 0.
+    def sample_light_pos_fnrm(self):
+        pos, fnrm, ind, wei = V3(0.), V3(0.), -1, 1.
         if self.neminds[None] != 0:
             ind = self.eminds[ti.random(int) % self.neminds[None]]
             v0 = self.verts[ind, 0]
@@ -154,12 +154,27 @@ class TriangleTracer:
             r1, r2 = ti.sqrt(ti.random()), ti.random()
             w0, w1, w2 = 1 - r1, r1 * (1 - r2), r1 * r2
             pos = v0 * w0 + v1 * w1 + v2 * w2
+
+        return pos, fnrm, ind, wei * self.neminds[None]
+
+    @ti.func
+    def sample_light_pos_nrm(self):
+        pos, nrm, ind, wei = self.sample_light_pos_fnrm()
+        if ind != -1:
+            wei *= nrm.norm()
+            nrm = nrm.normalized()
+        return pos, nrm, ind, wei
+
+    @ti.func
+    def sample_light_pos(self, org):
+        pos, fnrm, ind, wei = self.sample_light_pos_fnrm()
+        if ind != -1:
             orgdir = (org - pos).normalized()
             wei = fnrm.dot(orgdir)
             fnrm = fnrm.normalized()
-            if wei > 0:
+            if wei >= 0:
                 pos += fnrm * eps * 8
             else:
                 pos -= fnrm * eps * 8
                 wei = -wei
-        return pos, ind, wei * self.neminds[None]
+        return pos, ind, wei

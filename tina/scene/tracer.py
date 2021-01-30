@@ -20,6 +20,19 @@ class MixedGeometryTracer:
         return pos, ind, gid, wei
 
     @ti.func
+    def sample_light_pos_nrm(self):
+        if ti.static(len(self.tracers) == 1):
+            pos, nrm, ind, wei = self.tracers[0].sample_light_pos_nrm()
+            return pos, nrm, ind, 0, wei
+
+        gid = ti.random(int) % len(self.tracers)
+        pos, nrm, ind, wei = V(0., 0., 0.), V(0., 0., 0.), -1, V(0., 0., 0.)
+        for i, tracer in ti.static(enumerate(self.tracers)):
+            if i == gid:
+                pos, nrm, ind, wei = tracer.sample_light_pos()
+        return pos, nrm, ind, gid, wei
+
+    @ti.func
     def hit(self, ro, rd):
         if ti.static(len(self.tracers) == 1):
             near, ind, uv = self.tracers[0].hit(ro, rd)
@@ -118,6 +131,9 @@ class PTScene(Scene):
 
     def render(self, nsteps=10, russian=2):
         self.engine.trace(nsteps, russian)
+
+    def render_light(self, nsteps=10, russian=2):
+        self.engine.trace_light(nsteps, russian)
 
     @property
     def img(self):
