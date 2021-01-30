@@ -84,6 +84,10 @@ class PathEngine:
 
             I = V(i % self.res.x, i // self.res.x)
             rl = self.trace_ray(I, maxdepth, surviverate, rng)
+            self.record_photon(I, rl)
+
+    @ti.func
+    def record_photon(self, I, rl):
             self.img[I] += rl
             self.cnt[I] += 1
 
