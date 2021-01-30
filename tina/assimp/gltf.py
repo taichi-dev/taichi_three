@@ -138,13 +138,18 @@ def readgltf(path):
                     #assert value.get('texCoord', 0) == 0
                     img = images[value['index']]
                     kwargs['roughness'] = tina.Texture(img)
+                elif key == 'metallicRoughnessTexture':
+                    img = images[value['index']]
+                    print(img.dtype)
+                    tina.ti.imshow(img)
+                    kwargs['metallic'] = tina.Texture(img[..., 2])
+                    kwargs['roughness'] = tina.Texture(img[..., 1])
             return tina.PBR(**kwargs)
 
     def load_uri(uri):
         if uri.startswith('data:'):
-            magic_string = 'data:application/octet-stream;base64,'
-            assert uri.startswith(magic_string)
-            data = uri[len(magic_string):]
+            index = uri.index('base64,')
+            data = uri[index + len('base64,'):]
             data = base64.b64decode(data.encode('ascii'))
         else:
             with open(uri, 'rb') as f:
@@ -183,8 +188,11 @@ def readgltf(path):
     if 'images' in root:
         for image in root['images']:
             #res_imag = Image(image.get('name', 'Untitled'))
-            buffer_view_id = image['bufferView']
-            buffer = get_buffer_view_bytes(buffer_view_id)
+            if 'bufferView' in image:
+                buffer_view_id = image['bufferView']
+                buffer = get_buffer_view_bytes(buffer_view_id)
+            else:
+                buffer = load_uri(image['uri'])
             from PIL import Image
             from io import BytesIO
             with BytesIO(buffer) as f:

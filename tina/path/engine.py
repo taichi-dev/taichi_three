@@ -62,11 +62,11 @@ class PathEngine:
 
         for depth in range(maxdepth):
             ro, rd, rc, rl, rs = self.transmit_ray(ro, rd, rc, rl, rs, rng)
-            rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.06, 0.996)
-            if ti.random() >= rate:
-                rc *= 0
-            else:
-                rc /= rate
+            #rate = lerp(ti.tanh(Vavg(rc) * surviverate), 0.06, 0.996)
+            #if ti.random() >= rate:
+            #    rc *= 0
+            #else:
+            #    rc /= rate
             if not Vany(rc > 0):
                 break
 

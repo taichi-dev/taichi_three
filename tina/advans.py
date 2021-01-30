@@ -13,8 +13,13 @@ def texture_as_field(filename):
     if img_np.dtype == np.uint8:
         img_np = np.float32(img_np / 255)
 
-    img = ti.Vector.field(3, float, img_np.shape[:2])
-    img._dense_shape = img_np.shape[:2]
+    if len(img_np.shape) == 3:
+        img = ti.Vector.field(img_np.shape[2], float, img_np.shape[:2])
+        img._dense_shape = img_np.shape[:2]
+    else:
+        assert len(img_np.shape) == 2
+        img = ti.field(float, img_np.shape)
+        img._dense_shape = img_np.shape
 
     @ti.materialize_callback
     def init_texture():
