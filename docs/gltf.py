@@ -3,7 +3,7 @@ import tina
 
 ti.init(ti.cpu)
 
-scene = tina.Scene(smoothing=True, texturing=True)#, ibl=True)
+scene = tina.Scene(smoothing=True, texturing=True)
 scene.load_gltf('assets/cornell.gltf')
 #scene.load_gltf('/home/bate/Downloads/军用飞机/DamagedHelmet.gltf')
 

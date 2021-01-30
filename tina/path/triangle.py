@@ -144,21 +144,22 @@ class TriangleTracer:
 
     @ti.func
     def sample_light_pos(self, org):
-        ind = self.eminds[ti.random(int) % self.neminds[None]]
-        v0 = self.verts[ind, 0]
-        v1 = self.verts[ind, 1]
-        v2 = self.verts[ind, 2]
-        fnrm = (v1 - v0).cross(v2 - v0) / 2
-        r1, r2 = ti.sqrt(ti.random()), ti.random()
-        w0, w1, w2 = 1 - r1, r1 * (1 - r2), r1 * r2
-        pos = v0 * w0 + v1 * w1 + v2 * w2
-        orgdir = (org - pos).normalized()
-        wei = fnrm.dot(orgdir)
-        fnrm = fnrm.normalized()
-        if wei > 0:
-            pos += fnrm * eps * 8
-        else:
-            pos -= fnrm * eps * 8
-            wei = -wei
-
+        pos, ind, wei = V3(0.), -1, 0.
+        if self.neminds[None] != 0:
+            ind = self.eminds[ti.random(int) % self.neminds[None]]
+            v0 = self.verts[ind, 0]
+            v1 = self.verts[ind, 1]
+            v2 = self.verts[ind, 2]
+            fnrm = (v1 - v0).cross(v2 - v0) / 2
+            r1, r2 = ti.sqrt(ti.random()), ti.random()
+            w0, w1, w2 = 1 - r1, r1 * (1 - r2), r1 * r2
+            pos = v0 * w0 + v1 * w1 + v2 * w2
+            orgdir = (org - pos).normalized()
+            wei = fnrm.dot(orgdir)
+            fnrm = fnrm.normalized()
+            if wei > 0:
+                pos += fnrm * eps * 8
+            else:
+                pos -= fnrm * eps * 8
+                wei = -wei
         return pos, ind, wei * self.neminds[None]

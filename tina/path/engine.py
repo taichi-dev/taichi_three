@@ -103,41 +103,8 @@ class PathEngine:
         self.V2W.from_numpy(np.array(V2W, dtype=np.float32))
 
     @ti.func
-    def hit_ray(self, ro, rd, rc, rng):
-        near, ind, gid, uv = self.geom.hit(ro, rd)
-
-        '''
-        # travel volume
-        vol_near, vol_far = tina.ray_aabb_hit(V3(-1.5), V3(1.5), ro, rd)
-        vol_near = max(vol_near, 0)
-        vol_far = min(vol_far, near)
-
-        t = vol_near
-        int_rho = 0.0
-        ran = -ti.log(ti.random())
-        step = 0.01
-        t += step * ti.random()
-        while t < vol_far:
-            dt = min(step, vol_far - t)
-            pos = ro + t * rd
-            rho = 4.6 if (pos // 0.5).sum() % 2 == 0 else 0.0
-            int_rho += rho * dt
-            if ran < int_rho:
-                new_rd = spherical(ti.random() * 2 - 1, ti.random())
-                t += dt / 2
-                ro += t * rd
-                rd = new_rd
-                rc *= 1.0
-                gid = -2
-                break
-            t += dt
-        '''
-
-        return ro, rd, rc, near, ind, gid, uv
-
-    @ti.func
     def transmit_ray(self, ro, rd, rc, rl, rs, rng):
-        ro, rd, rc, near, ind, gid, uv = self.hit_ray(ro, rd, rc, rng)
+        near, ind, gid, uv = self.geom.hit(ro, rd)
 
         if gid == -1:
             # no hit
@@ -192,8 +159,7 @@ class PathEngine:
         li_rd, li_wei, li_dis = self.redirect_light(ro)
         li_wei *= max(0, li_rd.dot(nrm))
         if Vany(li_wei > 0):
-            vol_ro, vol_rd, li_rc, near, ind, gid, uv = \
-                    self.hit_ray(ro, li_rd, li_wei, rng)
+            near, ind, gid, uv = self.geom.hit(ro, li_rd)
             if gid == -1 or near > li_dis:
                 # no shadow occlusion
                 li_brdf = material.brdf(nrm, -rd, li_rd)
@@ -203,16 +169,17 @@ class PathEngine:
     @ti.func
     def redirect_light(self, ro):
         pos, ind, gid, wei = self.geom.sample_light_pos(ro)
+        toli, fac, dis = V3(0.), V3(0.), inf
+        if ind != -1:
+            mtlid = self.geom.get_material_id(ind, gid)
+            material = self.mtltab.get(mtlid)
+            color = material.emission()
 
-        mtlid = self.geom.get_material_id(ind, gid)
-        material = self.mtltab.get(mtlid)
-        color = material.emission()
-
-        toli = pos - ro
-        dis2 = toli.norm_sqr()
-        toli = toli.normalized()
-        fac = wei * color / dis2
-        dis = ti.sqrt(dis2)
+            toli = pos - ro
+            dis2 = toli.norm_sqr()
+            toli = toli.normalized()
+            fac = wei * color / (dis2 + eps)
+            dis = ti.sqrt(dis2)
         return toli, fac, dis
 
     @ti.func
