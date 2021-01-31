@@ -145,7 +145,7 @@ class PathEngine:
 
             # hit object
             ro += near * rd
-            nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
+            nrm, tex = self.geom.calc_geometry(gid, ind, uv, ro)
 
             sign = 1
             if nrm.dot(rd) > 0:
@@ -208,7 +208,8 @@ class PathEngine:
         elif gid != -2:
             # hit object
             ro += near * rd
-            nrm, tex = self.geom.calc_geometry(near, gid, ind, uv, ro, rd)
+            nrm, tex, mtlid = self.geom.calc_geometry(gid, ind, uv, ro)
+            material = self.mtltab.get(mtlid)
 
             sign = 1
             if nrm.dot(rd) > 0:
@@ -221,9 +222,6 @@ class PathEngine:
                 'normal': nrm,
                 'texcoord': tex,
             })
-
-            mtlid = self.geom.get_material_id(ind, gid)
-            material = self.mtltab.get(mtlid)
 
             if rs < 1:
                 rl += rc * (1 - rs) * material.emission()
@@ -262,18 +260,34 @@ class PathEngine:
 
     @ti.func
     def redirect_light(self, ro):
-        pos, ind, gid, wei = self.geom.sample_light_pos(ro)
+        pos, ind, uv, gid, wei = self.geom.sample_light()
+        nrm, tex, mtlid = self.geom.calc_geometry(gid, ind, uv, pos)
+
         toli, fac, dis = V3(0.), V3(0.), inf
         if ind != -1:
-            mtlid = self.geom.get_material_id(ind, gid)
+            tina.Input.spec_g_pars({
+                'pos': pos,
+                'color': 1.,
+                'normal': nrm,
+                'texcoord': tex,
+            })
+
             material = self.mtltab.get(mtlid)
             color = material.emission()
 
+            tina.Input.clear_g_pars()
+
             toli = pos - ro
+            if toli.dot(nrm) <= 0:
+                toli += nrm * eps * 8
+            else:
+                toli -= nrm * eps * 8
+
             dis2 = toli.norm_sqr()
             toli = toli.normalized()
             fac = wei * color / (dis2 + eps)
             dis = ti.sqrt(dis2)
+
         return toli, fac, dis
 
     @ti.func

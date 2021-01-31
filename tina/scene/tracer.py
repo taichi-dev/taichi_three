@@ -7,30 +7,17 @@ class MixedGeometryTracer:
         self.tracers = []
 
     @ti.func
-    def sample_light_pos(self, org):
+    def sample_light(self):
         if ti.static(len(self.tracers) == 1):
-            pos, ind, wei = self.tracers[0].sample_light_pos(org)
-            return pos, ind, 0, wei
+            pos, uv, ind, wei = self.tracers[0].sample_light()
+            return pos, uv, ind, 0, wei
 
         gid = ti.random(int) % len(self.tracers)
-        pos, ind, wei = V(0., 0., 0.), -1, V(0., 0., 0.)
+        pos, ind, uv, wei = V(0., 0., 0.), V(0., 0., 0.), -1, V(0., 0., 0.)
         for i, tracer in ti.static(enumerate(self.tracers)):
             if i == gid:
-                pos, ind, wei = tracer.sample_light_pos(org)
-        return pos, ind, gid, wei
-
-    @ti.func
-    def sample_light_pos_nrm(self):
-        if ti.static(len(self.tracers) == 1):
-            pos, nrm, ind, wei = self.tracers[0].sample_light_pos_nrm()
-            return pos, nrm, ind, 0, wei
-
-        gid = ti.random(int) % len(self.tracers)
-        pos, nrm, ind, wei = V(0., 0., 0.), V(0., 0., 0.), -1, V(0., 0., 0.)
-        for i, tracer in ti.static(enumerate(self.tracers)):
-            if i == gid:
-                pos, nrm, ind, wei = tracer.sample_light_pos()
-        return pos, nrm, ind, gid, wei
+                pos, nrm, ind, wei = tracer.sample_light()
+        return pos, uv, ind, gid, wei
 
     @ti.func
     def hit(self, ro, rd):
@@ -47,26 +34,15 @@ class MixedGeometryTracer:
         return ret_near, ret_ind, ret_gid, ret_uv
 
     @ti.func
-    def calc_geometry(self, near, gid, ind, uv, ro, rd):
+    def calc_geometry(self, gid, ind, uv, pos):
         if ti.static(len(self.tracers) == 1):
-            return self.tracers[0].calc_geometry(near, ind, uv, ro, rd)
+            return self.tracers[0].calc_geometry(ind, uv, pos)
 
-        nrm, tex = V(0., 0., 0.), V(0., 0.)
+        nrm, tex, mtlid = V(0., 0., 0.), V(0., 0.), -1
         for i, tracer in ti.static(enumerate(self.tracers)):
             if i == gid:
-                nrm, tex = tracer.calc_geometry(near, ind, uv, ro, rd)
-        return nrm, tex
-
-    @ti.func
-    def get_material_id(self, ind, gid):
-        if ti.static(len(self.tracers) == 1):
-            return self.tracers[0].get_material_id(ind)
-
-        mtlid = -1
-        for i, tracer in ti.static(enumerate(self.tracers)):
-            if i == gid:
-                mtlid = tracer.get_material_id(ind)
-        return mtlid
+                nrm, tex, mtlid = tracer.calc_geometry(ind, uv, pos)
+        return nrm, tex, mtlid
 
 
 # noinspection PyMissingConstructor

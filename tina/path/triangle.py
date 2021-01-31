@@ -5,10 +5,9 @@ from .geometry import *
 @ti.data_oriented
 class TriangleTracer:
     def __init__(self, maxfaces=MAX, smoothing=False, texturing=False,
-                 multimtl=True, **extra_options):
+                 **extra_options):
         self.smoothing = smoothing
         self.texturing = texturing
-        self.multimtl = multimtl
         self.maxfaces = maxfaces
 
         self.verts = ti.Vector.field(3, float, (maxfaces, 3))
@@ -16,8 +15,7 @@ class TriangleTracer:
             self.norms = ti.Vector.field(3, float, (maxfaces, 3))
         if self.texturing:
             self.coors = ti.Vector.field(2, float, (maxfaces, 3))
-        if self.multimtl:
-            self.mtlids = ti.field(int, maxfaces)
+        self.mtlids = ti.field(int, maxfaces)
         self.nfaces = ti.field(int, ())
 
         self.tree = tina.BVHTree(self, self.maxfaces * 4)
@@ -37,8 +35,7 @@ class TriangleTracer:
         for i in range(nfaces):
             j = base + i
             verts = mesh.get_face_verts(i)
-            if ti.static(self.multimtl):
-                self.mtlids[j] = mtlid
+            self.mtlids[j] = mtlid
             for k in ti.static(range(3)):
                 self.verts[j, k] = verts[k]
             if ti.static(self.smoothing):
@@ -105,15 +102,14 @@ class TriangleTracer:
 
     @ti.func
     def get_material_id(self, ind):
-        if ti.static(not self.multimtl):
-            return 0
         return self.mtlids[ind]
 
     @ti.func
-    def calc_geometry(self, near, ind, uv, ro, rd):
+    def calc_geometry(self, ind, uv, pos):
         nrm = V(0., 0., 0.)
         tex = V(0., 0.)
         wei = V(1 - uv.x - uv.y, uv.x, uv.y)
+        mtlid = self.mtlids[ind]
 
         if ti.static(self.texturing):
             c0 = self.coors[ind, 0]
@@ -132,7 +128,7 @@ class TriangleTracer:
             v2 = self.verts[ind, 2]
             nrm = (v1 - v0).cross(v2 - v0).normalized()
 
-        return nrm, tex
+        return nrm, tex, mtlid
 
     @ti.func
     def element_hit(self, ind, ro, rd):
@@ -143,8 +139,8 @@ class TriangleTracer:
         return hit, depth, uv
 
     @ti.func
-    def sample_light_pos_fnrm(self):
-        pos, fnrm, ind, wei = V3(0.), V3(0.), -1, 1.
+    def sample_light(self):
+        pos, uv, ind, wei = V3(0.), V2(0.), -1, 0.
         if self.neminds[None] != 0:
             ind = self.eminds[ti.random(int) % self.neminds[None]]
             v0 = self.verts[ind, 0]
@@ -154,8 +150,10 @@ class TriangleTracer:
             r1, r2 = ti.sqrt(ti.random()), ti.random()
             w0, w1, w2 = 1 - r1, r1 * (1 - r2), r1 * r2
             pos = v0 * w0 + v1 * w1 + v2 * w2
+            wei = fnrm.norm()
+            uv = V(w1, w2)
 
-        return pos, fnrm, ind, wei * self.neminds[None]
+        return pos, ind, uv, wei * self.neminds[None]
 
     @ti.func
     def sample_light_pos_nrm(self):
