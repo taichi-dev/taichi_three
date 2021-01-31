@@ -77,15 +77,15 @@ class Param(Node):
 
 
 class Input(Node):
-    g_pars = None
+    g_pars = []
 
     @staticmethod
     def spec_g_pars(pars):
-        Input.g_pars = pars
+        Input.g_pars.insert(0, pars)
 
     @staticmethod
     def clear_g_pars():
-        Input.g_pars = None
+        Input.g_pars.pop(0)
 
     # noinspection PyMissingConstructor
     def __init__(self, name):
@@ -93,7 +93,7 @@ class Input(Node):
 
     @ti.func
     def __call__(self):
-        return Input.g_pars[self.name]
+        return Input.g_pars[0][self.name]
 
 
 class Texture(Node):

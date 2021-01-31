@@ -88,9 +88,20 @@ class PathEngine:
             pos, nrm, ind, gid, wei = self.geom.sample_light_pos_nrm()
             if ind == -1:
                 continue
+
+            tina.Input.spec_g_pars({
+                'pos': pos,
+                'color': 1.,
+                'normal': nrm,
+                'texcoord': V(0., 0.),
+            })
+
             mtlid = self.geom.get_material_id(ind, gid)
             material = self.mtltab.get(mtlid)
             color = material.emission()
+
+            tina.Input.clear_g_pars()
+
             rd = tangentspace(nrm) @ spherical(ti.random() * 2 - 1, ti.random())
             rc = V3(wei * color)
             ro = pos + rd * eps * 8
