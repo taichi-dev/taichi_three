@@ -148,7 +148,6 @@ class TinaRenderPanel(bpy.types.Panel):
         row.prop(options, 'texturing')
         layout.prop(options, 'path_tracing')
         layout.operator('scene.tina_reset')
-        # import code; code.interact(local=locals())
 
 
 class TinaRenderEngine(bpy.types.RenderEngine):
@@ -157,7 +156,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     bl_idname = "TINA"
     bl_label = "Tina"
     bl_use_preview = True
-    instances = []
 
     # Init is called whenever a new render engine instance is created. Multiple
     # instances may exist at the same time, for example for a viewport and final
@@ -165,7 +163,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     def __init__(self):
         self.scene_data = None
         self.draw_data = None
-        self.instances.append(self)
 
         self.object_to_mesh = {}
         self.material_to_id = {}
@@ -173,8 +170,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     # When the render engine instance is destroy, this is called. Clean up any
     # render engine data here, for example stopping running render threads.
     def __del__(self):
-        if self in self.instances:
-            self.instances.remove(self)
+        pass
 
     def __setup_mesh_object(self, object, depsgraph):
         print('adding mesh object', object.name, object.tina_material)
@@ -237,11 +233,22 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         need_update = False
         for update in depsgraph.updates:
             object = update.id
+            if isinstance(object, bpy.types.Scene):
+                obj_to_del = []
+                for obj in self.object_to_mesh:
+                    if obj.name not in object.objects:
+                        # this object was deleted
+                        print('delete object', obj)
+                        obj_to_del.append(obj)
+                for obj in obj_to_del:
+                    del self.object_to_mesh[obj]
+                    need_update = True
             if isinstance(object, bpy.types.Object):
                 if object.type == 'MESH':
                     self.__update_mesh_object(object, depsgraph)
                     need_update = True
         if need_update:
+            # import code; code.interact(local=locals())
             self.scene.clear_objects()
             for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
                 self.scene.add_mesh_object(world, verts, norms, coors, mtlid)
@@ -489,10 +496,7 @@ class TinaResetOperator(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        for inst in TinaRenderEngine.instances:
-            inst.scene_data = None
-            inst.tag_update()
-            inst.tag_redraw()
+        bpy.a
         return {'FINISHED'}
 
 
