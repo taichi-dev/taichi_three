@@ -20,6 +20,6 @@ while gui.running:
     if scene.input(gui):
         scene.clear()
     scene.render(nsteps=6)
-    #scene.render_light(nsteps=6)
+    scene.render_light(nsteps=6)
     gui.set_image(scene.img)
     gui.show()

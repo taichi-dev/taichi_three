@@ -53,20 +53,6 @@ class PathEngine:
         self._get_image(out, raw)
         return out
 
-    @ti.func
-    def trace_ray(self, I, maxdepth, surviverate, rng):
-        ro, rd = self.generate_ray(I)
-        rc = V(1., 1., 1.)
-        rl = V(0., 0., 0.)
-        rs = 0.0
-
-        for depth in range(maxdepth):
-            ro, rd, rc, rl, rs = self.transmit_ray(ro, rd, rc, rl, rs, rng)
-            if not Vany(rc > 0):
-                break
-
-        return rl
-
     @ti.kernel
     def trace(self, maxdepth: int, surviverate: float):
         self.uniqid[None] += 1
@@ -75,7 +61,16 @@ class PathEngine:
             rng = tina.TaichiRNG()
 
             I = V(i % self.res.x, i // self.res.x)
-            rl = self.trace_ray(I, maxdepth, surviverate, rng)
+            ro, rd = self.generate_ray(I)
+            rc = V(1., 1., 1.)
+            rl = V(0., 0., 0.)
+            rs = 0.0
+
+            for depth in range(maxdepth):
+                ro, rd, rc, rl, rs = self.transmit_ray(ro, rd, rc, rl, rs, rng)
+                if not Vany(rc > 0):
+                    break
+
             self.record_photon(I, rl)
 
     @ti.kernel
@@ -85,9 +80,10 @@ class PathEngine:
         for i in ti.smart(self.stack):
             rng = tina.TaichiRNG()
 
-            pos, nrm, ind, gid, wei = self.geom.sample_light_pos_nrm()
+            pos, ind, uv, gid, wei = self.geom.sample_light()
             if ind == -1:
                 continue
+            nrm, tex, mtlid = self.geom.calc_geometry(gid, ind, uv, pos)
 
             tina.Input.spec_g_pars({
                 'pos': pos,
@@ -96,7 +92,6 @@ class PathEngine:
                 'texcoord': V(0., 0.),
             })
 
-            mtlid = self.geom.get_material_id(ind, gid)
             material = self.mtltab.get(mtlid)
             color = material.emission()
 
@@ -145,7 +140,7 @@ class PathEngine:
 
             # hit object
             ro += near * rd
-            nrm, tex = self.geom.calc_geometry(gid, ind, uv, ro)
+            nrm, tex, mtlid = self.geom.calc_geometry(gid, ind, uv, ro)
 
             sign = 1
             if nrm.dot(rd) > 0:
@@ -159,7 +154,6 @@ class PathEngine:
                 'texcoord': tex,
             })
 
-            mtlid = self.geom.get_material_id(ind, gid)
             material = self.mtltab.get(mtlid)
 
             # sample indirect light
@@ -261,10 +255,11 @@ class PathEngine:
     @ti.func
     def redirect_light(self, ro):
         pos, ind, uv, gid, wei = self.geom.sample_light()
-        nrm, tex, mtlid = self.geom.calc_geometry(gid, ind, uv, pos)
 
         toli, fac, dis = V3(0.), V3(0.), inf
         if ind != -1:
+            nrm, tex, mtlid = self.geom.calc_geometry(gid, ind, uv, pos)
+
             tina.Input.spec_g_pars({
                 'pos': pos,
                 'color': 1.,
