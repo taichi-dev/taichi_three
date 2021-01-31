@@ -166,6 +166,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.object_to_mesh = {}
         self.material_to_id = {}
+        self.nsamples = 0
+        self.viewport_samples = 16
 
     # When the render engine instance is destroy, this is called. Clean up any
     # render engine data here, for example stopping running render threads.
@@ -253,6 +255,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
                 self.scene.add_mesh_object(world, verts, norms, coors, mtlid)
             self.scene.update()
+            self.nsamples = 0
 
     # This is the method called by Blender for both final renders (F12) and
     # small preview for materials, world and lights.
@@ -268,7 +271,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
 
-        nsamples = 128
+        nsamples = 32
         for samp in range(nsamples):
             self.update_stats('Rendering', f'{samp}/{nsamples} Samples')
             self.update_progress((samp + .5) / nsamples)
@@ -297,6 +300,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.scene.engine.set_camera(np.eye(4), np.array(perspective))
 
     def __update_camera(self, perspective):
+        self.nsamples = 0
         self.scene.engine.set_camera(np.eye(4), np.array(perspective))
 
     # For viewport renders, this method gets called once at the start and
@@ -343,8 +347,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             for instance in depsgraph.object_instances:
                 pass
 
-        self.draw_data = None
-
     # For viewport renders, this method is called whenever Blender redraws
     # the 3D viewport. The renderer is expected to quickly draw the render
     # with OpenGL, and not perform other expensive work.
@@ -369,10 +371,18 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         if not self.draw_data or self.draw_data.dimensions != dimensions \
                 or self.draw_data.perspective != perspective:
             self.__update_camera(perspective)
-            self.scene.clear()
+
+        if self.nsamples < self.viewport_samples:
+            if self.nsamples == 0:
+                self.scene.clear()
             self.scene.render()
+            self.nsamples += 1
             self.draw_data = TinaDrawData(self.scene, dimensions, perspective)
-            self.update_stats('Rendering', 'Done')
+            self.update_stats('Rendering',
+                    f'{self.nsamples}/{self.viewport_samples} Samples')
+
+            if self.nsamples < self.viewport_samples:
+                self.tag_redraw()
 
         self.draw_data.draw()
 
