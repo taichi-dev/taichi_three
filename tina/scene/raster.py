@@ -251,3 +251,11 @@ class Scene:
             out[base + 0] = r
             out[base + 1] = g
             out[base + 2] = b
+
+    def visualize(self):
+        with ti.GUI() as gui:
+            while gui.running:
+                self.input(gui)
+                self.render()
+                gui.set_image(self.img)
+                gui.show()

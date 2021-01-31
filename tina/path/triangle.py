@@ -27,15 +27,19 @@ class TriangleTracer:
         self.nfaces[None] = 0
 
     @ti.kernel
-    def add_object(self, mesh: ti.template(), mtlid: ti.template()):
+    def add_object(self, mesh: ti.template()):
         mesh.pre_compute()
         nfaces = mesh.get_nfaces()
         base = self.nfaces[None]
         self.nfaces[None] += nfaces
         for i in range(nfaces):
             j = base + i
+            if ti.static(hasattr(mesh, 'get_face_mtlid')):
+                mtlid = mesh.get_face_mtlid(i)
+                self.mtlids[j] = mtlid
+            else:
+                self.mtlids[j] = 0
             verts = mesh.get_face_verts(i)
-            self.mtlids[j] = mtlid
             for k in ti.static(range(3)):
                 self.verts[j, k] = verts[k]
             if ti.static(self.smoothing):

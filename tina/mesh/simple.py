@@ -13,6 +13,7 @@ class SimpleMesh:
         self.verts = ti.Vector.field(3, float, (maxfaces, npolygon))
         self.coors = ti.Vector.field(2, float, (maxfaces, npolygon))
         self.norms = ti.Vector.field(3, float, (maxfaces, npolygon))
+        self.mtlids = ti.field(int, maxfaces)
         self.nfaces = ti.field(int, ())
 
         self.maxfaces = maxfaces
@@ -44,6 +45,10 @@ class SimpleMesh:
     @ti.func
     def get_face_norms(self, n):
         return self._get_face_props(self.norms, n)
+
+    @ti.func
+    def get_face_mtlid(self, n):
+        return self.mtlids[n]
 
     @ti.kernel
     def set_face_verts(self, verts: ti.ext_arr()):
@@ -91,3 +96,15 @@ class SimpleMesh:
             for k in ti.static(range(self.npolygon)):
                 for l in ti.static(range(2)):
                     self.coors[i, k][l] = coors[i, k, l]
+
+    @ti.kernel
+    def set_face_mtlids(self, mtlids: ti.ext_arr()):
+        '''
+        :param mtlids: (np.array[nfaces]) the material ids of faces
+
+        Specify the face material ids to be rendered
+
+        :note: this should be invoked only *after* set_face_verts for nfaces
+        '''
+        for i in range(self.nfaces[None]):
+            self.mtlids[i] = mtlids[i]

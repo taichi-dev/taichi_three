@@ -54,8 +54,7 @@ class PTScene(Scene):
         self.res = self.engine.res
         self.options = options
 
-        self.default_material = tina.Lambert()
-        self.materials = []
+        self.materials = [tina.Lambert()]
         self.objects = []
         self.tracers = []
 
@@ -65,9 +64,7 @@ class PTScene(Scene):
             for material in self.materials:
                 self.mtltab.add_material(material)
 
-    def add_object(self, object, material=None, tracer=None):
-        if material is None:
-            material = self.default_material
+    def add_object(self, object, tracer=None):
         if tracer is None:
             if hasattr(object, 'get_nfaces'):
                 if not hasattr(self, 'triangle_tracer'):
@@ -84,12 +81,9 @@ class PTScene(Scene):
             else:
                 raise ValueError(f'cannot determine tracer type of object: {object}')
 
-        if material not in self.materials:
-            self.materials.append(material)
         if tracer not in self.geom.tracers:
             self.geom.tracers.append(tracer)
-        mtlid = self.materials.index(material)
-        self.objects.append((object, mtlid, tracer))
+        self.objects.append((object, tracer))
 
     def clear(self):
         self.engine.clear_image()
@@ -98,8 +92,8 @@ class PTScene(Scene):
         self.engine.clear_image()
         for tracer in self.geom.tracers:
             tracer.clear_objects()
-        for object, mtlid, tracer in self.objects:
-            tracer.add_object(object, mtlid)
+        for object, tracer in self.objects:
+            tracer.add_object(object)
         for tracer in self.geom.tracers:
             tracer.update()
         for tracer in self.geom.tracers:
