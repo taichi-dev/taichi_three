@@ -138,15 +138,11 @@ class TinaRenderPanel(bpy.types.Panel):
         options = context.scene.tina_render
 
         row = layout.row()
-        row.prop(options, 'taa')
-        row.prop(options, 'fxaa')
-        row.prop(options, 'ssr')
-        row.prop(options, 'ssao')
+        row.prop(options, 'render_samples')
+        row.prop(options, 'viewport_samples')
         row = layout.row()
-        row.prop(options, 'blooming')
         row.prop(options, 'smoothing')
         row.prop(options, 'texturing')
-        layout.prop(options, 'path_tracing')
         layout.operator('scene.tina_reset')
 
 
@@ -271,7 +267,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
 
-        nsamples = 32
+        nsamples = scene.tina_render.render_samples
         for samp in range(nsamples):
             self.update_stats('Rendering', f'{samp}/{nsamples} Samples')
             self.update_progress((samp + .5) / nsamples)
@@ -358,6 +354,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         region = context.region
         region3d = context.region_data
         scene = depsgraph.scene
+        max_samples = scene.tina_render.viewport_samples
 
         # Get viewport dimensions
         dimensions = region.width, region.height
@@ -372,16 +369,16 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 or self.draw_data.perspective != perspective:
             self.__update_camera(perspective)
 
-        if self.nsamples < self.viewport_samples:
+        if self.nsamples < max_samples:
             if self.nsamples == 0:
                 self.scene.clear()
             self.scene.render()
             self.nsamples += 1
             self.draw_data = TinaDrawData(self.scene, dimensions, perspective)
             self.update_stats('Rendering',
-                    f'{self.nsamples}/{self.viewport_samples} Samples')
+                    f'{self.nsamples}/{max_samples} Samples')
 
-            if self.nsamples < self.viewport_samples:
+            if self.nsamples < max_samples:
                 self.tag_redraw()
 
         self.draw_data.draw()
@@ -485,14 +482,10 @@ def get_panels():
 
 
 class TinaRenderProperties(bpy.types.PropertyGroup):
-    taa: bpy.props.BoolProperty(name='TAA', default=False)
-    ssr: bpy.props.BoolProperty(name='SSR', default=False)
-    ssao: bpy.props.BoolProperty(name='SSAO', default=False)
-    fxaa: bpy.props.BoolProperty(name='FXAA', default=False)
-    blooming: bpy.props.BoolProperty(name='Blooming', default=False)
+    render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=64)
+    viewport_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=16)
     smoothing: bpy.props.BoolProperty(name='Smoothing', default=True)
     texturing: bpy.props.BoolProperty(name='Texturing', default=True)
-    path_tracing: bpy.props.BoolProperty(name='Path Tracing', default=True)
 
 
 class TinaResetOperator(bpy.types.Operator):
