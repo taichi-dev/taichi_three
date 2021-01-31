@@ -165,11 +165,10 @@ class TinaRenderEngine(bpy.types.RenderEngine):
     def __init__(self):
         self.scene_data = None
         self.draw_data = None
-        self.is_pt = False
         self.instances.append(self)
 
         self.object_to_mesh = {}
-        self.light_to_index = {}
+        self.material_to_id = {}
 
     # When the render engine instance is destroy, this is called. Clean up any
     # render engine data here, for example stopping running render threads.
@@ -177,80 +176,24 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         if self in self.instances:
             self.instances.remove(self)
 
-
-    def __setup_light_object(self, object, depsgraph, nlights):
-        light = object.data
-        idx = nlights
-
-        if light.type == 'POINT':
-            print('adding point light', object.name)
-
-            color = (light.tina_strength * np.array(light.tina_color)).tolist()
-            pos = np.array(object.matrix_world) @ np.array([0, 0, 0, 1])
-
-            @ti.materialize_callback
-            def init_light():
-                self.scene.lighting.set_light(idx, pos=pos, color=color)
-
-        elif light.type == 'SUN':
-            print('adding sun light', object.name)
-
-            color = (light.tina_strength * np.array(light.tina_color)).tolist()
-            dir = np.array(object.matrix_world) @ np.array([0, 0, 1, 0])
-
-            @ti.materialize_callback
-            def init_light():
-                self.scene.lighting.set_light(idx, dir=dir, color=color)
-
-        self.light_to_index[light] = idx
-
-    def __update_light_object(self, object, depsgraph):
-        light = object.data
-        idx = self.light_to_index[light]
-
-        if light.type == 'POINT':
-            print('updating point light', object.name)
-
-            color = (light.tina_strength * np.array(light.tina_color)).tolist()
-            pos = np.array(object.matrix_world) @ np.array([0, 0, 0, 1])
-
-            self.scene.lighting.set_light(idx, pos=pos, color=color)
-
-        elif light.type == 'SUN':
-            print('updating sun light', object.name)
-
-            color = (light.tina_strength * np.array(light.tina_color)).tolist()
-            dir = np.array(object.matrix_world) @ np.array([0, 0, 1, 0])
-
-            self.scene.lighting.set_light(idx, dir=dir, color=color)
-
-    def __setup_mesh_object(self, object, depsgraph, materials):
-        print('adding mesh object', object.name)
+    def __setup_mesh_object(self, object, depsgraph):
+        print('adding mesh object', object.name, object.tina_material)
 
         verts, norms, coors = blender_get_object_mesh(object, depsgraph)
         world = np.array(object.matrix_world)
 
-        mesh = tina.MeshTransform(tina.SimpleMesh())
-
-        @ti.materialize_callback
-        def init_mesh():
-            mesh.set_transform(world)
-            mesh.set_face_verts(verts)
-            mesh.set_face_norms(norms)
-            mesh.set_face_coors(coors)
-
         if not object.tina_material:
-            matr = tina.PBR()
+            matr, mtlid = self.scene.materials[0], 0
         else:
-            if object.tina_material not in materials:
+            if object.tina_material not in self.material_to_id:
                 tree = bpy.data.node_groups[object.tina_material]
                 from .node_system import construct_material_output
                 matr = construct_material_output(tree)
-                materials[object.tina_material] = matr
-            matr = materials[object.tina_material]
-        self.scene.add_object(mesh, matr)
+                self.material_to_id[object.tina_material] = len(self.scene.materials)
+                self.scene.materials.append(matr)
+            mtlid = self.material_to_id[object.tina_material]
 
-        self.object_to_mesh[object] = mesh
+        self.object_to_mesh[object] = world, verts, norms, coors, mtlid
 
     def __update_mesh_object(self, object, depsgraph):
         print('updating mesh object', object.name)
@@ -258,62 +201,51 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         verts, norms, coors = blender_get_object_mesh(object, depsgraph)
         world = np.array(object.matrix_world)
 
-        mesh = self.object_to_mesh[object]
-        mesh.set_transform(world)
-        mesh.set_face_verts(verts)
-        mesh.set_face_norms(norms)
-        mesh.set_face_coors(coors)
+        if not object.tina_material:
+            matr, mtlid = self.scene.materials[0], 0
+        else:
+            if object.tina_material not in self.material_to_id:
+                tree = bpy.data.node_groups[object.tina_material]
+                from .node_system import construct_material_output
+                matr = construct_material_output(tree)
+                self.material_to_id[object.tina_material] = len(self.scene.materials)
+                self.scene.materials.append(matr)
+            mtlid = self.material_to_id[object.tina_material]
+
+        self.object_to_mesh[object] = world, verts, norms, coors, mtlid
 
     def __setup_scene(self, depsgraph):
         scene = depsgraph.scene
-        self.is_pt = scene.tina_render.path_tracing
-        if self.is_pt:
-            options = scene.tina_render
-            self.scene = tina.PTScene(
-                    (self.size_x, self.size_y),
-                    smoothing=options.smoothing,
-                    texturing=options.texturing)
-            self.scene.lighting = tina.Lighting()
-        else:
-            options = scene.tina_render
-            self.scene = tina.Scene((self.size_x, self.size_y),
-                    bgcolor=(np.array(scene.world.tina_color)
-                        * scene.world.tina_strength).tolist(),
-                    taa=options.taa,
-                    fxaa=options.fxaa,
-                    ssr=options.ssr,
-                    ssao=options.ssao,
-                    blooming=options.blooming,
-                    smoothing=options.smoothing,
-                    texturing=options.texturing,
-                    tonemap=False)
+        options = scene.tina_render
+        self.scene = tina.PTScene(
+                (self.size_x, self.size_y),
+                smoothing=options.smoothing,
+                texturing=options.texturing)
+        self.scene.lighting = tina.Lighting()
 
-        materials = {}
-
-        nlights = 0
         for object in depsgraph.ids:
             if isinstance(object, bpy.types.Object):
                 if object.type == 'MESH':
-                    self.__setup_mesh_object(object, depsgraph, materials)
-                elif object.type == 'LIGHT':
-                    self.__setup_light_object(object, depsgraph, nlights)
-                    nlights += 1
+                    self.__setup_mesh_object(object, depsgraph)
 
         @ti.materialize_callback
-        def set_nlights():
-            self.scene.lighting.nlights[None] = nlights
-            self.scene.lighting.set_ambient_light(
-                    (np.array(scene.world.tina_color)
-                        * scene.world.tina_strength).tolist())
+        def init_scene():
+            for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
+                self.scene.add_mesh_object(world, verts, norms, coors, mtlid)
 
     def __update_scene(self, depsgraph):
+        need_update = False
         for update in depsgraph.updates:
             object = update.id
             if isinstance(object, bpy.types.Object):
                 if object.type == 'MESH':
                     self.__update_mesh_object(object, depsgraph)
-                elif object.type == 'LIGHT':
-                    self.__update_light_object(object, depsgraph)
+                    need_update = True
+        if need_update:
+            self.scene.clear_objects()
+            for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
+                self.scene.add_mesh_object(world, verts, norms, coors, mtlid)
+            self.scene.update()
 
     # This is the method called by Blender for both final renders (F12) and
     # small preview for materials, world and lights.
@@ -329,18 +261,14 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         # Here we write the pixel values to the RenderResult
         result = self.begin_result(0, 0, self.size_x, self.size_y)
 
-        nsamples = 32
+        nsamples = 128
         for samp in range(nsamples):
             self.update_stats('Rendering', f'{samp}/{nsamples} Samples')
             self.update_progress((samp + .5) / nsamples)
             if self.test_break():
                 break
             self.scene.render()
-            if self.is_pt:
-                img = self.scene.raw_img**2.2
-            else:
-                img = np.concatenate([self.scene.img.to_numpy(),
-                    np.ones((self.size_x, self.size_y, 1))], axis=2)
+            img = self.scene.raw_img**2.2
             img = np.ascontiguousarray(img.swapaxes(0, 1))
             rect = img.reshape(self.size_x * self.size_y, 4).tolist()
             layer = result.layers[0].passes["Combined"]
@@ -357,11 +285,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.update_stats('Initializing', 'Loading scene')
         self.__setup_scene(depsgraph)
 
-        if self.is_pt:
-            self.update_stats('Initializing', 'Constructing tree')
-            self.scene.update()
-        else:
-            self.update_stats('Initializing', 'Materializing layout')
+        self.update_stats('Initializing', 'Constructing tree')
+        self.scene.update()
         self.scene.engine.set_camera(np.eye(4), np.array(perspective))
 
     def __update_camera(self, perspective):

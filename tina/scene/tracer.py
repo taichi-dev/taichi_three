@@ -55,8 +55,8 @@ class PTScene(Scene):
         self.options = options
 
         self.materials = [tina.Lambert()]
-        self.objects = []
-        self.tracers = []
+
+        self.geom.tracers.append(tina.TriangleTracer(**self.options))
 
         @ti.materialize_callback
         def init_mtltab():
@@ -64,36 +64,18 @@ class PTScene(Scene):
             for material in self.materials:
                 self.mtltab.add_material(material)
 
-    def add_object(self, object, tracer=None):
-        if tracer is None:
-            if hasattr(object, 'get_nfaces'):
-                if not hasattr(self, 'triangle_tracer'):
-                    self.triangle_tracer = tina.TriangleTracer(**self.options)
-                tracer = self.triangle_tracer
-            elif hasattr(object, 'get_npars'):
-                if not hasattr(self, 'particle_tracer'):
-                    self.particle_tracer = tina.ParticleTracer(**self.options)
-                tracer = self.particle_tracer
-            elif hasattr(object, 'sample_volume'):
-                if not hasattr(self, 'volume_tracer'):
-                    self.volume_tracer = tina.VolumeTracer(**self.options)
-                tracer = self.volume_tracer
-            else:
-                raise ValueError(f'cannot determine tracer type of object: {object}')
+    def clear_objects(self):
+        for tracer in self.geom.tracers:
+            tracer.clear_objects()
 
-        if tracer not in self.geom.tracers:
-            self.geom.tracers.append(tracer)
-        self.objects.append((object, tracer))
+    def add_mesh_object(self, world, verts, norms, coors, mtlid):
+        self.geom.tracers[0].add_mesh(world, verts, norms, coors, mtlid)
 
     def clear(self):
         self.engine.clear_image()
 
     def update(self):
         self.engine.clear_image()
-        for tracer in self.geom.tracers:
-            tracer.clear_objects()
-        for object, tracer in self.objects:
-            tracer.add_object(object)
         for tracer in self.geom.tracers:
             tracer.update()
         for tracer in self.geom.tracers:
@@ -112,3 +94,6 @@ class PTScene(Scene):
     @property
     def raw_img(self):
         return self.engine.get_image(raw=True)
+
+    def _fast_export_image(self, out):
+        self.engine._fast_export_image(out)

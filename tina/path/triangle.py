@@ -27,6 +27,36 @@ class TriangleTracer:
         self.nfaces[None] = 0
 
     @ti.kernel
+    def add_mesh(self, world: ti.ext_arr(), verts: ti.ext_arr(),
+            norms: ti.ext_arr(), coors: ti.ext_arr(), mtlid: int):
+        trans = ti.Matrix.zero(float, 4, 4)
+        trans_norm = ti.Matrix.zero(float, 3, 3)
+        for i, j in ti.static(ti.ndrange(4, 4)):
+            trans[i, j] = world[i, j]
+        for i, j in ti.static(ti.ndrange(3, 3)):
+            trans_norm[i, j] = world[i, j]
+        trans_norm = trans_norm.inverse().transpose()
+        nfaces = verts.shape[0]
+        base = self.nfaces[None]
+        self.nfaces[None] += nfaces
+        for i in range(nfaces):
+            j = base + i
+            self.mtlids[j] = mtlid
+            for k in ti.static(range(3)):
+                for l in ti.static(range(3)):
+                    self.verts[j, k][l] = verts[i, k, l]
+                self.verts[j, k] = mapply_pos(trans, self.verts[j, k])
+            if ti.static(self.smoothing):
+                for k in ti.static(range(3)):
+                    for l in ti.static(range(3)):
+                        self.norms[j, k][l] = norms[i, k, l]
+                    self.norms[j, k] = trans_norm @ self.norms[j, k]
+            if ti.static(self.texturing):
+                for k in ti.static(range(3)):
+                    for l in ti.static(range(2)):
+                        self.coors[j, k][l] = coors[i, k, l]
+
+    @ti.kernel
     def add_object(self, mesh: ti.template()):
         mesh.pre_compute()
         nfaces = mesh.get_nfaces()

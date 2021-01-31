@@ -32,6 +32,18 @@ class PathEngine:
         self.cnt.fill(0)
 
     @ti.kernel
+    def _fast_export_image(self, out: ti.ext_arr()):
+        for x, y in ti.grouped(self.img):
+            base = (y * self.res.x + x) * 3
+            val = lerp((V(x, y) // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
+            if self.cnt[x, y] != 0:
+                val = self.img[x, y] / self.cnt[x, y]
+            r, g, b = aces_tonemap(val)
+            out[base + 0] = r
+            out[base + 1] = g
+            out[base + 2] = b
+
+    @ti.kernel
     def _get_image(self, out: ti.ext_arr(), raw: ti.template()):
         for I in ti.grouped(self.img):
             val = lerp((I // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))

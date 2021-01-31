@@ -108,3 +108,8 @@ class SimpleMesh:
         '''
         for i in range(self.nfaces[None]):
             self.mtlids[i] = mtlids[i]
+
+    @ti.kernel
+    def set_material_id(self, mtlid: int):
+        for i in range(self.nfaces[None]):
+            self.mtlids[i] = mtlid
