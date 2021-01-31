@@ -72,15 +72,15 @@ def export_simple_mesh(mesh):
         npolygon = mesh.get_npolygon()
     assert hasattr(mesh, 'get_face_verts')
     out = np.empty((nfaces, npolygon, 3), dtype=np.float32)
-    _export_mesh_verts(out)
+    _export_mesh_verts(mesh, out)
     ret['fv'] = out
     if hasattr(mesh, 'get_face_norms'):
         out = np.empty((nfaces, npolygon, 3), dtype=np.float32)
-        _export_mesh_norms(out)
+        _export_mesh_norms(mesh, out)
         ret['fn'] = out
     if hasattr(mesh, 'get_face_coors'):
         out = np.empty((nfaces, npolygon, 2), dtype=np.float32)
-        _export_mesh_coors(out)
+        _export_mesh_coors(mesh, out)
         ret['ft'] = out
     return ret
 
@@ -95,6 +95,7 @@ def simple_mesh_to_connective(obj):
         ret['vn'] = obj['fvn'].reshape(nfaces * npolygon, 3)
     if 'fvt' in obj:
         ret['vt'] = obj['fvt'].reshape(nfaces * npolygon, 3)
+    return ret
 
 
 def export_connective_mesh(mesh):
@@ -112,14 +113,14 @@ def export_connective_mesh(mesh):
     nverts = np.max(indices)
     if hasattr(mesh, 'get_indiced_vert'):
         out = np.empty((nverts, npolygon, 3), dtype=np.float32)
-        _export_mesh_indiced_verts(out)
+        _export_mesh_indiced_verts(mesh, out)
         ret['v'] = out
     if hasattr(mesh, 'get_indiced_norm'):
         out = np.empty((nverts, npolygon, 3), dtype=np.float32)
-        _export_mesh_indiced_norms(out)
+        _export_mesh_indiced_norms(mesh, out)
         ret['vn'] = out
     if hasattr(mesh, 'get_indiced_coor'):
         out = np.empty((nverts, npolygon, 2), dtype=np.float32)
-        _export_mesh_indiced_coors(out)
+        _export_mesh_indiced_coors(mesh, out)
         ret['vt'] = out
     return ret

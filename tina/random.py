@@ -147,3 +147,19 @@ class SobolRNG:
     @ti.func
     def random_int(self):
         return int(self.random() * 2**20)
+
+
+'''
+def binrev(i):
+    j = 0
+    k = 1
+    while i != 0:
+        k <<= 1
+        j <<= 1
+        j |= i & 1
+        i >>= 1
+    return j / k
+
+def graycode(x):
+    return x ^ (x >> 1)
+'''
