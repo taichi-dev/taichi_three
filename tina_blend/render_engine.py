@@ -137,9 +137,8 @@ class TinaRenderPanel(bpy.types.Panel):
         layout = self.layout
         options = context.scene.tina_render
 
-        row = layout.row()
-        row.prop(options, 'render_samples')
-        row.prop(options, 'viewport_samples')
+        layout.prop(options, 'render_samples')
+        layout.prop(options, 'viewport_samples')
         row = layout.row()
         row.prop(options, 'smoothing')
         row.prop(options, 'texturing')
@@ -274,6 +273,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if self.test_break():
                 break
             self.scene.render()
+
             img = self.scene.raw_img**2.2
             img = np.ascontiguousarray(img.swapaxes(0, 1))
             rect = img.reshape(self.size_x * self.size_y, 4).tolist()
@@ -482,8 +482,8 @@ def get_panels():
 
 
 class TinaRenderProperties(bpy.types.PropertyGroup):
-    render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=64)
-    viewport_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=16)
+    render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=128)
+    viewport_samples: bpy.props.IntProperty(name='Viewport Samples', min=1, default=32)
     smoothing: bpy.props.BoolProperty(name='Smoothing', default=True)
     texturing: bpy.props.BoolProperty(name='Texturing', default=True)
 

@@ -38,7 +38,7 @@ class PathEngine:
             val = lerp((V(x, y) // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
             if self.cnt[x, y] != 0:
                 val = self.img[x, y] / self.cnt[x, y]
-            r, g, b = aces_tonemap(val)
+            r, g, b = aces_tonemap(val)**2.2
             out[base + 0] = r
             out[base + 1] = g
             out[base + 2] = b
