@@ -1,4 +1,4 @@
-__version__ = (0, 0, 1)
+__version__ = (0, 1, 0)
 __author__ = 'archibate <1931127624@qq.com>'
 __license__ = 'MIT'
 

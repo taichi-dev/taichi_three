@@ -2,7 +2,7 @@ bl_info = {
         'name': 'Tina',
         'description': 'A soft renderer based on Taichi programming language',
         'author': 'archibate <1931127624@qq.com>',
-        'version': (0, 0, 1),
+        'version': (0, 1, 0),
         'blender': (2, 81, 0),
         'location': 'Render -> Tina',
         'support': 'COMMUNITY',

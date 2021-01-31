@@ -6,17 +6,8 @@ ti.init(ti.gpu)
 
 scene = tina.PTScene(smoothing=True, texturing=True)
 scene.load_gltf('assets/cornell.gltf')
-
-if isinstance(scene, tina.PTScene):
-    scene.lighting.set_lights(np.array([
-        [0, 3.9, 0],
-    ], dtype=np.float32))
-    scene.lighting.set_light_radii(np.array([
-        0.09,
-    ], dtype=np.float32))
-    scene.lighting.set_light_colors(np.array([
-        [2.0, 2.0, 2.0],
-    ], dtype=np.float32))
+scene.add_object(tina.MeshTransform(tina.MeshModel('assets/plane.obj'),
+    tina.translate([0, 3.98, 0]) @ tina.scale(0.1)), tina.Lamp(color=64))
 
 if isinstance(scene, tina.PTScene):
     scene.update()
