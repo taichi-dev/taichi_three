@@ -224,7 +224,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         @ti.materialize_callback
         def init_scene():
             for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
-                self.scene.add_mesh_object(world, verts, norms, coors, mtlid)
+                self.scene.add_mesh(world, verts, norms, coors, mtlid)
 
     def __update_scene(self, depsgraph):
         need_update = False

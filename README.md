@@ -60,6 +60,8 @@ cd
 pip uninstall -y taichi-tina  # uninstall end-user version
 pip uninstall -y taichi-tina  # twice for sure :)
 git clone https://github.com/taichi-dev/taichi_three.git --depth=10
+# try the link below (a mirror site in China) if the above is too slow:
+# git clone https://gitee.com/archibate/taichi_three.git --depth=10
 cd taichi_three
 echo export PYTHONPATH=`pwd` >> ~/.bashrc  # add path for Python to search
 source ~/.bashrc  # reload the configuration to take effect

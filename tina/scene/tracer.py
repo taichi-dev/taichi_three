@@ -68,8 +68,20 @@ class PTScene(Scene):
         for tracer in self.geom.tracers:
             tracer.clear_objects()
 
-    def add_mesh_object(self, world, verts, norms, coors, mtlid):
+    def add_mesh(self, world, verts, norms, coors, mtlid):
         self.geom.tracers[0].add_mesh(world, verts, norms, coors, mtlid)
+
+    def add_object(self, mesh, material=None):
+        if material is None:
+            material = self.materials[0]
+        if material not in self.materials:
+            self.materials.append(material)
+        mtlid = self.materials.index(material)
+        obj = tina.export_simple_mesh(mesh)
+
+        @ti.materialize_callback
+        def add_mesh():
+            self.add_mesh(np.eye(4), obj['fv'], obj['fn'], obj['ft'], mtlid)
 
     def clear(self):
         self.engine.clear_image()
