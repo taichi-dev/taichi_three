@@ -113,10 +113,12 @@ Then I'll reply to your pull request soon, thank for the contribution!
 ```bash
 $ ls
 tina/        # the main source code of Tina
+tina_blend/  # the Blender addon module (WIP)
 assets/      # binary assets (models, images) for the demos
 docs/        # simple demos aimed to demonstrate the usage of basic APIs
 examples/    # advanced demos to show what applications Tina is capable to do
-tests/       # some work in progress (WIP) feature that are remain testing
+tests/       # some work in progress (WIP) features that remain testing
+benchmarks/  # some benchmark scripts to test the performance of Tina
 setup.py     # the script to build the PyPI package for Tina
 
 $ ls tina/

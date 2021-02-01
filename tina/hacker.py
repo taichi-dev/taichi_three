@@ -9,10 +9,12 @@ hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
         ti.Matrix, 'is_global', (lambda f: lambda x: len(x) and f(x))(
         ti.Matrix.is_global)) or setattr(ti.TaichiOperations, '__pos__',
         lambda x: x) or setattr(ti, 'pi', __import__('math').pi) or setattr(ti,
-        'tau', __import__('math').tau) or setattr(ti, 'expr_init', (lambda f:
+        'tau', __import__('math').tau) or setattr(ti, 'materialize_callback',
+        (lambda f: lambda x: [(x() if ti.get_runtime().materialized else f(x)),
+        x][1])(ti.materialize_callback)) or setattr(ti, 'expr_init', (lambda f:
         lambda x: x if isinstance(x, dict) else f(x))(ti.expr_init)) or setattr(
-        ti, 'expr_init_func', (lambda f: lambda x: x if isinstance(x, dict) else
-        f(x))(ti.expr_init_func)) or print('[Tina] Taichi properties hacked')
+        ti, 'expr_init_func', (lambda f: lambda x: x if isinstance(x, dict)
+        else f(x))(ti.expr_init_func)) or print('[Tina] Taichi properties hacked')
 
 
 @eval('lambda x: x()')
