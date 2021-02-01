@@ -519,22 +519,27 @@ class Glass(IMaterial):
             ior = 1 / ior
 
         EPS = 1e-10
-        rdir = reflect(-idir, nrm)
-        f0 = abs((1 - ior) / (1 + ior))**2
-        NoV = min(1 - EPS, max(EPS, nrm.dot(rdir)))
-        fdf = f0 + (1 - f0) * (1 - NoV)**5
 
-        wei = fdf
-        odir = V(0., 0., 0.)
-        factor = lerp(Vavg(fdf), 0.08, 0.92)
+        has_refr, refr_dir = refract(-idir, nrm, ior)
+
+        factor = 1.0
+        fdf = 1.0
+        if has_refr:
+            f0 = abs((1 - ior) / (1 + ior))**2
+            NoV = abs(idir.dot(nrm))
+            if sign >= 0:
+                NoV = ior * NoV
+            fdf = f0 + (1 - f0) * (1 - NoV)**5
+            factor = lerp(Vavg(fdf), 0.15, 0.92)
+
+        wei, odir = 0.0, V(0., 0., 0.)
         if rng.random() < factor:
-            odir = rdir
+            odir = reflect(-idir, nrm)
             wei = fdf / factor
         else:
-            has_r, odir = refract(-idir, nrm, ior)
-            if has_r == 0:
-                odir = rdir
+            odir = refr_dir
             wei = (1 - fdf) / (1 - factor)
+
         return odir, wei, 0.0
 
     @ti.func

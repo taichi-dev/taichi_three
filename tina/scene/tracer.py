@@ -69,7 +69,7 @@ class PTScene(Scene):
             tracer.clear_objects()
 
     def add_mesh(self, world, verts, norms, coors, mtlid):
-        self.geom.tracers[0].add_mesh(world, verts, norms, coors, mtlid)
+        self.geom.tracers[0].add_mesh(np.float32(world), verts, norms, coors, mtlid)
 
     def add_object(self, mesh, material=None):
         if material is None:
