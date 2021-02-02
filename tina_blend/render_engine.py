@@ -245,7 +245,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                     self.__update_mesh_object(object, depsgraph)
                     need_update = True
         if need_update:
-            # import code; code.interact(local=locals())
             self.scene.clear_objects()
             for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
                 self.scene.add_mesh(world, verts, norms, coors, mtlid)
@@ -273,10 +272,12 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             if self.test_break():
                 break
             self.scene.render()
+            img = self.scene.raw_img
+            #img = np.ones((self.size_x, self.size_y, 4))
 
-            img = self.scene.raw_img**2.2
             img = np.ascontiguousarray(img.swapaxes(0, 1))
             rect = img.reshape(self.size_x * self.size_y, 4).tolist()
+            # import code; code.interact(local=locals())
             layer = result.layers[0].passes["Combined"]
             layer.rect = rect
             self.update_result(result)
