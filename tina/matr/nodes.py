@@ -132,3 +132,12 @@ class LerpTexture(Node):
     def __call__(self):
         x0, x1, y0, y1, uv = tuple(map(self.param, self.arguments))
         return lerp(uv.x, x0, x1) + lerp(uv.y, x0, x1)
+
+
+class LambdaNode(Node):
+    def __init__(self, func, **kwargs):
+        self.func = func
+        super().__init__(**kwargs)
+
+    def __call__(self):
+        return self.func()

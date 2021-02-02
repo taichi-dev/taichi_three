@@ -248,7 +248,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             # import code; code.interact(local=locals())
             self.scene.clear_objects()
             for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
-                self.scene.add_mesh_object(world, verts, norms, coors, mtlid)
+                self.scene.add_mesh(world, verts, norms, coors, mtlid)
             self.scene.update()
             self.nsamples = 0
 

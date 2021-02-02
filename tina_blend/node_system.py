@@ -352,6 +352,27 @@ class TinaCombineXYZNode(TinaBaseNode):
 
 
 @register_node
+class TinaSeparateXYZNode(TinaBaseNode):
+    bl_idname = 'tina_separate_xyz_node'
+    bl_label = 'Separate XYZ'
+    category = 'Converter'
+
+    def init(self, context):
+        self.width = 150
+        self.inputs.new('tina_vector_socket', 'vec')
+        self.outputs.new('tina_value_socket', 'x')
+        self.outputs.new('tina_value_socket', 'y')
+        self.outputs.new('tina_value_socket', 'z')
+
+    def construct(self, cache):
+        vec = self.lut(cache, 'vec')
+        return dict(
+                x=tina.LambdaNode(lambda: vec().x),
+                y=tina.LambdaNode(lambda: vec().y),
+                z=tina.LambdaNode(lambda: vec().z))
+
+
+@register_node
 class TinaValueNode(TinaBaseNode):
     bl_idname = 'tina_value_node'
     bl_label = 'Value'
