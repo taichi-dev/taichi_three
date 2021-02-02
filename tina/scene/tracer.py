@@ -77,10 +77,10 @@ class PTScene(Scene):
         if material not in self.materials:
             self.materials.append(material)
         mtlid = self.materials.index(material)
-        obj = tina.export_simple_mesh(mesh)
 
         @ti.materialize_callback
         def add_mesh():
+            obj = tina.export_simple_mesh(mesh)
             self.add_mesh(np.eye(4), obj['fv'], obj['fn'], obj['ft'], mtlid)
 
     def clear(self):
