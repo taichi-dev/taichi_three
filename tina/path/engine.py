@@ -240,9 +240,16 @@ class PathEngine:
             else:
                 ro += nrm * eps * 8
 
+            #ir_pdf = material.brdf(nrm, -rd, new_rd)
+            #rs = 1 / (1 + Vavg(ir_pdf**2))
+            #rl = rs
+            #rc *= 0
+
             # cast shadow ray to lights
-            if rs > 0:
-                rl += rc * rs * self.shadow_ray(ro, rd, material, nrm, rng)
+            li_rd, li_wei = self.redirect_light(ro)
+            li_wei *= max(0, li_rd.dot(nrm))
+            li_brdf = material.brdf(nrm, -rd, li_rd)
+            rl += rc * rs * li_brdf * li_wei
 
             tina.Input.clear_g_pars()
 
@@ -250,19 +257,6 @@ class PathEngine:
             rc *= ir_wei
 
         return ro, rd, rc, rl, rs
-
-    @ti.func
-    def shadow_ray(self, ro, rd, material, nrm, rng):
-        ret = V(0., 0., 0.)
-        li_rd, li_wei, li_dis = self.redirect_light(ro)
-        li_wei *= max(0, li_rd.dot(nrm))
-        if Vany(li_wei > 0):
-            near, ind, gid, uv = self.geom.hit(ro, li_rd)
-            if gid == -1 or near > li_dis:
-                # no shadow occlusion
-                li_brdf = material.brdf(nrm, -rd, li_rd)
-                ret = li_wei * li_brdf
-        return ret
 
     @ti.func
     def redirect_light(self, ro):
@@ -294,8 +288,15 @@ class PathEngine:
             toli = toli.normalized()
             fac = wei * color / (dis2 + eps)
             dis = ti.sqrt(dis2)
+            fac *= abs(toli.dot(nrm))
 
-        return toli, fac, dis
+            if Vany(fac > 0):
+                near, ind, gid, uv = self.geom.hit(ro, toli)
+                if gid != -1 and near < dis:
+                    # shadow occlusion
+                    fac *= 0
+
+        return toli, fac
 
     @ti.func
     def background(self, rd):
