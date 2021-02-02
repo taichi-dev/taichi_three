@@ -139,6 +139,7 @@ class TinaRenderPanel(bpy.types.Panel):
 
         layout.prop(options, 'render_samples')
         layout.prop(options, 'viewport_samples')
+        layout.prop(options, 'start_pixel_size')
         row = layout.row()
         row.prop(options, 'smoothing')
         row.prop(options, 'texturing')
@@ -250,7 +251,11 @@ class TinaRenderEngine(bpy.types.RenderEngine):
             for world, verts, norms, coors, mtlid in self.object_to_mesh.values():
                 self.scene.add_mesh(world, verts, norms, coors, mtlid)
             self.scene.update()
-            self.nsamples = 0
+            self.__reset_samples(depsgraph.scene)
+
+    def __reset_samples(self, scene):
+        self.nsamples = 0
+        self.nblocks = scene.tina_render.start_pixel_size
 
     # This is the method called by Blender for both final renders (F12) and
     # small preview for materials, world and lights.
@@ -368,8 +373,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
                 or self.draw_data.perspective != perspective:
-            self.nsamples = 0
-            self.nblocks = scene.tina_render.start_pixel_size
+            self.__reset_samples(scene)
             self.__update_camera(perspective)
 
         if self.nsamples < max_samples:
@@ -377,7 +381,8 @@ class TinaRenderEngine(bpy.types.RenderEngine):
                 self.nsamples = 0
                 self.scene.clear()
             else:
-                self.scene.clear()
+                if self.nblocks == 1:
+                    self.scene.clear()
                 self.nsamples += 1
             self.scene.render(blocksize=self.nblocks)
             self.draw_data = TinaDrawData(self.scene, dimensions, perspective,
