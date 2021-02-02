@@ -32,12 +32,16 @@ class PathEngine:
         self.cnt.fill(0)
 
     @ti.kernel
-    def _fast_export_image(self, out: ti.ext_arr()):
-        for x, y in ti.grouped(self.img):
-            base = (y * self.res.x + x) * 3
-            val = lerp((V(x, y) // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
-            if self.cnt[x, y] != 0:
-                val = self.img[x, y] / self.cnt[x, y]
+    def _fast_export_image(self, out: ti.ext_arr(), blocksize: int):
+        shape = self.res
+        if blocksize != 0:
+            shape //= blocksize
+        for x, y in ti.ndrange(*shape):
+            base = (y * shape.x + x) * 3
+            I = V(x, y)
+            val = lerp((I // 8).sum() % 2, V(.4, .4, .4), V(.9, .9, .9))
+            if self.cnt[I] != 0:
+                val = self.img[I] / self.cnt[I]
             r, g, b = val
             out[base + 0] = r
             out[base + 1] = g
@@ -66,14 +70,17 @@ class PathEngine:
         return out
 
     @ti.kernel
-    def trace(self, maxdepth: int, surviverate: float):
+    def trace(self, maxdepth: int, surviverate: float, blocksize: int):
         self.uniqid[None] += 1
 
         for i in ti.smart(self.stack):
             rng = tina.TaichiRNG()
 
             I = V(i % self.res.x, i // self.res.x)
-            ro, rd = self.generate_ray(I)
+            if blocksize != 0 and Vany(I % blocksize != 0):
+                continue
+
+            ro, rd = self.generate_ray(I, blocksize)
             rc = V(1., 1., 1.)
             rl = V(0., 0., 0.)
             rs = 0.0
@@ -83,6 +90,8 @@ class PathEngine:
                 if not Vany(rc > 0):
                     break
 
+            if blocksize != 0:
+                I //= blocksize
             self.record_photon(I, rl)
 
     @ti.kernel
@@ -125,8 +134,10 @@ class PathEngine:
         self.cnt[I] += 1
 
     @ti.func
-    def generate_ray(self, I):
-        bias = ti.Vector([ti.random(), ti.random()])
+    def generate_ray(self, I, blocksize):
+        bias = V(.5, .5) * blocksize
+        if blocksize == 0:
+            bias = V(ti.random(), ti.random())
         uv = (I + bias) / self.res * 2 - 1
         ro = mapply_pos(self.V2W[None], V(uv.x, uv.y, -1.0))
         ro1 = mapply_pos(self.V2W[None], V(uv.x, uv.y, +1.0))

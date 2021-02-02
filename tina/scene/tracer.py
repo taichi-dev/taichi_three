@@ -93,8 +93,8 @@ class PTScene(Scene):
         for tracer in self.geom.tracers:
             tracer.update_emission(self.mtltab)
 
-    def render(self, nsteps=10, russian=2):
-        self.engine.trace(nsteps, russian)
+    def render(self, nsteps=10, russian=2, blocksize=0):
+        self.engine.trace(nsteps, russian, blocksize)
 
     def render_light(self, nsteps=10, russian=2):
         self.engine.trace_light(nsteps, russian)
@@ -107,5 +107,5 @@ class PTScene(Scene):
     def raw_img(self):
         return self.engine.get_image(raw=True)
 
-    def _fast_export_image(self, out):
-        self.engine._fast_export_image(out)
+    def _fast_export_image(self, out, blocksize=0):
+        self.engine._fast_export_image(out, blocksize)

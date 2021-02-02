@@ -161,6 +161,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         self.object_to_mesh = {}
         self.material_to_id = {}
+        self.nblocks = 0
         self.nsamples = 0
         self.viewport_samples = 16
 
@@ -297,7 +298,6 @@ class TinaRenderEngine(bpy.types.RenderEngine):
         self.scene.engine.set_camera(np.eye(4), np.array(perspective))
 
     def __update_camera(self, perspective):
-        self.nsamples = 0
         self.scene.engine.set_camera(np.eye(4), np.array(perspective))
 
     # For viewport renders, this method gets called once at the start and
@@ -368,19 +368,26 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
         if not self.draw_data or self.draw_data.dimensions != dimensions \
                 or self.draw_data.perspective != perspective:
+            self.nsamples = 0
+            self.nblocks = scene.tina_render.start_pixel_size
             self.__update_camera(perspective)
 
         if self.nsamples < max_samples:
-            if self.nsamples == 0:
+            if self.nblocks > 1:
+                self.nsamples = 0
                 self.scene.clear()
-            self.scene.render()
-            self.nsamples += 1
-            self.draw_data = TinaDrawData(self.scene, dimensions, perspective)
-            self.update_stats('Rendering',
-                    f'{self.nsamples}/{max_samples} Samples')
+            else:
+                self.scene.clear()
+                self.nsamples += 1
+            self.scene.render(blocksize=self.nblocks)
+            self.draw_data = TinaDrawData(self.scene, dimensions, perspective,
+                    self.nblocks)
+            self.update_stats('Rendering', f'{self.nsamples}/{max_samples} Samples')
 
-            if self.nsamples < max_samples:
+            if self.nsamples < max_samples or self.nblocks != 0:
                 self.tag_redraw()
+
+            self.nblocks //= 2
 
         self.draw_data.draw()
 
@@ -389,7 +396,7 @@ class TinaRenderEngine(bpy.types.RenderEngine):
 
 
 class TinaDrawData:
-    def __init__(self, scene, dimensions, perspective):
+    def __init__(self, scene, dimensions, perspective, blocksize):
         print('redraw!')
         # Generate dummy float image buffer
         self.dimensions = dimensions
@@ -397,9 +404,12 @@ class TinaDrawData:
         width, height = dimensions
 
         resx, resy = scene.res
+        if blocksize != 0:
+            resx //= blocksize
+            resy //= blocksize
 
         pixels = np.empty(resx * resy * 3, np.float32)
-        scene._fast_export_image(pixels)
+        scene._fast_export_image(pixels, blocksize)
         self.pixels = bgl.Buffer(bgl.GL_FLOAT, resx * resy * 3, pixels)
 
         # Generate texture
@@ -408,8 +418,10 @@ class TinaDrawData:
         bgl.glActiveTexture(bgl.GL_TEXTURE0)
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.texture[0])
         bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGB16F, resx, resy, 0, bgl.GL_RGB, bgl.GL_FLOAT, self.pixels)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_NEAREST)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_NEAREST)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_CLAMP_TO_EDGE)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_CLAMP_TO_EDGE)
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
 
         # Bind shader that converts from scene linear to display space,
@@ -485,6 +497,7 @@ def get_panels():
 class TinaRenderProperties(bpy.types.PropertyGroup):
     render_samples: bpy.props.IntProperty(name='Render Samples', min=1, default=128)
     viewport_samples: bpy.props.IntProperty(name='Viewport Samples', min=1, default=32)
+    start_pixel_size: bpy.props.IntProperty(name='Start Pixel Size', min=1, default=8)
     smoothing: bpy.props.BoolProperty(name='Smoothing', default=True)
     texturing: bpy.props.BoolProperty(name='Texturing', default=True)
 

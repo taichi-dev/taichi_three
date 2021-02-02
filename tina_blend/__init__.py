@@ -3,7 +3,7 @@ bl_info = {
         'description': 'A soft renderer based on Taichi programming language',
         'author': 'archibate <1931127624@qq.com>',
         'version': (0, 1, 0),
-        'blender': (2, 81, 0),
+        'blender': (2, 90, 0),
         'location': 'Render -> Tina',
         'support': 'COMMUNITY',
         'wiki_url': 'https://github.com/taichi-dev/taichi_three/wiki',
