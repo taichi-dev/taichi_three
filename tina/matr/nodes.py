@@ -137,7 +137,19 @@ class LerpTexture(Node):
 class LambdaNode(Node):
     def __init__(self, func, **kwargs):
         self.func = func
+        self.arguments = list(kwargs.keys())
+        self.defaults = [None for _ in self.arguments]
         super().__init__(**kwargs)
 
     def __call__(self):
-        return self.func()
+        return self.func(self)
+
+
+def lambda_node(func):
+    import functools
+
+    @functools.wraps(func)
+    def wrapped(**kwargs):
+        return LambdaNode(func, **kwargs)
+
+    return wrapped

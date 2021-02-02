@@ -345,10 +345,18 @@ class TinaCombineXYZNode(TinaBaseNode):
         self.outputs.new('tina_vector_socket', 'vec')
 
     def construct(self, cache):
-        return V(
-                self.lut(cache, 'x'),
-                self.lut(cache, 'y'),
-                self.lut(cache, 'z'))
+        @tina.lambda_node
+        @ti.func
+        def CombineXYZ(self):
+            x = self.param('x')
+            y = self.param('y')
+            z = self.param('z')
+            return V(x, y, z)
+
+        return CombineXYZ(
+                x=self.lut(cache, 'x'),
+                y=self.lut(cache, 'y'),
+                z=self.lut(cache, 'z'))
 
 
 @register_node
@@ -365,11 +373,55 @@ class TinaSeparateXYZNode(TinaBaseNode):
         self.outputs.new('tina_value_socket', 'z')
 
     def construct(self, cache):
+        @tina.lambda_node
+        @ti.func
+        def VecChannel(self):
+            vec = self.param('vec')
+            chan = ti.static(self.param('chan'))
+            return vec[chan]
+
         vec = self.lut(cache, 'vec')
         return dict(
-                x=tina.LambdaNode(lambda: vec().x),
-                y=tina.LambdaNode(lambda: vec().y),
-                z=tina.LambdaNode(lambda: vec().z))
+                x=VecChannel(vec=vec, chan=0),
+                y=VecChannel(vec=vec, chan=1),
+                z=VecChannel(vec=vec, chan=2))
+
+
+@register_node
+class TinaMapRangeNode(TinaBaseNode):
+    bl_idname = 'tina_map_range_node'
+    bl_label = 'Map Range'
+    category = 'Converter'
+
+    def init(self, context):
+        self.width = 150
+        self.inputs.new('tina_value_socket', 'fac')
+        self.inputs.new('tina_value_socket', 'src0')
+        self.inputs.new('tina_value_socket', 'src1')
+        self.inputs.new('tina_value_socket', 'dst0')
+        self.inputs.new('tina_value_socket', 'dst1')
+        self.outputs.new('tina_value_socket', 'val')
+
+    def construct(self, cache):
+        @tina.lambda_node
+        @ti.func
+        def MapRange(self):
+            src0 = self.param('src0')
+            src1 = self.param('src1')
+            dst0 = self.param('dst0')
+            dst1 = self.param('dst1')
+            fac = self.param('fac')
+
+            k = (fac - src0) / (src1 - src0)
+            r = dst0 + (dst1 - dst0) * clamp(k, 0, 1)
+            return r
+
+        return MapRange(
+            fac=self.lut(cache, 'fac'),
+            src0=self.lut(cache, 'src0'),
+            src1=self.lut(cache, 'src1'),
+            dst0=self.lut(cache, 'dst0'),
+            dst1=self.lut(cache, 'dst1'))
 
 
 @register_node
