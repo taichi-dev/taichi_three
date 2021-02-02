@@ -15,6 +15,52 @@ def mis_power_heuristic(pf, pg):
     return f / (f + g)
 
 
+@ti.func
+def pbr_fresnel(metallic, albedo, specular=0.5):
+    f0 = metallic * albedo + (1 - metallic) * 0.16 * specular**2
+    return f0
+
+
+@ti.func
+def pbr_brdf(f0, roughness, nrm, idir, odir):
+    half = (idir + odir).normalized()
+    NoH = dot_or_zero(half, nrm, 1e-10)
+    NoL = dot_or_zero(idir, nrm, 1e-10)
+    NoV = dot_or_zero(odir, nrm, 1e-10)
+    VoH = dot_or_zero(half, odir, 1e-10)
+    LoH = dot_or_zero(half, idir, 1e-10)
+
+    alpha2 = max(0, roughness**2)
+    denom = 1 - NoH**2 * (1 - alpha2)
+    ndf = alpha2 / denom**2
+
+    k = (roughness + 1)**2 / 8
+    vdf = 0.5 / ((NoV * k + 1 - k))
+    vdf *= 0.5 / ((NoL * k + 1 - k))
+
+    fdf = f0 + (1 - f0) * (1 - VoH)**5
+
+    return fdf * vdf * ndf
+
+@ti.func
+def pbr_sample(f0, roughness, nrm, idir, u, v):
+    alpha2 = max(0, roughness**2)
+
+    u = ti.sqrt((1 - u) / (1 - u * (1 - alpha2)))
+    rdir = reflect(-idir, nrm)
+    axes = tangentspace(rdir)
+    odir = axes @ spherical(u, v)
+
+    half = (idir + odir).normalized()
+    VoH = dot_or_zero(half, odir, 1e-10)
+    fdf = f0 + (1 - f0) * (1 - VoH)**5
+    if odir.dot(nrm) < 0:
+        odir = -odir
+        fdf = 0.0
+
+    return odir, fdf
+
+
 @ti.data_oriented
 class BVHTree:
     def __init__(self, geom, N_tree=MAX, dim=3):
@@ -169,7 +215,7 @@ class Triangles:
         @ti.materialize_callback
         def _():
             obj = tina.export_simple_mesh(mesh)
-            self.add_mesh(np.eye(4), obj['fv'], obj['fn'], obj['ft'], mtlid)
+            self.add_mesh(np.eye(4, dtype=np.float32), obj['fv'], obj['fn'], obj['ft'], mtlid)
 
     @ti.kernel
     def add_mesh(self, world: ti.ext_arr(), verts: ti.ext_arr(),
@@ -364,38 +410,39 @@ class PathEngine:
         return pdf
 
     @ti.func
-    def compute_brdf_pdf(self, nrm, dir):
-        return dot_or_zero(nrm, dir) / ti.pi
+    def compute_brdf_pdf(self, nrm, outdir, indir):
+        brdf = 1 / pbr_brdf(1.0, 0.04, nrm, -indir, outdir)
+        return brdf / ti.pi
 
     @ti.func
-    def sample_brdf(self, hit_nrm):
-        outdir = tangentspace(hit_nrm) @ spherical(ti.random(), ti.random())
+    def sample_brdf(self, nrm, indir):
+        outdir, weight = pbr_sample(1.0, 0.04, nrm, -indir, ti.random(), ti.random())
         return outdir
 
     @ti.func
     def sample_ray_dir(self, indir, hit_nrm, hit_pos):
-        outdir = self.sample_brdf(hit_nrm)
-        pdf = max(eps, self.compute_brdf_pdf(hit_nrm, outdir))
+        outdir = self.sample_brdf(hit_nrm, indir)
+        pdf = dot_or_zero(hit_nrm, outdir) / ti.pi
         return outdir, pdf
 
     @ti.func
-    def sample_direct_light(self, hit_pos, hit_nrm):
+    def sample_direct_light(self, hit_pos, hit_nrm, indir):
         direct_li = V3(0.0)
 
-        to_light_dir = self.sample_area_light(hit_pos, hit_nrm)
         fl = self.lambertian_brdf
 
+        to_light_dir = self.sample_area_light(hit_pos, hit_nrm)
         if to_light_dir.dot(hit_nrm) > 0:
             light_pdf = self.compute_area_light_pdf(hit_pos, to_light_dir)
-            brdf_pdf = self.compute_brdf_pdf(hit_nrm, to_light_dir)
+            brdf_pdf = self.compute_brdf_pdf(hit_nrm, to_light_dir, indir)
             if light_pdf > 0 and brdf_pdf > 0:
                 if self.visible_to_light(hit_pos, to_light_dir):
                     w = mis_power_heuristic(light_pdf, brdf_pdf)
                     nl = dot_or_zero(to_light_dir, hit_nrm)
                     direct_li += fl * w * nl / light_pdf
 
-        brdf_dir = self.sample_brdf(hit_nrm)
-        brdf_pdf = self.compute_brdf_pdf(hit_nrm, brdf_dir)
+        brdf_dir = self.sample_brdf(hit_nrm, indir)
+        brdf_pdf = self.compute_brdf_pdf(hit_nrm, brdf_dir, indir)
         if brdf_pdf > 0:
             light_pdf = self.compute_area_light_pdf(hit_pos, brdf_dir)
             if light_pdf > 0:
@@ -421,13 +468,13 @@ class PathEngine:
                     #background = lerp(unlerp(dir.y, -1, 1), V(.2, .5, 1.), 1.)
                     #acc_color += throughput * background
                     break
-                hit_nrm, hit_tex, hit_mtlid = self.geom.calc_geometry(hit_ind, hit_uv)
+                hit_nrm, hit_tex, hit_mtl = self.geom.calc_geometry(hit_ind, hit_uv)
                 hit_pos = pos + hit_dis * dir + hit_nrm * eps * 8
 
-                acc_color += throughput * self.sample_direct_light(hit_pos, hit_nrm)
+                direct_li = self.sample_direct_light(hit_pos, hit_nrm, dir)
+                acc_color += throughput * direct_li
 
-                indir = dir
-                outdir, pdf = self.sample_ray_dir(indir, hit_nrm, hit_pos)
+                outdir, pdf = self.sample_ray_dir(dir, hit_nrm, hit_pos)
 
                 brdf = self.lambertian_brdf
                 throughput *= brdf * dot_or_zero(hit_nrm, outdir) / pdf
@@ -439,10 +486,10 @@ class PathEngine:
             self.cnt[I] += 1
 
 
-geom = Triangles()
+geom = Triangles(smoothing=True)
 engine = PathEngine(geom)
-obj = tina.readobj('assets/monkey.obj')
-geom.add_mesh(np.eye(4), obj['v'][obj['f'][:, :, 0]], np.zeros(0), np.zeros(0), 0)
+obj = tina.readobj('assets/sphere.obj')
+geom.add_mesh(np.eye(4, dtype=np.float32), obj['v'][obj['f'][:, :, 0]], obj['vn'][obj['f'][:, :, 2]], obj['vt'][obj['f'][:, :, 1]], 0)
 geom.update()
 
 gui = ti.GUI()
