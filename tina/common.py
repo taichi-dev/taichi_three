@@ -224,6 +224,14 @@ def lerp(fac, src, dst):
 
 
 @ti.pyfunc
+def smoothlerp(fac, src, dst):
+    if fac != 0 and fac != 1:
+        fac = smoothstep(fac, 0, 1)
+        fac = src * (1 - fac) + dst * fac
+    return fac
+
+
+@ti.pyfunc
 def unlerp(val, src, dst):
     return (val - src) / (dst - src)
 

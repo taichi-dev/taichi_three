@@ -125,13 +125,15 @@ class MixMaterial(IMaterial):
         odir = V(0., 0., 0.)
         wei = V(0., 0., 0.)
         rough = 0.
-        factor = lerp(Vavg(fac), 0.08, 0.92)
+
+        factor = smoothlerp(Vavg(fac), 0.12, 0.88)
         if rng.random() < factor:
             odir, wei, rough = self.mat2.sample(idir, nrm, sign, rng)
             wei *= fac / factor
         else:
             odir, wei, rough = self.mat1.sample(idir, nrm, sign, rng)
             wei *= (1 - fac) / (1 - factor)
+
         return odir, wei, rough
 
     @ti.func
@@ -534,7 +536,7 @@ class Glass(IMaterial):
             if sign >= 0:
                 NoV = ior * NoV
             fdf = f0 + (1 - f0) * (1 - NoV)**5
-            factor = lerp(Vavg(fdf), 0.15, 0.92)
+            factor = smoothlerp(Vavg(fdf), 0.15, 0.92)
 
         wei, odir = 0.0, V(0., 0., 0.)
         if rng.random() < factor:
