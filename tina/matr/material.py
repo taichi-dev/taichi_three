@@ -337,15 +337,16 @@ class CookTorrance(IMaterial):
         ndf = alpha2 / denom**2  # D
 
         # Smith's method with Schlick-GGX
-        #k = (roughness + 1)**2 / 8
-        k = roughness**2 / 2
+        k = (roughness + 1)**2 / 8
+        #k = roughness**2 / 2
         vdf = 1 / ((NoV * k + 1 - k))
         vdf *= 1 / ((NoL * k + 1 - k))  # G
-        vdf *= ti.pi / 4
+        vdf /= 4 * ti.pi
 
         # GGX partial geometry term
         #tan2 = (1 - VoH**2) / VoH**2
         #vdf = 1 / (1 + ti.sqrt(1 + roughness**2 * tan2))
+        #vdf /= ti.pi
 
         # Fresnel-Schlick approximation
         #kf = abs((1 - ior) / (1 + ior))**2
@@ -379,7 +380,7 @@ class CookTorrance(IMaterial):
             odir = -odir
             fdf = 0.0
 
-        return odir, fdf, vdf * ndf
+        return odir, fdf * vdf, ndf
 
 
 class Lambert(IMaterial):
@@ -388,7 +389,7 @@ class Lambert(IMaterial):
 
     @ti.func
     def brdf(self, nrm, idir, odir):
-        return 1.0
+        return 1 / ti.pi
 
     def ambient(self):
         return 1.0

@@ -1,7 +1,7 @@
 import taichi as ti
 import tina
 
-ti.init(ti.gpu)
+ti.init(ti.cpu)
 
 scene = tina.Scene(smoothing=True)
 
