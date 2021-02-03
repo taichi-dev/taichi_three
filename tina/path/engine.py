@@ -244,20 +244,20 @@ class PathEngine:
                 rl += rc * (1 - rs) * material.emission()
 
             # sample indirect light
-            new_rd, ir_wei, rs = material.sample(-rd, nrm, sign, rng)
+            new_rd, ir_wei, _ = material.sample(-rd, nrm, sign, rng)
             if new_rd.dot(nrm) < 0:
                 # refract into / outof
                 ro -= nrm * eps * 8
             else:
                 ro += nrm * eps * 8
 
-            #ir_pdf = material.brdf(nrm, -rd, new_rd)
-            #rs = 1 / (1 + Vavg(ir_pdf**2))
-            #rl = rs
-            #rc *= 0
+            brdf_pdf = Vavg(material.brdf(nrm, -rd, new_rd)) * abs(nrm.dot(rd)) / ti.pi
 
             # cast shadow ray to lights
-            li_rd, li_wei = self.redirect_light(ro)
+            li_rd, li_wei, li_pdf = self.redirect_light(ro)
+
+            rs = li_pdf**2 / (li_pdf**2 + brdf_pdf**2)
+
             li_wei *= max(0, li_rd.dot(nrm))
             li_brdf = material.brdf(nrm, -rd, li_rd)
             rl += rc * rs * li_brdf * li_wei
@@ -273,7 +273,7 @@ class PathEngine:
     def redirect_light(self, ro):
         pos, ind, uv, gid, wei = self.geom.sample_light()
 
-        toli, fac, dis = V3(0.), V3(0.), inf
+        toli, fac, dis, pdf = V3(0.), V3(0.), inf, 0.
         if ind != -1:
             nrm, tex, mtlid = self.geom.calc_geometry(gid, ind, uv, pos)
 
@@ -297,9 +297,10 @@ class PathEngine:
 
             dis2 = toli.norm_sqr()
             toli = toli.normalized()
-            fac = wei * color / (dis2 + eps)
+            wei *= abs(toli.dot(nrm))
+            pdf = dis2 / wei
+            fac = color * wei / (dis2 + eps)
             dis = ti.sqrt(dis2)
-            fac *= abs(toli.dot(nrm))
 
             if Vany(fac > 0):
                 near, ind, gid, uv = self.geom.hit(ro, toli)
@@ -307,7 +308,7 @@ class PathEngine:
                     # shadow occlusion
                     fac *= 0
 
-        return toli, fac
+        return toli, fac, pdf
 
     @ti.func
     def background(self, rd):

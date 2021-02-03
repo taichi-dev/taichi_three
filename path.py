@@ -2,6 +2,8 @@ from tina.advans import *
 
 ti.init(ti.cpu)
 
+rough = ti.field(float, ())
+
 
 @ti.func
 def dot_or_zero(a, b, zero=0):
@@ -387,14 +389,14 @@ class PathEngine:
 
     @ti.func
     def hit_light(self, pos, dir):
-        near, far = tina.ray_aabb_hit(V(-0.5, 2.0, -0.5), V(0.5, 2.1, 0.5), pos, dir)
-        return near < far, near
+        near, far = tina.ray_aabb_hit(V(-0.5, -0.5, 4.0), V(0.5, 0.5, 4.1), pos, dir)
+        return 0 < near < far, near
 
     @ti.func
     def sample_area_light(self, pos, nrm):
         x = ti.random() - 0.5
-        z = ti.random() - 0.5
-        on_light_pos = V(x, 2.0, z)
+        y = ti.random() - 0.5
+        on_light_pos = V(x, y, 4.0)
         return (on_light_pos - pos).normalized()
 
     @ti.func
@@ -403,7 +405,7 @@ class PathEngine:
         pdf = 0.0
         if hit:
             light_area = 1
-            light_nrm = V(0.0, 1.0, 0.0)
+            light_nrm = V(0.0, 0.0, 1.0)
             l_cos = light_nrm.dot(dir)
             if l_cos > 0:
                 pdf = (dir * hit_dis).norm_sqr() / (light_area * l_cos)
@@ -411,12 +413,13 @@ class PathEngine:
 
     @ti.func
     def compute_brdf_pdf(self, nrm, outdir, indir):
-        brdf = 1 / pbr_brdf(1.0, 0.04, nrm, -indir, outdir)
-        return brdf / ti.pi
+        brdf = pbr_brdf(1.0, rough[None], nrm, -indir, outdir)
+        return brdf * dot_or_zero(nrm, outdir) / ti.pi
 
     @ti.func
     def sample_brdf(self, nrm, indir):
-        outdir, weight = pbr_sample(1.0, 0.04, nrm, -indir, ti.random(), ti.random())
+        u, v = ti.random(), ti.random()
+        outdir, weight = pbr_sample(1.0, rough[None], nrm, -indir, u, v)
         return outdir
 
     @ti.func
@@ -438,20 +441,11 @@ class PathEngine:
             if light_pdf > 0 and brdf_pdf > 0:
                 if self.visible_to_light(hit_pos, to_light_dir):
                     w = mis_power_heuristic(light_pdf, brdf_pdf)
+                    ranprint(w, light_pdf, brdf_pdf)
                     nl = dot_or_zero(to_light_dir, hit_nrm)
-                    direct_li += fl * w * nl / light_pdf
+                    direct_li += fl * w * nl / light_pdf * U3(0)
 
-        brdf_dir = self.sample_brdf(hit_nrm, indir)
-        brdf_pdf = self.compute_brdf_pdf(hit_nrm, brdf_dir, indir)
-        if brdf_pdf > 0:
-            light_pdf = self.compute_area_light_pdf(hit_pos, brdf_dir)
-            if light_pdf > 0:
-                if self.visible_to_light(hit_pos, brdf_dir):
-                    w = mis_power_heuristic(brdf_pdf, light_pdf)
-                    nl = dot_or_zero(brdf_dir, hit_nrm)
-                    direct_li += fl * w * nl / light_pdf
-
-        return direct_li * 8
+        return direct_li * 64
 
     @ti.kernel
     def render(self):
@@ -462,6 +456,10 @@ class PathEngine:
             acc_color = V3(0.0)
             throughput = V3(1.0)
             for depth in range(10):
+
+                hit_light, _ = self.hit_light(pos, dir)
+                if hit_light:
+                    acc_color += throughput * 64 * U3(2)
 
                 hit_dis, hit_ind, hit_uv = self.geom.hit(pos, dir)
                 if hit_ind == -1:
@@ -488,13 +486,16 @@ class PathEngine:
 
 geom = Triangles(smoothing=True)
 engine = PathEngine(geom)
-obj = tina.readobj('assets/sphere.obj')
+obj = tina.readobj('assets/cube.obj')
 geom.add_mesh(np.eye(4, dtype=np.float32), obj['v'][obj['f'][:, :, 0]], obj['vn'][obj['f'][:, :, 2]], obj['vt'][obj['f'][:, :, 1]], 0)
 geom.update()
 
 gui = ti.GUI()
+rough.slider = gui.slider('rough', 0, 1, 0.1)
+rough.slider.value = 0.1
 ctl = tina.Control(gui)
 while gui.running:
+    rough[None] = rough.slider.value
     if ctl.process_events():
         engine.clear_image()
     ctl.apply_camera(engine)
