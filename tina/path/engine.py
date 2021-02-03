@@ -244,18 +244,17 @@ class PathEngine:
                 rl += rc * (1 - rs) * material.emission()
 
             # sample indirect light
-            new_rd, ir_wei, _ = material.sample(-rd, nrm, sign, rng)
+            new_rd, ir_wei, brdf_pdf = material.sample(-rd, nrm, sign, rng)
             if new_rd.dot(nrm) < 0:
                 # refract into / outof
                 ro -= nrm * eps * 8
             else:
                 ro += nrm * eps * 8
 
-            brdf_pdf = Vavg(material.brdf(nrm, -rd, new_rd)) * abs(nrm.dot(rd)) / ti.pi
-
             # cast shadow ray to lights
             li_rd, li_wei, li_pdf = self.redirect_light(ro)
 
+            brdf_pdf *= max(0, nrm.dot(new_rd)) / ti.pi
             rs = li_pdf**2 / (li_pdf**2 + brdf_pdf**2)
 
             li_wei *= max(0, li_rd.dot(nrm))

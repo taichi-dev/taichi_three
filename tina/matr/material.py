@@ -28,7 +28,7 @@ class IMaterial(Node):
         odir = axes @ spherical(u, v)
         odir = odir.normalized()
         brdf = self.brdf(nrm, idir, odir)
-        return odir, brdf, 0.75
+        return odir, brdf, Vavg(brdf)
 
     @classmethod
     def cook_for_ibl(cls, tab, precision):
@@ -61,7 +61,7 @@ class IVolMaterial(IMaterial):
         odir = axes @ spherical(u, v)
         odir = odir.normalized()
         brdf = self.brdf(nrm, idir, odir)
-        return odir, brdf, 0.4
+        return odir, brdf, Vavg(brdf)
 
 
 @ti.func
@@ -330,14 +330,16 @@ class CookTorrance(IMaterial):
         LoH = min(1 - EPS, max(EPS, half.dot(idir)))
 
         # Trowbridge-Reitz GGX microfacet distribution
-        alpha2 = max(0, roughness**2)
+        alpha2 = max(eps, roughness**2)
         denom = 1 - NoH**2 * (1 - alpha2)
         ndf = alpha2 / denom**2  # D
 
         # Smith's method with Schlick-GGX
-        k = (roughness + 1)**2 / 8
-        vdf = 0.5 / ((NoV * k + 1 - k))
-        vdf *= 0.5 / ((NoL * k + 1 - k))  # G
+        #k = (roughness + 1)**2 / 8
+        k = roughness**2 / 2
+        vdf = 1 / ((NoV * k + 1 - k))
+        vdf *= 1 / ((NoL * k + 1 - k))  # G
+        vdf *= ti.pi / 4
 
         # GGX partial geometry term
         #tan2 = (1 - VoH**2) / VoH**2
@@ -358,8 +360,10 @@ class CookTorrance(IMaterial):
     @ti.func
     def sample(self, idir, nrm, sign, rng):
         roughness = self.param('roughness')  # TODO: param duplicate evaluation?
-        alpha2 = max(0, roughness**2)
+        f0 = self.param('fresnel')
         EPS = 1e-10
+
+        alpha2 = max(0, roughness**2)
 
         # https://zhuanlan.zhihu.com/p/95865910
         u, v = rng.random(), rng.random()
@@ -371,9 +375,9 @@ class CookTorrance(IMaterial):
         fdf, vdf, ndf = self.sub_brdf(nrm, idir, odir)
         if odir.dot(nrm) < 0:
             odir = -odir
-            fdf = 0.0  # TODO: fix energy loss on border
+            fdf = 0.0
 
-        return odir, fdf, smoothstep(roughness, 0.08, 0.25)
+        return odir, fdf, vdf * ndf
 
 
 class Lambert(IMaterial):
@@ -460,7 +464,7 @@ class Phong(IMaterial):
         if odir.dot(nrm) < 0:
             odir = -odir
             wei = 0.0
-        return odir, wei, 0.1
+        return odir, wei, u**m * (m + 2) / 2
 
 
 class HenyeyGreenstein(IVolMaterial):
@@ -469,8 +473,11 @@ class HenyeyGreenstein(IVolMaterial):
 
     @ti.func
     def brdf(self, nrm, idir, odir):
-        g = self.param('g')
         mu = idir.dot(odir)
+        return self.sub_brdf(mu)
+
+    def sub_brdf(self, mu):
+        g = self.param('g')
         return (1 - g**2) / (1 + g**2 + 2 * g * mu)**(3/2)
 
     @ti.func
@@ -481,16 +488,12 @@ class HenyeyGreenstein(IVolMaterial):
         mu = (1 + g**2 - 1 / de**2) / (2 * g)
         if -g >= 1 - eps:
             mu = -1
-        #elif 1 - 0.02 <= -g <= 1 - eps:
-        #    mu = lerp(smoothstep(-g, 1 - 0.02, 1), mu, -1)
-        #elif eps <= abs(g) <= 0.02:
-        #    mu = lerp(smoothstep(abs(g), 0.02, eps), mu, u * 2 - 1)
         elif abs(g) <= eps:
             mu = u * 2 - 1
         axes = tangentspace(-idir)
         odir = axes @ spherical(mu, v)
         odir = odir.normalized()
-        return odir, 1.0, 1 - g**2
+        return odir, 1.0, self.sub_brdf(mu)
 
 
 class VolScatter(IVolMaterial):
@@ -514,7 +517,8 @@ class Glass(IMaterial):
         return 0.0
 
     @ti.func
-    def _sample(self, idir, nrm, sign, rng, ior):
+    def _sample(self, idir, nrm, sign, rng):
+        ior = self.param('ior')
         if sign >= 0:
             ior = 1 / ior
 
@@ -540,12 +544,7 @@ class Glass(IMaterial):
             odir = refr_dir
             wei = (1 - fdf) / (1 - factor)
 
-        return odir, wei, 0.0
-
-    @ti.func
-    def sample(self, idir, nrm, sign, rng):
-        ior = self.param('ior')
-        return self._sample(idir, nrm, sign, rng, ior)
+        return odir, wei, inf
 
 
 class Transparent(IMaterial):
@@ -558,7 +557,7 @@ class Transparent(IMaterial):
 
     @ti.func
     def sample(self, idir, nrm, sign, rng):
-        return -idir, 1.0, 0.0
+        return -idir, 1.0, inf
 
 
 class Mirror(IMaterial):
@@ -584,7 +583,7 @@ class Mirror(IMaterial):
     @ti.func
     def sample(self, idir, nrm, sign, rng):
         odir = reflect(-idir, nrm)
-        return odir, 1.0, 0.0
+        return odir, 1.0, inf
 
 
 # noinspection PyMissingConstructor
