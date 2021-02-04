@@ -341,7 +341,7 @@ class CookTorrance(IMaterial):
         #k = roughness**2 / 2
         vdf = 1 / ((NoV * k + 1 - k))
         vdf *= 1 / ((NoL * k + 1 - k))  # G
-        vdf /= 4 * ti.pi
+        vdf /= lerp(alpha2, 1, 4 * ti.pi)  # TODO: WTF?
 
         # GGX partial geometry term
         #tan2 = (1 - VoH**2) / VoH**2

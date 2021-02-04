@@ -7,7 +7,7 @@ PBR = 1
 if PBR:
     roughness = tina.Param(float, initial=0.4)
     metallic = tina.Param(float, initial=1.0)
-    material = tina.CookTorrance(basecolor=[1, 1, 1], roughness=roughness, metallic=metallic, specular=0.0)
+    material = tina.PBR(basecolor=[1, 1, 1], roughness=roughness, metallic=metallic, specular=0.0)
 else:
     shineness = tina.Param(float, initial=10)
     material = tina.Phong(diffuse=[0, 0, 0], specular=[1, 1, 1], shineness=shineness)
