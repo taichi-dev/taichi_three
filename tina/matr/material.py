@@ -338,12 +338,11 @@ class CookTorrance(IMaterial):
         ndf = alpha2 / denom**2  # D
 
         # Smith's method with Schlick-GGX
+        k = alpha2 / 2
         #k = (roughness + 1)**2 / 8
-        #k = alpha2 / 2
-        #vdf = 1 / ((NoV * k + 1 - k))
-        #vdf *= 1 / ((NoL * k + 1 - k))  # G
-        #vdf /= lerp(alpha2, 1, 4 * ti.pi)  # TODO: WTF?
-        vdf = 1
+        vdf = 1 / ((NoV * k + 1 - k))
+        vdf *= 1 / ((NoL * k + 1 - k))  # G
+        vdf /= lerp(alpha2, 1, 4 * ti.pi)  # TODO: WTF?
 
         # GGX partial geometry term
         #tan2 = (1 - VoH**2) / VoH**2

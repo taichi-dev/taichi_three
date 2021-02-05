@@ -254,9 +254,9 @@ class PathEngine:
             # cast shadow ray to lights
             li_rd, li_wei, li_pdf = self.redirect_light(ro)
 
+            li_wei *= max(0, nrm.dot(li_rd))
             rs = li_pdf**2 / (li_pdf**2 + brdf_pdf**2)
 
-            li_wei *= max(0, li_rd.dot(nrm))
             li_brdf = material.brdf(nrm, -rd, li_rd)
             rl += rc * rs * li_brdf * li_wei
 
