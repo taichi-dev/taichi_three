@@ -24,6 +24,7 @@ class IMaterial(Node):
     @ti.func
     def sample(self, idir, nrm, sign, rng):
         u, v = rng.random(), rng.random()
+        u = ti.sqrt(u)
         axes = tangentspace(nrm)
         odir = axes @ spherical(u, v)
         odir = odir.normalized()
@@ -337,11 +338,12 @@ class CookTorrance(IMaterial):
         ndf = alpha2 / denom**2  # D
 
         # Smith's method with Schlick-GGX
-        k = (roughness + 1)**2 / 8
-        #k = roughness**2 / 2
-        vdf = 1 / ((NoV * k + 1 - k))
-        vdf *= 1 / ((NoL * k + 1 - k))  # G
-        vdf /= lerp(alpha2, 1, 4 * ti.pi)  # TODO: WTF?
+        #k = (roughness + 1)**2 / 8
+        #k = alpha2 / 2
+        #vdf = 1 / ((NoV * k + 1 - k))
+        #vdf *= 1 / ((NoL * k + 1 - k))  # G
+        #vdf /= lerp(alpha2, 1, 4 * ti.pi)  # TODO: WTF?
+        vdf = 1
 
         # GGX partial geometry term
         #tan2 = (1 - VoH**2) / VoH**2
@@ -397,6 +399,7 @@ class Lambert(IMaterial):
     @ti.func
     def sample(self, idir, nrm, sign, rng):
         u, v = rng.random(), rng.random()
+        u = ti.sqrt(u)
         axes = tangentspace(nrm)
         odir = axes @ spherical(u, v)
         odir = odir.normalized()

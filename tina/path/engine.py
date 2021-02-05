@@ -254,7 +254,6 @@ class PathEngine:
             # cast shadow ray to lights
             li_rd, li_wei, li_pdf = self.redirect_light(ro)
 
-            brdf_pdf *= max(0, nrm.dot(new_rd)) / ti.pi
             rs = li_pdf**2 / (li_pdf**2 + brdf_pdf**2)
 
             li_wei *= max(0, li_rd.dot(nrm))
@@ -289,11 +288,6 @@ class PathEngine:
             tina.Input.clear_g_pars()
 
             toli = pos - ro
-            if toli.dot(nrm) <= 0:
-                toli += nrm * eps * 8
-            else:
-                toli -= nrm * eps * 8
-
             dis2 = toli.norm_sqr()
             toli = toli.normalized()
             wei *= abs(toli.dot(nrm))
