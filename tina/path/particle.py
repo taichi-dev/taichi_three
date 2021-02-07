@@ -5,11 +5,12 @@ from .geometry import *
 @ti.data_oriented
 class ParticleTracer:
     @ti.func
-    def calc_geometry(self, near, ind, uv, ro, rd):
-        nrm = (ro - self.verts[ind]).normalized()
-        return nrm, V(0., 0.)
+    def calc_geometry(self, ind, uv, pos):
+        nrm = (pos - self.verts[ind]).normalized()
+        mtlid = self.mtlids[ind]
+        return nrm, V(0., 0.), mtlid
 
-    def __init__(self, maxpars=65536 * 16, coloring=False, multimtl=True, **extra_options):
+    def __init__(self, maxpars=65536 * 16, coloring=True, multimtl=True, **extra_options):
         self.coloring = coloring
         self.multimtl = multimtl
         self.maxpars = maxpars
@@ -62,6 +63,27 @@ class ParticleTracer:
         self.npars[None] = 0
 
     @ti.kernel
+    def add_pars(self, world: ti.ext_arr(), verts: ti.ext_arr(),
+            sizes: ti.ext_arr(), colors: ti.ext_arr(), mtlid: int):
+        trans = ti.Matrix.zero(float, 4, 4)
+        for i, j in ti.static(ti.ndrange(4, 4)):
+            trans[i, j] = world[i, j]
+        npars = verts.shape[0]
+        base = self.npars[None]
+        self.npars[None] += npars
+        for i in range(npars):
+            j = base + i
+            self.mtlids[j] = mtlid
+            for l in ti.static(range(3)):
+                self.verts[j][l] = verts[i, l]
+                self.verts[j] = mapply_pos(trans, self.verts[j])
+            self.sizes[j] = sizes[j]
+            if ti.static(self.coloring):
+                for l in ti.static(range(3)):
+                    self.colors[j][l] = colors[i, l]
+                #self.colors[j] = trans @ self.colors[j]
+
+    @ti.kernel
     def add_object(self, pars: ti.template(), mtlid: ti.template()):
         pars.pre_compute()
         npars = pars.get_npars()
@@ -97,14 +119,12 @@ class ParticleTracer:
         return self.mtlids[ind]
 
     @ti.func
-    def sample_light_pos(self, org):
+    def sample_light(self):
         pos, ind, wei = V3(0.), -1, 0.
         if self.neminds[None] != 0:
             ind = self.eminds[ti.random(int) % self.neminds[None]]
-            orgdir = (org - self.verts[ind]).normalized()
-            nrm = tangentspace(orgdir) @ spherical(ti.random(), ti.random())
+            nrm = spherical(ti.random(), ti.random())
             pos = nrm * self.sizes[ind] + self.verts[ind]
-            wei = 2 * ti.pi * self.sizes[ind]**2
-            wei *= max(0, nrm.dot((org - pos).normalized()))
+            wei = 4 * ti.pi * self.sizes[ind]**2
             pos += nrm * eps * 8
-        return pos, ind, wei * self.neminds[None]
+        return pos, ind, V(0., 0.), wei * self.neminds[None]

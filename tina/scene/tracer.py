@@ -9,15 +9,15 @@ class MixedGeometryTracer:
     @ti.func
     def sample_light(self):
         if ti.static(len(self.tracers) == 1):
-            pos, uv, ind, wei = self.tracers[0].sample_light()
-            return pos, uv, ind, 0, wei
+            pos, ind, uv, wei = self.tracers[0].sample_light()
+            return pos, ind, uv, 0, wei
 
         gid = ti.random(int) % len(self.tracers)
-        pos, ind, uv, wei = V(0., 0., 0.), V(0., 0., 0.), -1, V(0., 0., 0.)
+        pos, ind, uv, wei = V(0., 0., 0.), -1, V(0., 0.), 0.
         for i, tracer in ti.static(enumerate(self.tracers)):
             if i == gid:
-                pos, nrm, ind, wei = tracer.sample_light()
-        return pos, uv, ind, gid, wei
+                pos, ind, uv, wei = tracer.sample_light()
+        return pos, ind, uv, gid, wei
 
     @ti.func
     def hit(self, ro, rd):
@@ -57,6 +57,7 @@ class PTScene(Scene):
         self.materials = [tina.Lambert()]
 
         self.geom.tracers.append(tina.TriangleTracer(**self.options))
+        self.geom.tracers.append(tina.ParticleTracer(**self.options))
 
         @ti.materialize_callback
         def init_mtltab():
@@ -71,17 +72,30 @@ class PTScene(Scene):
     def add_mesh(self, world, verts, norms, coors, mtlid):
         self.geom.tracers[0].add_mesh(np.float32(world), verts, norms, coors, mtlid)
 
-    def add_object(self, mesh, material=None):
+    def add_pars(self, world, verts, sizes, colors, mtlid):
+        self.geom.tracers[1].add_pars(np.float32(world), verts, sizes, colors, mtlid)
+
+    def add_object(self, object, material=None):
         if material is None:
             material = self.materials[0]
         if material not in self.materials:
             self.materials.append(material)
         mtlid = self.materials.index(material)
 
-        @ti.materialize_callback
-        def add_mesh():
-            obj = tina.export_simple_mesh(mesh)
-            self.add_mesh(np.eye(4), obj['fv'], obj['fn'], obj['ft'], mtlid)
+        if hasattr(object, 'get_nfaces'):
+            @ti.materialize_callback
+            def add_mesh():
+                obj = tina.export_simple_mesh(object)
+                self.add_mesh(np.eye(4), obj['fv'], obj['fn'], obj['ft'], mtlid)
+
+        elif hasattr(object, 'get_npars'):
+            @ti.materialize_callback
+            def add_pars():
+                obj = tina.export_simple_pars(object)
+                self.add_pars(np.eye(4), obj['v'], obj['vr'], obj['vc'], mtlid)
+
+        else:
+            raise RuntimeError(f'cannot determine type of object: {object!r}')
 
     def clear(self):
         self.engine.clear_image()
