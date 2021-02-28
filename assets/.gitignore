@@ -6,3 +6,4 @@ lens.*
 hp_*
 *.hdr
 *.npz
+semisphere.*
