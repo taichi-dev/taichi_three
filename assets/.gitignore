@@ -7,3 +7,4 @@ hp_*
 *.hdr
 *.npz
 semisphere.*
+monkey_cornell.*
