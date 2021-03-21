@@ -7,16 +7,16 @@ import math
 ti.init(ti.cuda)
 
 
-#'''D2Q9
+'''D2Q9
 directions_np = np.array([[1,0,0],[0,1,0],[-1,0,0],[0,-1,0],[1,1,0],[-1,1,0],[-1,-1,0],[1,-1,0],[0,0,0]])
 weights_np = np.array([1.0/9.0,1.0/9.0,1.0/9.0,1.0/9.0,1.0/36.0,1.0/36.0,1.0/36.0,1.0/36.0,4.0/9.0])
-#'''
+'''
 
 
-'''D3Q15
+#'''D3Q15
 directions_np = np.array([[0,0,0],[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1],[1,1,1],[-1,-1,-1],[1,1,-1],[-1,-1,1],[1,-1,1],[-1,1,-1],[-1,1,1],[1,-1,-1]])
 weights_np = np.array([2.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/9.0,1.0/72.0, 1.0/72.0, 1.0/72.0, 1.0/72.0, 1.0/72.0, 1.0/72.0, 1.0/72.0, 1.0/72.0])
-'''
+#'''
 
 '''D3Q27
 directions_np = np.array([[0,0,0], [1,0,0],[-1,0,0],
@@ -31,11 +31,13 @@ weights_np = np.array([8.0/27.0,2.0/27.0,2.0/27.0,2.0/27.0,
         ,1.0/216.0, 1.0/216.0, 1.0/216.0, 1.0/216.0])
 '''
 
-res = 512, 128, 1
+#res = 512, 128, 1
+res = 256, 64, 64
 direction_size = len(weights_np)
 cmap = cm.get_cmap('magma')
 
-niu = 0.01#05
+#niu = 0.01#05
+niu = 0.005
 tau = 3.0 * niu + 0.5
 inv_tau = 1 / tau
 
@@ -195,17 +197,20 @@ def apply_bc_2d():
 def substep():
     collide_and_stream()
     compute_density_momentum_moment()
-    #apply_bc()
-    apply_bc_2d()
+    if res[2] != 1:
+        apply_bc()
+    else:
+        apply_bc_2d()
 
 
 @ti.kernel
 def render():
     for x, y in rendered_image:
-        result = 0.0
-        for z in range(res[2]):
-            result += vel[x, y, z].norm() * 4
-        result /= res[2]
+        #result = 0.0
+        #for z in range(res[2]):
+        #    result += vel[x, y, z].norm() * 4
+        #result /= res[2]
+        result = vel[x, y, res[2] // 2].norm() * 4
         rendered_image[x, y] = result
 
 
