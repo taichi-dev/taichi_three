@@ -35,7 +35,7 @@ else:
 '''
 
 if d2:
-    res = 512, 128, 1
+    res = 1024, 256, 1
 else:
     res = 256, 64, 64
 direction_size = len(weights_np)
@@ -194,6 +194,7 @@ for frame in range(24 * 24):
     for subs in range(28):
         #print('substep', subs)
         substep()
+    ti.sync()
     print('compute time', time.time() - t0)
 
     #grid = np.empty(res + (4,), dtype=np.float32)
