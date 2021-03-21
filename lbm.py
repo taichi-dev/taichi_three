@@ -1,11 +1,9 @@
 import taichi as ti
 import numpy as np
-from matplotlib import cm
-import ezprof
-import math
+import time
 
 
-ti.init(ti.cpu, kernel_profiler=True)
+ti.init(ti.cpu)
 
 
 '''D2Q9
@@ -35,7 +33,6 @@ weights_np = np.array([8.0/27.0,2.0/27.0,2.0/27.0,2.0/27.0,
 #res = 512, 128, 1
 res = 256, 64, 64
 direction_size = len(weights_np)
-cmap = cm.get_cmap('magma')
 
 #niu = 0.01#05
 niu = 0.005
@@ -49,22 +46,12 @@ f_old = ti.field(float, res + (direction_size,))
 f_new = ti.field(float, res + (direction_size,))
 directions = ti.Vector.field(3, int, direction_size)
 weights = ti.field(float, direction_size)
-reverse_indices = ti.field(int, direction_size)
-rendered_image = ti.field(float, (res[0], res[1]))
 
 
 @ti.materialize_callback
 def init_velocity_set():
     directions.from_numpy(directions_np)
     weights.from_numpy(weights_np)
-    lookup_reverse()
-
-
-@ti.kernel
-def lookup_reverse():
-    for i, j in ti.ndrange(direction_size, direction_size):
-        if all(directions[i] == -directions[j]):
-            reverse_indices[i] = j
 
 
 @ti.kernel
@@ -198,37 +185,23 @@ def apply_bc_2d():
 def substep():
     collide_and_stream()
     compute_density_momentum_moment()
-    if res[2] != 1:
-        apply_bc()
-    else:
-        apply_bc_2d()
-
-
-@ti.kernel
-def render():
-    for x, y in rendered_image:
-        #result = 0.0
-        #for z in range(res[2]):
-        #    result += vel[x, y, z].norm() * 4
-        #result /= res[2]
-        result = vel[x, y, res[2] // 2].norm() * 4
-        rendered_image[x, y] = result
+    apply_bc()
 
 
 initialize()
-gui = ti.GUI('LBM', (1024, 256))
-gui.fps_limit = 24
-while gui.running and not gui.get_event(gui.ESCAPE):
-    with ezprof.scope('substep', warmup=2):
-        for s in range(16):
-            substep()
-        render()
-        img = rendered_image.to_numpy()
-    img_min, img_max = img.min(), img.max()
-    #img = (img - img_min) / (img_max - img_min + 1e-6)
-    print(f'{img_min:.02f} {img_max:.02f}')
-    gui.set_image(ti.imresize(cmap(img), *gui.res))
-    gui.show()
+for frame in range(24 * 24):
 
-ti.kernel_profiler_print()
-ezprof.show()
+    print('compute for', frame); t0 = time.time()
+    for subs in range(28):
+        #print('substep', subs)
+        substep()
+    print('compute time', time.time() - t0)
+
+    #grid = np.empty(res + (4,), dtype=np.float32)
+    #grid[..., 3] = rho.to_numpy()
+    #grid[..., :3] = vel.to_numpy()
+
+    print('store for', frame); t0 = time.time()
+    np.savez(f'/tmp/{frame:06d}', rho=rho.to_numpy(), vel=vel.to_numpy())
+    print('store time', time.time() - t0)
+    print('==========')
