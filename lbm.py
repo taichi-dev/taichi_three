@@ -25,7 +25,7 @@ weights_np = np.array([8.0/27.0,2.0/27.0,2.0/27.0,2.0/27.0,
         ,1.0/216.0, 1.0/216.0, 1.0/216.0, 1.0/216.0])
 '''
 
-resolution = (32,) * 3
+resolution = 64, 32, 32
 c_s = 2 / math.sqrt(3)
 direction_size = len(weights_np)
 cmap = cm.get_cmap('magma')
@@ -62,7 +62,7 @@ def lookup_reverse():
 @ti.kernel
 def initialize():
     for x, y, z in density_field:
-        density_field[x, y, z] = 0.5
+        density_field[x, y, z] = 1
         velocity_field[x, y, z] = ti.Vector.zero(float, 3)
 
     for x, y, z, i in previous_particle_distributions:
@@ -96,30 +96,37 @@ def compute_density_momentum_moment():
             u += f * directions[i]
             new_density += f
         density_field[x, y, z] = new_density
-        velocity_field[x, y, z] = u / (new_density + 1e-6)
+        velocity_field[x, y, z] = u / max(new_density, 1e-6)
+
+
+@ti.kernel
+def collide_and_stream():
+    for x, y, z, i in particle_distributions:
+        '''
+        if any(ti.Vector([x, y, z]) == 0):
+            continue
+        if any(ti.Vector([x, y, z]) == ti.Vector(resolution) - 1):
+            continue
+        '''
+
+        xmd, ymd, zmd = (ti.Vector([x, y, z]) - directions[i]) % ti.Vector(resolution)
+        feq = calculate_feq(xmd, ymd, zmd, i)
+        f = (1 - inv_tau) * previous_particle_distributions[xmd, ymd, zmd, i] + inv_tau * feq
+
+        particle_distributions[x, y, z, i] = f
 
 
 @ti.kernel
 def collision():
     for x, y, z, i in particle_distributions:
-        if any(ti.Vector([x, y, z]) == 0):
-            continue
-        if any(ti.Vector([x, y, z]) == ti.Vector(resolution) - 1):
-            continue
-
         feq = calculate_feq(x, y, z, i)
-        f = (1 - inv_tau) * particle_distributions[x, y, z, i] + inv_tau * feq
-        previous_particle_distributions[x, y, z, i] = f
+        f = (1 - inv_tau) * previous_particle_distributions[x, y, z, i] + inv_tau * feq
+        particle_distributions[x, y, z, i] = f
 
 
 @ti.kernel
 def stream():
     for x, y, z, i in particle_distributions:
-        if any(ti.Vector([x, y, z]) == 0):
-            continue
-        if any(ti.Vector([x, y, z]) == ti.Vector(resolution) - 1):
-            continue
-
         #'''periodic
         xmd, ymd, zmd = (ti.Vector([x, y, z]) - directions[i]) % ti.Vector(resolution)
         particle_distributions[x, y, z, i] = previous_particle_distributions[xmd, ymd, zmd, i]
@@ -153,12 +160,22 @@ def apply_bc_core(outer, bc_type, bc_value, ibc, jbc, kbc, inb, jnb, knb):
 
 @ti.kernel
 def apply_bc():
-    for y, z in ti.ndrange((1, resolution[1] - 1), (1, resolution[2] - 1)):
-        apply_bc_core(1, 0, ti.Vector([0.1, 0.0, 0.0]),
+    #for y, z in ti.ndrange((1, resolution[1] - 1), (1, resolution[2] - 1)):
+    for y, z in ti.ndrange(resolution[1], resolution[2]):
+        apply_bc_core(1, 0, [0.1, 0.0, 0.0],
                 0, y, z, 1, y, z)
-        apply_bc_core(1, 1, ti.Vector([0.0, 0.0, 0.0]),
+        apply_bc_core(1, 1, [0.0, 0.0, 0.0],
                 resolution[0] - 1, y, z, resolution[0] - 2, y, z)
 
+    for x, y, z in ti.ndrange(*resolution):
+        pos = ti.Vector([x, y, z])
+        cpos = ti.Vector(resolution) / 2
+        if (pos - cpos).norm() < 10:
+            velocity_field[x, y, z] = ti.Vector.zero(float, 3)
+            xnb, ynb, znb = pos + 1 if pos > cpos else pos - 1
+            apply_bc_core(0, 0, [0.0, 0.0, 0.0], x, y, z, xnb, ynb, znb)
+
+    '''
     for x, z in ti.ndrange(resolution[0], resolution[2]):
         apply_bc_core(1, 0, ti.Vector([0.0, 0.0, 0.0]),
                 x, resolution[1] - 1, z, x, resolution[1] - 2, z)
@@ -172,13 +189,15 @@ def apply_bc():
 
         apply_bc_core(1, 0, ti.Vector([0.0, 0.0, 0.0]),
                 x, y, 0, x, y, 1)
+    '''
 
 
 def substep():
-    collision()
+    #collision()
+    #stream()
+    collide_and_stream()
     compute_density_momentum_moment()
     apply_bc()
-    stream()
 
 
 @ti.kernel
@@ -186,22 +205,24 @@ def render():
     for x, y in rendered_image:
         result = 0.0
         for z in range(resolution[2]):
-            result += density_field[x, y, z]
+            result += velocity_field[x, y, z].norm() / 0.05
+            #result += density_field[x, y, z] * 0.5
         result /= resolution[2]
         rendered_image[x, y] = result
 
 
 initialize()
-gui = ti.GUI('LBM')
+gui = ti.GUI('LBM', (512, 256))
+gui.fps_limit = 24
 while gui.running and not gui.get_event(gui.ESCAPE):
     if gui.is_pressed('r'):
         initialize()
-    for s in range(8):
+    for s in range(32):
         substep()
     render()
     img = rendered_image.to_numpy()
     img_min, img_max = img.min(), img.max()
     #img = (img - img_min) / (img_max - img_min + 1e-6)
     print(f'{img_min:.02f} {img_max:.02f}')
-    gui.set_image(ti.imresize(cmap(img), 512))
+    gui.set_image(ti.imresize(cmap(img), *gui.res))
     gui.show()
