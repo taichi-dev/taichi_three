@@ -1,10 +1,11 @@
 import taichi as ti
 import numpy as np
 from matplotlib import cm
+import ezprof
 import math
 
 
-ti.init(ti.cuda)
+ti.init(ti.cpu, kernel_profiler=True)
 
 
 '''D2Q9
@@ -218,14 +219,16 @@ initialize()
 gui = ti.GUI('LBM', (1024, 256))
 gui.fps_limit = 24
 while gui.running and not gui.get_event(gui.ESCAPE):
-    if gui.is_pressed('r'):
-        initialize()
-    for s in range(16):
-        substep()
-    render()
-    img = rendered_image.to_numpy()
+    with ezprof.scope('substep', warmup=2):
+        for s in range(16):
+            substep()
+        render()
+        img = rendered_image.to_numpy()
     img_min, img_max = img.min(), img.max()
     #img = (img - img_min) / (img_max - img_min + 1e-6)
     print(f'{img_min:.02f} {img_max:.02f}')
     gui.set_image(ti.imresize(cmap(img), *gui.res))
     gui.show()
+
+ti.kernel_profiler_print()
+ezprof.show()
