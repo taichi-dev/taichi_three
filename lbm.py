@@ -55,11 +55,10 @@ vel = ti.Vector.field(3, float, res)
 #f_new = ti.field(float, res + (direction_size,))
 f_old = ti.field(float)
 f_new = ti.field(float)
-f_tmp = ti.field(float)
 
-ti.root.dense(ti.ijk, 1).dense(ti.l, direction_size).dense(ti.ijk, res).place(f_old)
+#ti.root.dense(ti.ijk, res).dense(ti.l, direction_size).place(f_new)
 ti.root.dense(ti.ijk, 1).dense(ti.l, direction_size).dense(ti.ijk, res).place(f_new)
-ti.root.dense(ti.ijk, 1).dense(ti.l, direction_size).dense(ti.ijk, res).place(f_tmp)
+ti.root.dense(ti.ijk, 1).dense(ti.l, direction_size).dense(ti.ijk, res).place(f_old)
 
 directions = ti.Vector.field(3, int, direction_size)
 weights = ti.field(float, direction_size)
@@ -108,10 +107,10 @@ def compute_density_momentum_moment():
 
 @ti.kernel
 def collide_and_stream():
-    for x, y, z, i in f_new:
-        xmd, ymd, zmd = (ti.Vector([x, y, z]) - directions[i]) % ti.Vector(res)
-        feq = f_eq(xmd, ymd, zmd, i)
-        f_new[x, y, z, i] = (1 - inv_tau) * f_old[xmd, ymd, zmd, i] + inv_tau * feq
+    for x, y, z in rho:
+        for i in range(15):
+            xmd, ymd, zmd = (ti.Vector([x, y, z]) - directions[i]) % ti.Vector(res)
+            f_new[x, y, z, i] = f_old[xmd, ymd, zmd, i] * (1 - inv_tau) + f_eq(xmd, ymd, zmd, i) * inv_tau
 
 
 @ti.func
