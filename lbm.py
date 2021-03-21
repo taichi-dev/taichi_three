@@ -25,7 +25,7 @@ weights_np = np.array([8.0/27.0,2.0/27.0,2.0/27.0,2.0/27.0,
         ,1.0/216.0, 1.0/216.0, 1.0/216.0, 1.0/216.0])
 '''
 
-resolution = 64, 32, 32
+resolution = 256, 64, 64
 c_s = 2 / math.sqrt(3)
 direction_size = len(weights_np)
 cmap = cm.get_cmap('magma')
@@ -73,9 +73,11 @@ def initialize():
 
 @ti.func
 def calculate_feq(x, y, z, i):
-    dp = velocity_field[x, y, z].dot(directions[i])
-    term = 1 + dp / c_s**2 + dp**2 / (2 * c_s**2)
-    term -= velocity_field[x, y, z].norm_sqr() / (2 * c_s**2)
+    eu = velocity_field[x, y, z].dot(directions[i])
+    #term = 1 + eu / c_s**2 + eu**2 / (2 * c_s**2)
+    #term -= velocity_field[x, y, z].norm_sqr() / (2 * c_s**2)
+    uv = velocity_field[x, y, z].norm_sqr()
+    term = 1 + 3 * eu + 4.5 * eu**2 - 1.5 * uv
     feq = weights[i] * density_field[x, y, z] * term
     return feq
 
@@ -160,22 +162,14 @@ def apply_bc_core(outer, bc_type, bc_value, ibc, jbc, kbc, inb, jnb, knb):
 
 @ti.kernel
 def apply_bc():
-    #for y, z in ti.ndrange((1, resolution[1] - 1), (1, resolution[2] - 1)):
-    for y, z in ti.ndrange(resolution[1], resolution[2]):
+    for y, z in ti.ndrange((1, resolution[1] - 1), (1, resolution[2] - 1)):
+    #for y, z in ti.ndrange(resolution[1], resolution[2]):
         apply_bc_core(1, 0, [0.1, 0.0, 0.0],
                 0, y, z, 1, y, z)
         apply_bc_core(1, 1, [0.0, 0.0, 0.0],
                 resolution[0] - 1, y, z, resolution[0] - 2, y, z)
 
-    for x, y, z in ti.ndrange(*resolution):
-        pos = ti.Vector([x, y, z])
-        cpos = ti.Vector(resolution) / 2
-        if (pos - cpos).norm() < 10:
-            velocity_field[x, y, z] = ti.Vector.zero(float, 3)
-            xnb, ynb, znb = pos + 1 if pos > cpos else pos - 1
-            apply_bc_core(0, 0, [0.0, 0.0, 0.0], x, y, z, xnb, ynb, znb)
-
-    '''
+    #'''
     for x, z in ti.ndrange(resolution[0], resolution[2]):
         apply_bc_core(1, 0, ti.Vector([0.0, 0.0, 0.0]),
                 x, resolution[1] - 1, z, x, resolution[1] - 2, z)
@@ -189,7 +183,16 @@ def apply_bc():
 
         apply_bc_core(1, 0, ti.Vector([0.0, 0.0, 0.0]),
                 x, y, 0, x, y, 1)
-    '''
+    #'''
+
+    for x, y, z in ti.ndrange(*resolution):
+        pos = ti.Vector([x, y, z])
+        cpos = ti.Vector(resolution) / ti.Vector([6, 2, 2])
+        cradius = resolution[1] / 4
+        if (pos - cpos).norm() < cradius:
+            velocity_field[x, y, z] = ti.Vector.zero(float, 3)
+            xnb, ynb, znb = pos + 1 if pos > cpos else pos - 1
+            apply_bc_core(0, 0, [0.0, 0.0, 0.0], x, y, z, xnb, ynb, znb)
 
 
 def substep():
@@ -205,19 +208,18 @@ def render():
     for x, y in rendered_image:
         result = 0.0
         for z in range(resolution[2]):
-            result += velocity_field[x, y, z].norm() / 0.05
-            #result += density_field[x, y, z] * 0.5
+            result += velocity_field[x, y, z].norm() * 6
         result /= resolution[2]
         rendered_image[x, y] = result
 
 
 initialize()
-gui = ti.GUI('LBM', (512, 256))
+gui = ti.GUI('LBM', (1024, 256))
 gui.fps_limit = 24
 while gui.running and not gui.get_event(gui.ESCAPE):
     if gui.is_pressed('r'):
         initialize()
-    for s in range(32):
+    for s in range(4):
         substep()
     render()
     img = rendered_image.to_numpy()
