@@ -50,8 +50,17 @@ inv_tau = 1 / tau
 
 rho = ti.field(float, res)
 vel = ti.Vector.field(3, float, res)
-f_old = ti.field(float, res + (direction_size,))
-f_new = ti.field(float, res + (direction_size,))
+
+#f_old = ti.field(float, res + (direction_size,))
+#f_new = ti.field(float, res + (direction_size,))
+f_old = ti.field(float)
+f_new = ti.field(float)
+f_tmp = ti.field(float)
+
+ti.root.dense(ti.ijk, 1).dense(ti.l, direction_size).dense(ti.ijk, res).place(f_old)
+ti.root.dense(ti.ijk, 1).dense(ti.l, direction_size).dense(ti.ijk, res).place(f_new)
+ti.root.dense(ti.ijk, 1).dense(ti.l, direction_size).dense(ti.ijk, res).place(f_tmp)
+
 directions = ti.Vector.field(3, int, direction_size)
 weights = ti.field(float, direction_size)
 
@@ -204,11 +213,34 @@ def render():
         img[x, y] = ret / cnt
 
 
+#'''
 initialize()
 gui = ti.GUI('LBM', (1024, 256))
 while gui.running and not gui.get_event(gui.ESCAPE):
+    t0 = time.time()
     for subs in range(28):
         substep()
     render()
+    ti.sync()
+    print(time.time() - t0)
     gui.set_image(ti.imresize(img, *gui.res))
     gui.show()
+'''
+initialize()
+for frame in range(24 * 24):
+
+    print('compute for', frame); t0 = time.time()
+    for subs in range(28):
+        #print('substep', subs)
+        substep()
+    print('compute time', time.time() - t0)
+
+    #grid = np.empty(res + (4,), dtype=np.float32)
+    #grid[..., 3] = rho.to_numpy()
+    #grid[..., :3] = vel.to_numpy()
+
+    print('store for', frame); t0 = time.time()
+    np.savez(f'/tmp/{frame:06d}', rho=rho.to_numpy(), vel=vel.to_numpy())
+    print('store time', time.time() - t0)
+    print('==========')
+'''
