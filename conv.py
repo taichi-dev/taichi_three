@@ -12,7 +12,7 @@ A = np.array([
 def conv(A, B):
     m, n = A.shape
     s, t = B.shape
-    C = np.zeros((m + s - 1, n + t - 1))
+    C = np.zeros((m + s - 1, n + t - 1), dtype=A.dtype)
     for i in range(m):
         for j in range(n):
             for k in range(s):
@@ -22,6 +22,10 @@ def conv(A, B):
 
 
 B = A
+print(B)
 B = conv(B, A)
+print(B)
+B = conv(B, A)
+print(B)
 B = conv(B, A)
 print(B)
