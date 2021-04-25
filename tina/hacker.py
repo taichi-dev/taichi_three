@@ -1,5 +1,7 @@
 import taichi as ti
 
+from taichi.lang.common_ops import TaichiOperations
+
 
 hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
         'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
@@ -7,7 +9,7 @@ hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
         (y.__name__ != 'assign' or not setattr(y, '__name__', '_assign'))
         and f(x, y, z))(ti.Matrix.element_wise_writeback_binary)) or setattr(
         ti.Matrix, 'is_global', (lambda f: lambda x: len(x) and f(x))(
-        ti.Matrix.is_global)) or setattr(ti.TaichiOperations, '__pos__',
+        ti.Matrix.is_global)) or setattr(TaichiOperations, '__pos__',
         lambda x: x) or setattr(ti, 'pi', __import__('math').pi) or setattr(ti,
         'tau', __import__('math').tau) or setattr(ti, 'materialize_callback',
         (lambda f: lambda x: [(x() if ti.get_runtime().materialized else f(x)),
