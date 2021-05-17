@@ -1,5 +1,5 @@
 from ..common import *
-
+import math
 
 print('[Tina] Hint: MMB to orbit, Shift+MMB to pan, wheel to zoom')
 
@@ -11,13 +11,21 @@ class Control:
         #self.up = np.array([0, 1, 1e-12], dtype=float)
         self.is_ortho = is_ortho
         self.radius = 3.0
-        self.theta = 1e-5
-        self.phi = 0.0
+        self.R = np.eye(4)
         self.fov = fov
 
         self.last_mouse = None
         self.blendish = blendish
 
+    def init_rot(self, theta, phi):
+        from .transformations import euler_matrix
+
+        if theta == None:
+            theta = 0
+        if phi == None:
+            phi = 0
+        self.R = euler_matrix(-theta, phi, 0, 'sxyz')
+        
     def process_events(self):
         ret = False
         for e in self.gui.get_events():
@@ -28,38 +36,25 @@ class Control:
         return ret
 
     def on_pan(self, delta, origin):
-        right = np.cross(self.up, self.back)
-        up = np.cross(self.back, right)
+        vx = -delta[0] * np.pi
+        vy = -delta[1] * np.pi
+        vz = 0
+        v = np.array([vx, vy, vz])
+        v = self.R[0:3, 0:3].dot(v)*0.5
+        self.center += v * self.radius
 
-        right /= np.linalg.norm(right)
-        up /= np.linalg.norm(up)
-
-        self.center -= (right * delta[0] + up * delta[1]) * self.radius
+    def on_orbit(self, delta, origin):
+        from .matrix import RotationStep
+        wx = delta[1] * np.pi
+        wy = -delta[0] * np.pi
+        wz = 0
+        self.R = RotationStep(self.R, wx, wy, wz)
 
     @property
     def back(self):
-        x = self.radius * np.cos(self.theta) * np.sin(self.phi)
-        z = self.radius * np.cos(self.theta) * np.cos(self.phi)
-        y = self.radius * np.sin(self.theta)
-        return np.array([x, y, z], dtype=float)
-
-    @property
-    def up(self):
-        x = -self.radius * np.sin(self.theta) * np.sin(self.phi)
-        z = -self.radius * np.sin(self.theta) * np.cos(self.phi)
-        y = self.radius * np.cos(self.theta)
-        return np.array([x, y, z], dtype=float)
-
-    def on_orbit(self, delta, origin):
-        delta_phi = -delta[0] * np.pi
-        delta_theta = -delta[1] * np.pi
-
-        #radius = np.linalg.norm(pos)
-        #theta = np.arccos(pos[1] / radius)
-        #phi = np.arctan2(pos[2], pos[0])
-
-        self.theta = np.clip(self.theta + delta_theta, -np.pi / 2, np.pi / 2)
-        self.phi += delta_phi
+        b = np.array([0, 0, self.radius], dtype=float)
+        b = self.R[0:3,0:3].dot(b)
+        return b
 
     def on_zoom(self, delta, origin):
         self.radius *= pow(0.89, delta)
@@ -105,14 +100,14 @@ class Control:
             self.on_zoom(delta, origin)
 
     def get_camera(self):
-        from .matrix import lookat, orthogonal, perspective
+        from .matrix import lookat, orthogonal, perspective, affine
 
         aspect = self.gui.res[0] / self.gui.res[1]
         if self.is_ortho:
             view = lookat(self.center, self.back / self.radius, self.up)
             proj = orthogonal(self.radius, aspect)
         else:
-            view = lookat(self.center, self.back, self.up)
+            view = np.linalg.inv(affine(self.R[0:3,0:3], (self.center + self.back)))
             proj = perspective(self.fov, aspect)
 
         return view, proj

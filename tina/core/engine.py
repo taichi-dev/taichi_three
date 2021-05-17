@@ -3,8 +3,10 @@ from ..common import *
 
 @ti.data_oriented
 class Engine:
-    def __init__(self, res=512):
-        self.res = tovector((res, res) if isinstance(res, int) else res)
+    def __init__(self, res_x=512, res_y=None):
+        if res_y is None:
+            res_y = res_x
+        self.res = tovector((res_x, res_y) if isinstance(res_x, int) else res_x)
 
         self.depth = ti.field(int, self.res)
         self.maxdepth = 2**30

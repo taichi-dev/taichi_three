@@ -3,7 +3,7 @@ from ..advans import *
 
 @ti.data_oriented
 class Scene:
-    def __init__(self, res=512, **options):
+    def __init__(self, res_x=512, res_y=None, **options):
         '''
         :param res: (int | tuple) resolution of screen
         :param options: options for the rasterizers
@@ -11,7 +11,7 @@ class Scene:
         Creates a Tina scene, the top level structure to manage everything in your scene.
         '''
 
-        self.engine = tina.Engine(res)
+        self.engine = tina.Engine(res_x, res_y)
         self.res = self.engine.res
         self.options = options
         self.taa = options.get('taa', False)
@@ -161,10 +161,7 @@ class Scene:
         self.control = tina.Control(gui, fov=fov, is_ortho=is_ortho, blendish=blendish)
         if center is not None:
             self.control.center[:] = center
-        if theta is not None:
-            self.control.theta = theta
-        if phi is not None:
-            self.control.phi = phi
+        self.control.init_rot(theta, phi)
         if radius is not None:
             self.control.radius = radius
 

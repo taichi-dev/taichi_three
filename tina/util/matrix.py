@@ -1,5 +1,5 @@
 from ..common import *
-
+from transformations import quaternion_matrix, quaternion_multiply, quaternion_from_matrix
 
 def identity():
     return np.eye(4)
@@ -10,6 +10,13 @@ def affine(lin, pos):
     pos = np.concatenate([pos, np.ones(1)])
     lin = np.concatenate([lin, pos[:, None]], axis=1)
     return lin
+
+def RotationStep(R, wx, wy, wz):
+    q = quaternion_from_matrix(R)
+    qw = 0.5*np.array([0, wx, wy, wz])
+    q += quaternion_multiply(q, qw)
+    q /= np.linalg.norm(q)
+    return quaternion_matrix(q)
 
 
 def lookat(pos=(0, 0, 0), back=(0, 0, 3), up=(0, 1, 1e-12)):
