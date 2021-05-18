@@ -18,7 +18,7 @@ class Control:
         self.blendish = blendish
 
     def init_rot(self, theta, phi):
-        from .transformations import euler_matrix
+        from transformations import euler_matrix
 
         if theta == None:
             theta = 0
