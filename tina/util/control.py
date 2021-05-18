@@ -104,7 +104,7 @@ class Control:
 
         aspect = self.gui.res[0] / self.gui.res[1]
         if self.is_ortho:
-            view = lookat(self.center, self.back / self.radius, self.up)
+            view = np.linalg.inv(affine(self.R[0:3,0:3], (self.center + self.back / self.radius)))
             proj = orthogonal(self.radius, aspect)
         else:
             view = np.linalg.inv(affine(self.R[0:3,0:3], (self.center + self.back)))
