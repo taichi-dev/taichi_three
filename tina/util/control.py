@@ -150,6 +150,12 @@ class Control:
                     self.on_rmb_drag(delta, self.last_mouse)
                 ret = any(btn)
 
+        if self.gui.is_pressed("="):
+            self.on_wheel(1.0, curr_mouse)
+
+        if self.gui.is_pressed("-"):
+            self.on_wheel(-1.0, curr_mouse)
+
         if any(btn):
             self.last_mouse = curr_mouse
         else:
